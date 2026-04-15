@@ -2,3 +2,8 @@
 attached_assets/*.txt
 secrets/
 # Add any other patterns for keys/configs
+
+# Submodule internals (optional but clean)
+Ma_Golide_Mothership/.git
+Ma_Assayer/.git
+Ma_Golide_Satellites/.git
