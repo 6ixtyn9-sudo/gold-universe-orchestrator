@@ -1,0 +1,12 @@
+[project]
+name = "gold-universe-orchestrator"
+version = "2.0.0"
+description = "Gold Universe Orchestrator — Python layer for Ma Assayer + Mothership + Satellites"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.1.3",
+    "google-auth>=2.49.2",
+    "google-auth-httplib2>=0.3.1",
+    "google-auth-oauthlib>=1.3.1",
+    "gspread>=6.2.1",
+]

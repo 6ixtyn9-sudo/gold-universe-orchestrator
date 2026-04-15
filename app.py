@@ -1,0 +1,364 @@
+import logging
+import threading
+import json
+from datetime import datetime
+
+from flask import Flask, render_template, request, jsonify
+
+from auth.google_auth import get_client, reset_client, is_configured
+from registry.satellite_registry import (
+    list_satellites, get_satellite, add_satellite, bulk_add,
+    remove_satellite, update_satellite, summary_stats,
+)
+from fetcher.sheet_fetcher import fetch_satellite, batch_fetch
+from assayer.assayer_engine import run_full_assay
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+
+_job_status = {}
+_job_lock = threading.Lock()
+
+
+def _set_job(job_id, state, detail="", result=None):
+    with _job_lock:
+        _job_status[job_id] = {
+            "state": state,
+            "detail": detail,
+            "result": result,
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+
+
+def _get_job(job_id):
+    with _job_lock:
+        return _job_status.get(job_id)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dashboard
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/")
+def dashboard():
+    stats = summary_stats()
+    sats = list_satellites()
+    configured = is_configured()
+    return render_template(
+        "dashboard.html",
+        stats=stats,
+        satellites=sats,
+        configured=configured,
+        now=datetime.utcnow().isoformat(),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Status
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/status")
+def api_status():
+    configured = is_configured()
+    stats = summary_stats()
+    return jsonify({
+        "configured": configured,
+        "stats": stats,
+        "timestamp": datetime.utcnow().isoformat(),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Satellites CRUD
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/satellites", methods=["GET"])
+def api_satellites():
+    date = request.args.get("date")
+    league = request.args.get("league")
+    fmt = request.args.get("format")
+    sats = list_satellites(date=date, league=league, fmt=fmt)
+    return jsonify({"satellites": sats, "count": len(sats)})
+
+
+@app.route("/api/satellites/add", methods=["POST"])
+def api_add_satellite():
+    body = request.json or {}
+    sheet_id = body.get("sheet_id", "").strip()
+    if not sheet_id:
+        return jsonify({"error": "sheet_id is required"}), 400
+
+    sheet_name = body.get("sheet_name", "").strip()
+    date = body.get("date", "").strip()
+    league = body.get("league", "").strip()
+    notes = body.get("notes", "").strip()
+
+    sat, created = add_satellite(
+        sheet_id=sheet_id,
+        sheet_name=sheet_name,
+        date=date,
+        league=league,
+        notes=notes,
+    )
+    return jsonify({"satellite": sat, "created": created})
+
+
+@app.route("/api/satellites/bulk-add", methods=["POST"])
+def api_bulk_add():
+    body = request.json or {}
+    entries = body.get("entries", [])
+    if not entries:
+        return jsonify({"error": "entries list is required"}), 400
+
+    results = bulk_add(entries)
+    created = sum(1 for r in results if r.get("created"))
+    return jsonify({"results": results, "created": created, "total": len(results)})
+
+
+@app.route("/api/satellites/<sat_id>", methods=["GET"])
+def api_get_satellite(sat_id):
+    sat = get_satellite(sat_id)
+    if not sat:
+        return jsonify({"error": "satellite not found"}), 404
+    return jsonify(sat)
+
+
+@app.route("/api/satellites/<sat_id>", methods=["DELETE"])
+def api_delete_satellite(sat_id):
+    removed = remove_satellite(sat_id)
+    if not removed:
+        return jsonify({"error": "satellite not found"}), 404
+    return jsonify({"removed": True, "id": sat_id})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fetch & Assay — single satellite
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/fetch/<sat_id>", methods=["POST"])
+def api_fetch_one(sat_id):
+    if not is_configured():
+        return jsonify({"error": "Google auth not configured — add GOOGLE_SERVICE_ACCOUNT_JSON secret"}), 503
+
+    sat = get_satellite(sat_id)
+    if not sat:
+        return jsonify({"error": "satellite not found"}), 404
+
+    try:
+        client = get_client()
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
+
+    payload = fetch_satellite(client, sat)
+
+    update_satellite(sat_id, {
+        "last_fetched": datetime.utcnow().isoformat(),
+        "format": payload.get("format", "unknown"),
+    })
+
+    payload_trimmed = {k: v for k, v in payload.items() if k != "data"}
+    payload_trimmed["row_counts"] = {
+        k: len(v) for k, v in payload.get("data", {}).items()
+    }
+    return jsonify(payload_trimmed)
+
+
+@app.route("/api/assay/<sat_id>", methods=["POST"])
+def api_assay_one(sat_id):
+    if not is_configured():
+        return jsonify({"error": "Google auth not configured"}), 503
+
+    sat = get_satellite(sat_id)
+    if not sat:
+        return jsonify({"error": "satellite not found"}), 404
+
+    try:
+        client = get_client()
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
+
+    payload = fetch_satellite(client, sat)
+    result = run_full_assay(payload)
+    summary = result["summary"]
+
+    update_satellite(sat_id, {
+        "last_fetched": datetime.utcnow().isoformat(),
+        "last_assayed": datetime.utcnow().isoformat(),
+        "format": payload.get("format", "unknown"),
+        "assay_summary": summary,
+    })
+
+    return jsonify({
+        "satellite_id": sat_id,
+        "summary": summary,
+        "league_purity": result["league_purity"],
+        "edge_count": len(result["edges"]),
+        "top_edges": result["edges"][:20],
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Batch Fetch All
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/fetch-all", methods=["POST"])
+def api_fetch_all():
+    if not is_configured():
+        return jsonify({"error": "Google auth not configured"}), 503
+
+    sats = list_satellites()
+    if not sats:
+        return jsonify({"error": "No satellites registered"}), 400
+
+    job_id = f"fetch_all_{datetime.utcnow().strftime('%H%M%S')}"
+    _set_job(job_id, "running", f"Starting fetch of {len(sats)} satellites")
+
+    def _run():
+        try:
+            client = get_client()
+        except RuntimeError as e:
+            _set_job(job_id, "error", str(e))
+            return
+
+        success = 0
+        errors = 0
+
+        def on_progress(done, total, sat, error):
+            nonlocal success, errors
+            if error:
+                errors += 1
+            else:
+                success += 1
+            msg = f"[{done}/{total}] {sat.get('league', '')} {sat.get('date', '')}"
+            _set_job(job_id, "running", msg)
+
+        results = batch_fetch(client, sats, on_progress=on_progress)
+
+        for r in results:
+            sat = r["satellite"]
+            sat_id = sat["id"]
+            p = r["payload"]
+            update_satellite(sat_id, {
+                "last_fetched": datetime.utcnow().isoformat(),
+                "format": p.get("format", "unknown"),
+            })
+
+        _set_job(job_id, "done",
+                 f"Fetch complete: {success} succeeded, {errors} failed",
+                 {"success": success, "errors": errors})
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+
+    return jsonify({"job_id": job_id, "satellites": len(sats)})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Batch Assay All
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/assay-all", methods=["POST"])
+def api_assay_all():
+    if not is_configured():
+        return jsonify({"error": "Google auth not configured"}), 503
+
+    sats = list_satellites()
+    if not sats:
+        return jsonify({"error": "No satellites registered"}), 400
+
+    job_id = f"assay_all_{datetime.utcnow().strftime('%H%M%S')}"
+    _set_job(job_id, "running", f"Starting full assay of {len(sats)} satellites")
+
+    def _run():
+        try:
+            client = get_client()
+        except RuntimeError as e:
+            _set_job(job_id, "error", str(e))
+            return
+
+        total = len(sats)
+        success = 0
+        errors = 0
+
+        for i, sat in enumerate(sats):
+            sat_id = sat["id"]
+            _set_job(job_id, "running",
+                     f"[{i+1}/{total}] Assaying {sat.get('league','')} {sat.get('date','')}")
+            try:
+                payload = fetch_satellite(client, sat)
+                result = run_full_assay(payload)
+                summary = result["summary"]
+                update_satellite(sat_id, {
+                    "last_fetched": datetime.utcnow().isoformat(),
+                    "last_assayed": datetime.utcnow().isoformat(),
+                    "format": payload.get("format", "unknown"),
+                    "assay_summary": summary,
+                })
+                success += 1
+            except Exception as e:
+                logger.error(f"Assay failed for {sat_id}: {e}")
+                errors += 1
+
+        _set_job(job_id, "done",
+                 f"Assay complete: {success} succeeded, {errors} failed",
+                 {"success": success, "errors": errors})
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+
+    return jsonify({"job_id": job_id, "satellites": len(sats)})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job status
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/job/<job_id>")
+def api_job_status(job_id):
+    status = _get_job(job_id)
+    if not status:
+        return jsonify({"error": "job not found"}), 404
+    return jsonify(status)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Auth reset
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/reset-auth", methods=["POST"])
+def api_reset_auth():
+    reset_client()
+    return jsonify({"reset": True})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Edges export
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/edges")
+def api_edges():
+    """Return all BANKER edges across all assayed satellites."""
+    sats = list_satellites()
+    tier_filter = request.args.get("tier", "").upper()
+
+    bankers = []
+    for sat in sats:
+        summary = sat.get("assay_summary")
+        if not summary:
+            continue
+        # We only have the summary here — full edges require re-assay
+        # This endpoint is a placeholder for Phase 2 persistent edge storage
+
+    return jsonify({
+        "note": "Full edge storage coming in Phase 2. Run assay on individual satellites for edge details.",
+        "satellites_assayed": sum(1 for s in sats if s.get("last_assayed")),
+    })
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=False)

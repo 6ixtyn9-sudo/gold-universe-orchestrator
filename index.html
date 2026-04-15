@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ma Golide Mothership</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #1a2332 0%, #243447 100%);
+      border-bottom: 2px solid #ffd700;
+      padding: 24px 32px;
+    }
+    header h1 {
+      font-size: 1.8rem;
+      color: #ffd700;
+      letter-spacing: 1px;
+    }
+    header p {
+      margin-top: 6px;
+      color: #8b949e;
+      font-size: 0.95rem;
+    }
+    .container {
+      display: flex;
+      height: calc(100vh - 90px);
+    }
+    .sidebar {
+      width: 260px;
+      min-width: 200px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+    .sidebar h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+      padding: 0 16px 8px;
+    }
+    .file-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      color: #c9d1d9;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .file-btn:hover { background: #21262d; }
+    .file-btn.active {
+      background: #21262d;
+      border-left-color: #ffd700;
+      color: #ffd700;
+    }
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .file-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .file-header h3 {
+      font-size: 1.1rem;
+      color: #ffd700;
+    }
+    .badge {
+      background: #1c6 ;
+      color: #fff;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: #238636;
+    }
+    pre {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .welcome {
+      max-width: 700px;
+    }
+    .welcome h2 {
+      color: #ffd700;
+      font-size: 1.4rem;
+      margin-bottom: 12px;
+    }
+    .welcome p {
+      color: #8b949e;
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+    .arch-list {
+      list-style: none;
+      margin: 16px 0;
+    }
+    .arch-list li {
+      padding: 8px 12px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+    .arch-list li span {
+      color: #ffd700;
+      font-weight: bold;
+    }
+    .how-to {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+    .how-to h3 { color: #58a6ff; margin-bottom: 8px; }
+    .how-to ol { padding-left: 20px; }
+    .how-to ol li { margin-bottom: 6px; color: #8b949e; font-size: 0.9rem; }
+    code { color: #79c0ff; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ma Golide Mothership</h1>
+    <p>The central brain of the Gold Universe — Syncs satellites, consults the Assayer, builds Accas</p>
+  </header>
+  <div class="container">
+    <nav class="sidebar">
+      <h2>Scripts</h2>
+      <button class="file-btn active" onclick="showWelcome(this)">Overview</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_Genesis.gs')">Mothership_Genesis.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_Menu.gs')">Mothership_Menu.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_AssayerBridge.gs')">Mothership_AssayerBridge.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_AccaEngine.gs')">Mothership_AccaEngine.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_HiveMind.gs')">Mothership_HiveMind.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_ Intelligence_Core.gs')">Mothership_Intelligence_Core.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_RiskyAccaBuilder.gs')">Mothership_RiskyAccaBuilder.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Mothership_RiskyAnalyzer.gs')">Mothership_RiskyAnalyzer.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'ConfigLedger_Mothership.gs')">ConfigLedger_Mothership.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Performance_Analyzer.gs')">Performance_Analyzer.gs</button>
+      <button class="file-btn" onclick="loadFile(this, 'Systems Audit.gs')">Systems Audit.gs</button>
+    </nav>
+    <div class="main" id="main-content">
+      <div class="welcome">
+        <h2>Ma Golide Mothership — The Parent of the Gold Universe</h2>
+        <p>"The one who sees all satellites, consults the Assayer, and builds the Accas"</p>
+        <p>This is the central brain of the entire Gold Universe. It reads upcoming games from all Satellites, pulls the latest purity report from the Assayer, and builds Accas, Risky Accas, Portfolios, and Bet Slips.</p>
+
+        <ul class="arch-list">
+          <li><span>Mothership_Genesis.gs</span> — One-click setup for the entire Google Sheet structure</li>
+          <li><span>Mothership_Menu.gs</span> — Custom Google Sheets menu for manual triggers</li>
+          <li><span>Mothership_AssayerBridge.gs</span> — Multi-satellite bridge; pulls purity reports</li>
+          <li><span>Mothership_AccaEngine.gs</span> — Core accumulator building logic</li>
+          <li><span>Mothership_HiveMind.gs</span> — KPI overview and aggregate statistics</li>
+          <li><span>Mothership_Intelligence_Core.gs</span> — Advanced intelligence and scoring engine</li>
+          <li><span>Mothership_RiskyAccaBuilder.gs</span> — High-risk, high-reward accumulator builder</li>
+          <li><span>Mothership_RiskyAnalyzer.gs</span> — Risk analysis and edge filtering</li>
+          <li><span>ConfigLedger_Mothership.gs</span> — Config management and purity metadata</li>
+          <li><span>Performance_Analyzer.gs</span> — ROI and success rate monitoring</li>
+          <li><span>Systems Audit.gs</span> — System health checks</li>
+        </ul>
+
+        <div class="how-to">
+          <h3>How to deploy these scripts to Google Sheets</h3>
+          <ol>
+            <li>Open (or create) your <strong>Ma Golide - MOTHERSHIP</strong> Google Sheet.</li>
+            <li>Go to <code>Extensions → Apps Script</code>.</li>
+            <li>For each <code>.gs</code> file shown here, create a new script file and paste the contents.</li>
+            <li>Save the project, then run <code>setupMothership()</code> from <code>Mothership_Genesis.gs</code> once to build all required sheets.</li>
+            <li>Use the custom <strong>Ma Golide</strong> menu that appears in your Sheet to trigger syncs, build Accas, and more.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showWelcome(btn) {
+      document.querySelectorAll('.file-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('main-content').innerHTML = document.querySelector('.welcome').outerHTML;
+    }
+
+    async function loadFile(btn, filename) {
+      document.querySelectorAll('.file-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const main = document.getElementById('main-content');
+      main.innerHTML = '<p style="color:#8b949e;padding:20px;">Loading...</p>';
+
+      try {
+        const res = await fetch('/doc/' + encodeURIComponent(filename));
+        if (!res.ok) throw new Error('Not found');
+        const text = await res.text();
+
+        const escaped = text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+
+        main.innerHTML = `
+          <div class="file-header">
+            <h3>${filename}</h3>
+            <span class="badge">Google Apps Script</span>
+          </div>
+          <pre><code>${escaped}</code></pre>
+        `;
+      } catch (e) {
+        main.innerHTML = `<p style="color:#f85149;padding:20px;">Failed to load file: ${filename}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>

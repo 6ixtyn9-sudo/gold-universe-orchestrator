@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gold Universe Orchestrator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --gold: #ffd700;
+      --gold2: #e6c000;
+      --green: #238636;
+      --green-light: #3fb950;
+      --red: #da3633;
+      --red-light: #f85149;
+      --blue: #58a6ff;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --banker: #ffd700;
+      --robber: #ff6b6b;
+      --neutral: #58a6ff;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a2332 0%, #0d1117 100%);
+      border-bottom: 2px solid var(--gold);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left h1 {
+      font-size: 1.4rem;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+    .header-left p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .auth-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .auth-badge.connected {
+      background: rgba(35, 134, 54, 0.2);
+      border: 1px solid var(--green);
+      color: var(--green-light);
+    }
+    .auth-badge.disconnected {
+      background: rgba(218, 54, 51, 0.2);
+      border: 1px solid var(--red);
+      color: var(--red-light);
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: calc(100vh - 70px);
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      overflow-y: auto;
+    }
+    aside h2 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Stats Cards ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-card .num {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .stat-card .label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .stat-card.banker .num { color: var(--banker); }
+    .stat-card.robber .num { color: var(--robber); }
+    .stat-card.green .num { color: var(--green-light); }
+
+    /* ── Action Buttons ── */
+    .action-section {
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-bottom: 6px;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-gold { background: var(--gold); color: #0d1117; }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-blue { background: #1f6feb; color: #fff; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-outline {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    /* ── Add satellite form ── */
+    .form-section {
+      margin-bottom: 20px;
+    }
+    .form-section input,
+    .form-section textarea {
+      display: block;
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      margin-bottom: 6px;
+      font-family: inherit;
+    }
+    .form-section input::placeholder,
+    .form-section textarea::placeholder { color: var(--text-muted); }
+    .form-section input:focus,
+    .form-section textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+    .form-section textarea { height: 80px; resize: vertical; font-size: 0.75rem; }
+
+    /* ── Main content ── */
+    main {
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
+
+    /* ── Job status banner ── */
+    #job-banner {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--gold);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #job-banner.hidden { display: none !important; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Alert ── */
+    .alert {
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-size: 0.88rem;
+      border: 1px solid;
+    }
+    .alert-warning {
+      background: rgba(210, 153, 34, 0.12);
+      border-color: #d29922;
+      color: #e3b341;
+    }
+    .alert-success {
+      background: rgba(35, 134, 54, 0.12);
+      border-color: var(--green);
+      color: var(--green-light);
+    }
+    .alert-error {
+      background: rgba(218, 54, 51, 0.12);
+      border-color: var(--red);
+      color: var(--red-light);
+    }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-header h2 {
+      font-size: 1rem;
+      color: var(--gold);
+    }
+    .count-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Satellite Table ── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    thead th {
+      background: var(--surface2);
+      padding: 10px 12px;
+      text-align: left;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,215,0,0.03); }
+    td { padding: 10px 12px; vertical-align: middle; }
+    .td-league { font-weight: 600; color: var(--text); }
+    .td-date { color: var(--text-muted); white-space: nowrap; }
+    .td-format .badge {
+      padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+    }
+    .badge-gold { background: rgba(255,215,0,0.15); color: var(--gold); }
+    .badge-legacy { background: rgba(88,166,255,0.15); color: var(--blue); }
+    .badge-unknown { background: var(--surface2); color: var(--text-muted); }
+    .tier-pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .tier-BANKER { background: rgba(255,215,0,0.2); color: var(--banker); }
+    .tier-ROBBER { background: rgba(255,107,107,0.2); color: var(--robber); }
+    .tier-NEUTRAL { background: rgba(88,166,255,0.2); color: var(--neutral); }
+    .td-actions { white-space: nowrap; }
+    .btn-sm {
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.75rem;
+      margin-right: 4px;
+      transition: background 0.1s;
+    }
+    .btn-sm:hover { background: var(--surface2); }
+    .btn-sm.danger:hover { background: rgba(218,54,51,0.2); border-color: var(--red); color: var(--red-light); }
+    .win-rate {
+      font-weight: 700;
+    }
+    .wr-platinum { color: #b9f2ff; }
+    .wr-gold { color: var(--gold); }
+    .wr-silver { color: #adb5bd; }
+    .wr-bronze { color: #cd7f32; }
+    .wr-charcoal { color: var(--text-muted); }
+    .wr-unknown { color: var(--text-muted); }
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+    .empty-state h3 { color: var(--text); margin-bottom: 8px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      z-index: 9999;
+      max-width: 320px;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.success { border-color: var(--green); }
+    #toast.error { border-color: var(--red); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Gold Universe Orchestrator</h1>
+    <p>Central command for all Satellites, Assayer &amp; Mothership</p>
+  </div>
+  <div>
+    {% if configured %}
+      <span class="auth-badge connected">&#9679; Google Connected</span>
+    {% else %}
+      <span class="auth-badge disconnected">&#9679; Auth Required</span>
+    {% endif %}
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ═══════════════════════════════════════════════ SIDEBAR -->
+  <aside>
+
+    <!-- Stats -->
+    <h2>Overview</h2>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="num">{{ stats.total }}</div>
+        <div class="label">Satellites</div>
+      </div>
+      <div class="stat-card green">
+        <div class="num">{{ stats.assayed }}</div>
+        <div class="label">Assayed</div>
+      </div>
+      <div class="stat-card banker">
+        <div class="num">{{ stats.bankers_total }}</div>
+        <div class="label">Bankers</div>
+      </div>
+      <div class="stat-card robber">
+        <div class="num">{{ stats.robbers_total }}</div>
+        <div class="label">Robbers</div>
+      </div>
+    </div>
+    {% if stats.avg_gold_pct is not none %}
+    <div class="stat-card" style="margin-bottom:16px">
+      <div class="num">{{ "%.1f"|format(stats.avg_gold_pct * 100) }}%</div>
+      <div class="label">Avg Gold Grade %</div>
+    </div>
+    {% endif %}
+
+    <!-- Batch actions -->
+    <h2>Actions</h2>
+    <div class="action-section">
+      <button class="btn btn-gold" id="btn-fetch-all" {% if not configured %}disabled{% endif %}
+              onclick="runBatchJob('/api/fetch-all', 'Fetch All Satellites')">
+        Fetch All Satellites
+      </button>
+      <button class="btn btn-green" id="btn-assay-all" {% if not configured %}disabled{% endif %}
+              onclick="runBatchJob('/api/assay-all', 'Full Assay All')">
+        Run Full Assay on All
+      </button>
+      <button class="btn btn-outline" onclick="location.reload()">
+        Refresh Dashboard
+      </button>
+    </div>
+
+    <!-- Add single satellite -->
+    <h2>Add Satellite</h2>
+    <div class="form-section">
+      <input type="text" id="f-sheet-id" placeholder="Google Sheet ID (from URL)" />
+      <input type="text" id="f-sheet-name" placeholder="Name (e.g. NBA J10)" />
+      <input type="text" id="f-date" placeholder="Date (e.g. 2026-01-10)" />
+      <input type="text" id="f-league" placeholder="League (e.g. NBA)" />
+      <button class="btn btn-blue" onclick="addSatellite()">Add to Registry</button>
+    </div>
+
+    <!-- Bulk add -->
+    <h2>Bulk Add (JSON)</h2>
+    <div class="form-section">
+      <textarea id="f-bulk" placeholder='[{"sheet_id":"...","sheet_name":"NBA J10","date":"2026-01-10","league":"NBA"}]'></textarea>
+      <button class="btn btn-outline" onclick="bulkAdd()">Bulk Add</button>
+    </div>
+
+    {% if not configured %}
+    <div class="alert alert-warning">
+      <strong>Auth not configured.</strong><br>
+      Add <code>GOOGLE_SERVICE_ACCOUNT_JSON</code> in Replit Secrets to enable Google Sheets access.
+    </div>
+    {% endif %}
+
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════ MAIN -->
+  <main>
+
+    <!-- Job Banner -->
+    <div id="job-banner" class="hidden">
+      <div class="spinner"></div>
+      <span id="job-detail">Running...</span>
+    </div>
+
+    <!-- Auth warning -->
+    {% if not configured %}
+    <div class="alert alert-warning">
+      <strong>Google Sheets auth is not configured.</strong>
+      Go to Replit → Secrets and add <code>GOOGLE_SERVICE_ACCOUNT_JSON</code>
+      with your service account JSON. Then share your satellite sheets with the service account email.
+    </div>
+    {% endif %}
+
+    <!-- Satellite table -->
+    <div class="section-header">
+      <h2>Satellite Registry</h2>
+      <span class="count-badge">{{ satellites|length }} registered</span>
+    </div>
+
+    {% if satellites %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>League</th>
+            <th>Date</th>
+            <th>Format</th>
+            <th>Bankers</th>
+            <th>Robbers</th>
+            <th>Win Rate</th>
+            <th>Last Assayed</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="sat-tbody">
+          {% for sat in satellites %}
+          <tr id="row-{{ sat.id }}">
+            <td class="td-league">{{ sat.league or '—' }}</td>
+            <td class="td-date">{{ sat.date or '—' }}</td>
+            <td class="td-format">
+              {% if sat.format == 'gold_universe' %}
+                <span class="badge badge-gold">Gold Universe</span>
+              {% elif sat.format == 'legacy' %}
+                <span class="badge badge-legacy">Legacy</span>
+              {% else %}
+                <span class="badge badge-unknown">{{ sat.format or 'unknown' }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if sat.assay_summary %}
+                <span class="tier-pill tier-BANKER">{{ sat.assay_summary.banker_count }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if sat.assay_summary %}
+                <span class="tier-pill tier-ROBBER">{{ sat.assay_summary.robber_count }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if sat.assay_summary and sat.assay_summary.overall_win_rate is not none %}
+                {% set wr = sat.assay_summary.overall_win_rate %}
+                {% if wr >= 0.80 %}
+                  <span class="win-rate wr-platinum">{{ "%.1f"|format(wr*100) }}%</span>
+                {% elif wr >= 0.70 %}
+                  <span class="win-rate wr-gold">{{ "%.1f"|format(wr*100) }}%</span>
+                {% elif wr >= 0.60 %}
+                  <span class="win-rate wr-silver">{{ "%.1f"|format(wr*100) }}%</span>
+                {% elif wr >= 0.55 %}
+                  <span class="win-rate wr-bronze">{{ "%.1f"|format(wr*100) }}%</span>
+                {% else %}
+                  <span class="win-rate wr-charcoal">{{ "%.1f"|format(wr*100) }}%</span>
+                {% endif %}
+              {% else %}
+                <span class="wr-unknown">—</span>
+              {% endif %}
+            </td>
+            <td style="color:var(--text-muted);font-size:0.75rem;">
+              {{ sat.last_assayed[:10] if sat.last_assayed else '—' }}
+            </td>
+            <td class="td-actions">
+              <button class="btn-sm" onclick="fetchOne('{{ sat.id }}', this)">Fetch</button>
+              <button class="btn-sm" onclick="assayOne('{{ sat.id }}', this)">Assay</button>
+              <button class="btn-sm danger" onclick="deleteSat('{{ sat.id }}', this)">&#10005;</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>No satellites registered yet</h3>
+      <p>Use the sidebar to add your first Google Sheet satellite.</p>
+    </div>
+    {% endif %}
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  /* ─── Toast ─── */
+  function toast(msg, type='') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.className = ''; }, 3500);
+  }
+
+  /* ─── Job polling ─── */
+  let _jobTimer = null;
+  function setJobBanner(show, detail='') {
+    const el = document.getElementById('job-banner');
+    const detailEl = document.getElementById('job-detail');
+    if (show) {
+      el.classList.remove('hidden');
+      detailEl.textContent = detail;
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
+  function pollJob(jobId, label) {
+    if (_jobTimer) clearInterval(_jobTimer);
+    setJobBanner(true, `${label} — starting...`);
+    _jobTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/job/${jobId}`);
+        const data = await res.json();
+        setJobBanner(true, `${label}: ${data.detail || data.state}`);
+        if (data.state === 'done' || data.state === 'error') {
+          clearInterval(_jobTimer);
+          setTimeout(() => setJobBanner(false), 3000);
+          if (data.state === 'done') {
+            toast(`${label} complete!`, 'success');
+            setTimeout(() => location.reload(), 2000);
+          } else {
+            toast(`${label} failed: ${data.detail}`, 'error');
+          }
+        }
+      } catch (e) {
+        clearInterval(_jobTimer);
+        setJobBanner(false);
+        toast('Job status error', 'error');
+      }
+    }, 1500);
+  }
+
+  /* ─── Batch jobs ─── */
+  async function runBatchJob(endpoint, label) {
+    try {
+      const res = await fetch(endpoint, { method: 'POST' });
+      const data = await res.json();
+      if (data.error) { toast(data.error, 'error'); return; }
+      pollJob(data.job_id, label);
+    } catch (e) {
+      toast('Request failed', 'error');
+    }
+  }
+
+  /* ─── Add satellite ─── */
+  async function addSatellite() {
+    const sheet_id = document.getElementById('f-sheet-id').value.trim();
+    if (!sheet_id) { toast('Sheet ID is required', 'error'); return; }
+    const body = {
+      sheet_id,
+      sheet_name: document.getElementById('f-sheet-name').value.trim(),
+      date: document.getElementById('f-date').value.trim(),
+      league: document.getElementById('f-league').value.trim(),
+    };
+    try {
+      const res = await fetch('/api/satellites/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.error) { toast(data.error, 'error'); return; }
+      toast(data.created ? 'Satellite added!' : 'Already registered', data.created ? 'success' : '');
+      if (data.created) setTimeout(() => location.reload(), 1000);
+    } catch (e) {
+      toast('Add failed', 'error');
+    }
+  }
+
+  /* ─── Bulk add ─── */
+  async function bulkAdd() {
+    const raw = document.getElementById('f-bulk').value.trim();
+    if (!raw) { toast('Paste JSON array first', 'error'); return; }
+    let entries;
+    try { entries = JSON.parse(raw); } catch(e) { toast('Invalid JSON', 'error'); return; }
+    try {
+      const res = await fetch('/api/satellites/bulk-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries }),
+      });
+      const data = await res.json();
+      if (data.error) { toast(data.error, 'error'); return; }
+      toast(`Added ${data.created} of ${data.total} satellites`, 'success');
+      setTimeout(() => location.reload(), 1200);
+    } catch(e) {
+      toast('Bulk add failed', 'error');
+    }
+  }
+
+  /* ─── Fetch one ─── */
+  async function fetchOne(sat_id, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const res = await fetch(`/api/fetch/${sat_id}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.error) { toast(data.error, 'error'); }
+      else { toast(`Fetched: ${JSON.stringify(data.row_counts)}`, 'success'); }
+    } catch(e) { toast('Fetch failed', 'error'); }
+    btn.disabled = false;
+    btn.textContent = 'Fetch';
+  }
+
+  /* ─── Assay one ─── */
+  async function assayOne(sat_id, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const res = await fetch(`/api/assay/${sat_id}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.error) { toast(data.error, 'error'); }
+      else {
+        const s = data.summary;
+        toast(`Assay done — Bankers: ${s.banker_count}, Win Rate: ${s.overall_win_rate !== null ? (s.overall_win_rate*100).toFixed(1)+'%' : 'N/A'}`, 'success');
+        setTimeout(() => location.reload(), 1500);
+      }
+    } catch(e) { toast('Assay failed', 'error'); }
+    btn.disabled = false;
+    btn.textContent = 'Assay';
+  }
+
+  /* ─── Delete satellite ─── */
+  async function deleteSat(sat_id, btn) {
+    if (!confirm('Remove this satellite from the registry?')) return;
+    try {
+      const res = await fetch(`/api/satellites/${sat_id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.error) { toast(data.error, 'error'); return; }
+      document.getElementById(`row-${sat_id}`)?.remove();
+      toast('Satellite removed', '');
+    } catch(e) { toast('Delete failed', 'error'); }
+  }
+</script>
+
+</body>
+</html>
