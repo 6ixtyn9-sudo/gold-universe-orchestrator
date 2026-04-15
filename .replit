@@ -4,6 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
+packages = ["openssl", "postgresql"]
 
 [workflows]
 runButton = "Project"
@@ -35,9 +36,8 @@ externalPort = 80
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["python3", "server.py"]
+run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
 
 [userenv]
 
 [userenv.shared]
-GOOGLE_SERVICE_ACCOUNT_JSON = '{   "type": "service_account",   "project_id": "gen-lang-client-0003846580",   "private_key_id": "631bc7a47ae93d7e5b73e8efeabe0c21cfba55c3",   "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQCrD+uqk6LDF4wg\nc+d560yrMZ4S9XlD3gzLSSsw1wnr4FWvvNdlU6+g4UTNmmEI8rJfSX9Up+WCcOa+\nlc5zz8xeZ8BxQljp82oPMH3dXtDbms8e4FtFqg+ZgLiAwbgm2aDo8ySTU1i1d7od\nY/hki1iEtDqoGY9ORPzAJM4HcOO1A0LP/cZvkmytlxhx3U7vQe/QbQfnNAjNt+e2\ngJYAmmxVbsw9p9WV/F1NvYM0MT5p3arOg/AutdXDrgjKP2NAsHOcGyzRwcJSuKN/\nzS/IQArQh/zgM8Z2HTMR4iM28RkBkxmtF0dW9eK1gXD7bsecxbIJQ1U74rLIsC6A\nwBF5g/khAgMBAAECgf8Fj19CXVm4UEjbgnXpsUS9EMXbNc1uhFxyoU+PSpDcigp3\ntwblL3Tu2SIqYAm0TlgRmLh9Gje4Q11uZwbLNMGRvLWFL9KSkhxjTXOxtrUGvYl5\n11QkvxnWg9Zkuey5lfHLoapgRvLegfHHkVYiR1JoEYht28rmZhwzPYUu+m/g9Yfs\nsLupcZ6UmUFpBsSDOu79sCgenDDyBse1n3fUMbzlp/6LoasttVbaazXpZrpL1x3O\nsiwn1m5iN0vXwEZ46FwkZ5FysbnZNbmYFE9pya4nhKkSXb8S7yeOlowpJImpJ/vE\nVVR1vgTcErHZDqxR3ofGmHjT0O2LLJxOXw23vwUCgYEA28QJogCE+ZKuAGrhJqO3\nRGu1ODHIuG5bYeUHO+ypAxHUhH4kRO41tUpF7LB3ZU++nXiMgK/FXNWjS25tHQLw\nsEzLTdGJorbCNyCNtbIZY9TqMS8MbOLT16rdB/0/V3JU0dSMMV+ICdUIW4vLonih\nWHrxI75GOfqC3125GXh2YgUCgYEAx0Qut+OJ9Rtum7Q4XSCqZivG3VP4AU/PX7XN\nVGrYrnSdvMG0t7TphRP5rnet0RCH79LH4mOIruaRVYYFoO7Bc+L20HAGlPNZ7Ko+\nDZw2vv/8fZlrpqt454KKqQJcCgsKbpTCcsWXlV/Qz+1sYyXIr5Ym0lnzrBUTEt9o\nhf7O2W0CgYEAg7DttM5q4MMs0cM6OFVStQV2Cr6KcTpwODFuLFKc1OISX3LXeRbl\nyEVBsZvtcCBhMSvTximOMxsyRzlc2U2xvXPHQFKYD5FEwJQZVw/qdxBXZjGzWGx0\nVYBmAyuWkWhJu5OKjuuYMYwe/fy/ghSXWtYROkIDAytC0WbwTHsLNaECgYB9akx9\nMJkDy+Ax35waARU+eQ8Q/mh5auH6O1Kgbx8xrfQZeVFkzliriYb8aBbeHqlwKBnm\nQv8kFbojOdcREzRu28q8JcX+uas/aWbk6g0K6dLguk8m94WBMIhVF0cWixxlvPsl\ngXeGbGfgdm5heMZ2vOpyOmtDQ4BdwH7o1xcZgQKBgEnZod2cirsq2Dwis1JnAmqn\nx9+OQgYds0QvFmvwZopn2aDUqZciKOfFqyz5qc3/4/04uRYzNzNNxeLO0NRi/Xtp\nYkV8dPe0pwEYjUdpie+ghw1S+LKD/Va63SOVEd65O70zi0e+QOxbtCCPLu3M24dC\nq7QY/QDTdqYeA/g47CHx\n-----END PRIVATE KEY-----\n",   "client_email": "ma-golide-orchestrator@gen-lang-client-0003846580.iam.gserviceaccount.com",   "client_id": "100226786347296745660",   "auth_uri": "https://accounts.google.com/o/oauth2/auth",   "token_uri": "https://oauth2.googleapis.com/token",   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/ma-golide-orchestrator%40gen-lang-client-0003846580.iam.gserviceaccount.com",   "universe_domain": "googleapis.com" }'
