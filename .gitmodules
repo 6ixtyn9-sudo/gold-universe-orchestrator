@@ -1,0 +1,9 @@
+[submodule "Ma_Golide_Mothership"]
+	path = Ma_Golide_Mothership
+	url = https://github.com/6ixtyn9-sudo/Ma_Golide_Mothership.git
+[submodule "Ma_Assayer"]
+	path = Ma_Assayer
+	url = https://github.com/6ixtyn9-sudo/Ma_Assayer.git
+[submodule "Ma_Golide_Satellites"]
+	path = Ma_Golide_Satellites
+	url = https://github.com/6ixtyn9-sudo/Ma_Golide_Satellites.git
