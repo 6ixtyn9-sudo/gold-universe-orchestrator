@@ -1,0 +1,4 @@
+*.json
+attached_assets/*.txt
+secrets/
+# Add any other patterns for keys/configs
