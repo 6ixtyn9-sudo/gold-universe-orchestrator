@@ -1,0 +1,1336 @@
+{
+  "generated_at": "2026-04-17T08:24:29.554357+00:00",
+  "sample_n": 6,
+  "seed": 7,
+  "header_range": "A1:FD1",
+  "core_tabs": [
+    "Raw",
+    "Clean",
+    "UpcomingRaw",
+    "UpcomingClean",
+    "Upcoming_Clean",
+    "Upcoming",
+    "ResultsRaw",
+    "ResultsClean",
+    "Results_Clean",
+    "Results",
+    "Standings",
+    "TeamQuarterStats_Tier2",
+    "LeagueQuarterStats",
+    "LeagueQuarterO_U_Stats",
+    "Stats"
+  ],
+  "patterns": [
+    "RawH2H",
+    "CleanH2H",
+    "RawRecentHome",
+    "CleanRecentHome",
+    "RawRecentAway",
+    "CleanRecentAway"
+  ],
+  "presence_counts": {
+    "Raw": 2,
+    "Clean": 2,
+    "UpcomingRaw": 2,
+    "UpcomingClean": 2,
+    "ResultsRaw": 2,
+    "ResultsClean": 2,
+    "Standings": 1,
+    "TeamQuarterStats_Tier2": 1,
+    "LeagueQuarterStats": 1,
+    "LeagueQuarterO_U_Stats": 1,
+    "Stats": 1
+  },
+  "pattern_counts": {
+    "RawH2H": 24,
+    "CleanH2H": 24,
+    "RawRecentHome": 24,
+    "CleanRecentHome": 24,
+    "RawRecentAway": 24,
+    "CleanRecentAway": 24
+  },
+  "core_header_fingerprints": {
+    "Raw": {
+      "bnx": 1,
+      "blu": 1
+    },
+    "Clean": {
+      "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4": 2
+    },
+    "UpcomingRaw": {
+      "bnx": 1,
+      "blu": 1
+    },
+    "UpcomingClean": {
+      "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4|t2-q1-conf|t2-q2-conf|t2-q3-conf|t2-q4-conf|t2-edge-score|ou-q1|ou-q1-conf|ou-q2|ou-q2-conf|ou-q3|ou-q3-conf|ou-q4|ou-q4-conf|ou-best-conf|ou-best-ev|ou-best-dir|ou-edge-score|ou-game-tier|ou-highest|ou-q1-ev|ou-q1-edge|ou-q1-push|ou-q2-ev|ou-q2-edge|ou-q2-push|ou-q3-ev|ou-q3-edge|ou-q3-push|ou-q4-ev|ou-q4-edge|ou-q4-push|ou-best|ou-best-q|ou-best-edge|ou-highest-est": 1,
+      "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4|t2-q1|t2-q1-conf|t2-q2|t2-q2-conf|t2-q3|t2-q3-conf|t2-q4|t2-q4-conf|t2-edge-score|ou-q1|ou-q1-conf|ou-q1-ev|ou-q1-edge|ou-q1-push|ou-q1-tier|ou-q2|ou-q2-conf|ou-q2-ev|ou-q2-edge|ou-q2-push|ou-q2-tier|ou-q3|ou-q3-conf|ou-q3-ev|ou-q3-edge|ou-q3-push|ou-q3-tier|ou-q4|ou-q4-conf|ou-q4-ev|ou-q4-edge|ou-q4-push|ou-q4-tier|ou-best|ou-best-q|ou-best-ev|ou-best-edge|ou-best-conf|ou-best-dir|ou-edge-score|ou-game-tier|ou-highest-est|ou-fb-used|ou-bayesian-used|t2-q1|t2-q1-conf|t2-q2|t2-q2-conf|t2-q3|t2-q3-conf|t2-q4|t2-q4-conf|t2-edge-score|ou-q1|ou-q1-conf|ou-q1-ev|ou-q1-edge|ou-q1-push|ou-q1-tier|ou-q2|ou-q2-conf|ou-q2-ev|ou-q2-edge|ou-q2-push|ou-q2-tier|ou-q3|ou-q3-conf|ou-q3-ev|ou-q3-edge|ou-q3-push|ou-q3-tier|ou-q4|ou-q4-conf|ou-q4-ev|ou-q4-edge|ou-q4-push|ou-q4-tier|ou-best|ou-best-q|ou-best-ev|ou-best-edge|ou-best-conf|ou-best-dir|ou-edge-score|ou-game-tier|ou-highest-est|ou-fb-used|ou-bayesian-used|enh-high-q|enh-high-q-conf|enh-1h|enh-1h-conf|enh-high-q-pq1|enh-high-q-pq2|enh-high-q-pq3|enh-high-q-pq4|enh-high-q-pwin": 1
+    },
+    "ResultsRaw": {
+      "bnx": 1,
+      "blu": 1
+    },
+    "ResultsClean": {
+      "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4": 2
+    },
+    "Standings": {
+      "group a": 1
+    },
+    "TeamQuarterStats_Tier2": {
+      "": 1
+    },
+    "LeagueQuarterStats": {
+      "team|quarter|w|l|total|win %": 1
+    },
+    "LeagueQuarterO_U_Stats": {
+      "league quarter over/under statistics (vs. avg/4)": 1
+    },
+    "Stats": {
+      "ma golide winner accuracy (historical)": 1
+    }
+  },
+  "per_satellite": [
+    {
+      "id": "1bSJmpAGWquryooE0-hMV2PUeRxGMzGdwE4SdyQJQdT8",
+      "name": "Europe League (BNX) J10",
+      "worksheets": [
+        "SportConfig",
+        "Tier2_Accuracy",
+        "Raw",
+        "OU_Log",
+        "Clean",
+        "ResultsRaw",
+        "OU_Accuracy",
+        "Accuracy_Report",
+        "ResultsClean",
+        "Standings",
+        "UpcomingRaw",
+        "UpcomingClean",
+        "Stats",
+        "LeagueQuarterStats",
+        "LeagueQuarterO_U_Stats",
+        "Analysis_Tier1",
+        "TeamQuarterStats_Tier2",
+        "Stats_Tier2_Accuracy",
+        "RawH2H_1",
+        "CleanH2H_1",
+        "RawRecentHome_1",
+        "CleanRecentHome_1",
+        "RawRecentAway_1",
+        "CleanRecentAway_1",
+        "RawH2H_2",
+        "CleanH2H_2",
+        "RawRecentHome_2",
+        "CleanRecentHome_2",
+        "RawRecentAway_2",
+        "CleanRecentAway_2",
+        "RawH2H_3",
+        "CleanH2H_3",
+        "RawRecentHome_3",
+        "CleanRecentHome_3",
+        "RawRecentAway_3",
+        "CleanRecentAway_3",
+        "RawH2H_4",
+        "CleanH2H_4",
+        "RawRecentHome_4",
+        "CleanRecentHome_4",
+        "RawRecentAway_4",
+        "CleanRecentAway_4",
+        "RawH2H_5",
+        "CleanH2H_5",
+        "RawRecentHome_5",
+        "CleanRecentHome_5",
+        "RawRecentAway_5",
+        "CleanRecentAway_5",
+        "RawH2H_6",
+        "CleanH2H_6",
+        "RawRecentHome_6",
+        "CleanRecentHome_6",
+        "RawRecentAway_6",
+        "CleanRecentAway_6",
+        "RawH2H_7",
+        "CleanH2H_7",
+        "RawRecentHome_7",
+        "CleanRecentHome_7",
+        "RawRecentAway_7",
+        "Config_Tier1",
+        "Config_Tier1_Proposals",
+        "Stats_Tier2_Simulation",
+        "Stats_Tier2_Optimization",
+        "Config_Tier2",
+        "Config_Tier2_OU_Proposals",
+        "Config_Tier2_Proposals",
+        "Tier1_Predictions",
+        "Tier2_Log",
+        "CleanRecentAway_7",
+        "RawH2H_8",
+        "CleanH2H_8",
+        "RawRecentHome_8",
+        "CleanRecentHome_8",
+        "RawRecentAway_8",
+        "CleanRecentAway_8",
+        "RawH2H_9",
+        "CleanH2H_9",
+        "RawRecentHome_9",
+        "CleanRecentHome_9",
+        "RawRecentAway_9",
+        "CleanRecentAway_9",
+        "RawH2H_10",
+        "CleanH2H_10",
+        "RawRecentHome_10",
+        "CleanRecentHome_10",
+        "RawRecentAway_10",
+        "CleanRecentAway_10",
+        "RawH2H_11",
+        "CleanH2H_11",
+        "RawRecentHome_11",
+        "CleanRecentHome_11",
+        "RawRecentAway_11",
+        "CleanRecentAway_11",
+        "RawH2H_12",
+        "CleanH2H_12",
+        "RawRecentHome_12",
+        "CleanRecentHome_12",
+        "RawRecentAway_12",
+        "CleanRecentAway_12",
+        "Bet_Slips",
+        "Acca_Central"
+      ],
+      "core": {
+        "Raw": {
+          "title": "Raw",
+          "headers_raw": [
+            "BNX"
+          ],
+          "header_fp": "bnx",
+          "rows": 1745,
+          "cols": 26
+        },
+        "Clean": {
+          "title": "Clean",
+          "headers_raw": [
+            "League",
+            "Game Type",
+            "Home",
+            "Away",
+            "Date",
+            "Time",
+            "Prob %",
+            "Pred",
+            "Pred Score",
+            "Avg",
+            "Odds",
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4",
+            "OT",
+            "Status",
+            "FT Score",
+            "t2-q1",
+            "t2-q2",
+            "t2-q3",
+            "t2-q4"
+          ],
+          "header_fp": "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4",
+          "rows": 1000,
+          "cols": 26
+        },
+        "UpcomingRaw": {
+          "title": "UpcomingRaw",
+          "headers_raw": [
+            "BNX"
+          ],
+          "header_fp": "bnx",
+          "rows": 1000,
+          "cols": 26
+        },
+        "UpcomingClean": {
+          "title": "UpcomingClean",
+          "headers_raw": [
+            "League",
+            "Game Type",
+            "Home",
+            "Away",
+            "Date",
+            "Time",
+            "Prob %",
+            "Pred",
+            "Pred Score",
+            "Avg",
+            "Odds",
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4",
+            "OT",
+            "Status",
+            "FT Score",
+            "t2-q1",
+            "t2-q2",
+            "t2-q3",
+            "t2-q4",
+            "t2-q1-conf",
+            "t2-q2-conf",
+            "t2-q3-conf",
+            "t2-q4-conf",
+            "t2-edge-score",
+            "ou-q1",
+            "ou-q1-conf",
+            "ou-q2",
+            "ou-q2-conf",
+            "ou-q3",
+            "ou-q3-conf",
+            "ou-q4",
+            "ou-q4-conf",
+            "ou-best-conf",
+            "ou-best-ev",
+            "ou-best-dir",
+            "ou-edge-score",
+            "ou-game-tier",
+            "ou-highest",
+            "ou-q1-ev",
+            "ou-q1-edge",
+            "ou-q1-push",
+            "ou-q2-ev",
+            "ou-q2-edge",
+            "ou-q2-push",
+            "ou-q3-ev",
+            "ou-q3-edge",
+            "ou-q3-push",
+            "ou-q4-ev",
+            "ou-q4-edge",
+            "ou-q4-push",
+            "ou-best",
+            "ou-best-q",
+            "ou-best-edge",
+            "ou-highest-est"
+          ],
+          "header_fp": "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4|t2-q1-conf|t2-q2-conf|t2-q3-conf|t2-q4-conf|t2-edge-score|ou-q1|ou-q1-conf|ou-q2|ou-q2-conf|ou-q3|ou-q3-conf|ou-q4|ou-q4-conf|ou-best-conf|ou-best-ev|ou-best-dir|ou-edge-score|ou-game-tier|ou-highest|ou-q1-ev|ou-q1-edge|ou-q1-push|ou-q2-ev|ou-q2-edge|ou-q2-push|ou-q3-ev|ou-q3-edge|ou-q3-push|ou-q4-ev|ou-q4-edge|ou-q4-push|ou-best|ou-best-q|ou-best-edge|ou-highest-est",
+          "rows": 1000,
+          "cols": 57
+        },
+        "ResultsRaw": {
+          "title": "ResultsRaw",
+          "headers_raw": [
+            "BNX"
+          ],
+          "header_fp": "bnx",
+          "rows": 1000,
+          "cols": 26
+        },
+        "ResultsClean": {
+          "title": "ResultsClean",
+          "headers_raw": [
+            "League",
+            "Game Type",
+            "Home",
+            "Away",
+            "Date",
+            "Time",
+            "Prob %",
+            "Pred",
+            "Pred Score",
+            "Avg",
+            "Odds",
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4",
+            "OT",
+            "Status",
+            "FT Score",
+            "t2-q1",
+            "t2-q2",
+            "t2-q3",
+            "t2-q4"
+          ],
+          "header_fp": "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4",
+          "rows": 1000,
+          "cols": 26
+        },
+        "Standings": {
+          "title": "Standings",
+          "headers_raw": [
+            "Group A"
+          ],
+          "header_fp": "group a",
+          "rows": 1001,
+          "cols": 26
+        },
+        "TeamQuarterStats_Tier2": {
+          "title": "TeamQuarterStats_Tier2",
+          "headers_raw": [],
+          "header_fp": "",
+          "rows": 1000,
+          "cols": 26
+        },
+        "LeagueQuarterStats": {
+          "title": "LeagueQuarterStats",
+          "headers_raw": [
+            "Team",
+            "Quarter",
+            "W",
+            "L",
+            "Total",
+            "Win %"
+          ],
+          "header_fp": "team|quarter|w|l|total|win %",
+          "rows": 1000,
+          "cols": 26
+        },
+        "LeagueQuarterO_U_Stats": {
+          "title": "LeagueQuarterO_U_Stats",
+          "headers_raw": [
+            "League Quarter Over/Under Statistics (vs. Avg/4)"
+          ],
+          "header_fp": "league quarter over/under statistics (vs. avg/4)",
+          "rows": 1000,
+          "cols": 26
+        },
+        "Stats": {
+          "title": "Stats",
+          "headers_raw": [
+            "Ma Golide Winner Accuracy (Historical)"
+          ],
+          "header_fp": "ma golide winner accuracy (historical)",
+          "rows": 1000,
+          "cols": 26
+        }
+      },
+      "patterns": {
+        "RawH2H": {
+          "titles": [
+            "RawH2H_1",
+            "RawH2H_2",
+            "RawH2H_3",
+            "RawH2H_4",
+            "RawH2H_5",
+            "RawH2H_6",
+            "RawH2H_7",
+            "RawH2H_8",
+            "RawH2H_9",
+            "RawH2H_10",
+            "RawH2H_11",
+            "RawH2H_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {
+            "RawH2H_1": {
+              "headers_raw": [
+                "25/042025"
+              ],
+              "header_fp": "25/042025",
+              "rows": 1000,
+              "cols": 26
+            },
+            "RawH2H_2": {
+              "headers_raw": [
+                "23/042025"
+              ],
+              "header_fp": "23/042025",
+              "rows": 1000,
+              "cols": 26
+            }
+          }
+        },
+        "CleanH2H": {
+          "titles": [
+            "CleanH2H_1",
+            "CleanH2H_2",
+            "CleanH2H_3",
+            "CleanH2H_4",
+            "CleanH2H_5",
+            "CleanH2H_6",
+            "CleanH2H_7",
+            "CleanH2H_8",
+            "CleanH2H_9",
+            "CleanH2H_10",
+            "CleanH2H_11",
+            "CleanH2H_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {
+            "CleanH2H_1": {
+              "headers_raw": [
+                "Date",
+                "Home",
+                "Away",
+                "Q1H",
+                "Q1A",
+                "Q2H",
+                "Q2A",
+                "Q3H",
+                "Q3A",
+                "Q4H",
+                "Q4A",
+                "OTH",
+                "OTA",
+                "Winner",
+                "TotalH",
+                "TotalA",
+                "FT",
+                "SumMismatch"
+              ],
+              "header_fp": "date|home|away|q1h|q1a|q2h|q2a|q3h|q3a|q4h|q4a|oth|ota|winner|totalh|totala|ft|summismatch",
+              "rows": 1000,
+              "cols": 26
+            },
+            "CleanH2H_2": {
+              "headers_raw": [
+                "Date",
+                "Home",
+                "Away",
+                "Q1H",
+                "Q1A",
+                "Q2H",
+                "Q2A",
+                "Q3H",
+                "Q3A",
+                "Q4H",
+                "Q4A",
+                "OTH",
+                "OTA",
+                "Winner",
+                "TotalH",
+                "TotalA",
+                "FT",
+                "SumMismatch"
+              ],
+              "header_fp": "date|home|away|q1h|q1a|q2h|q2a|q3h|q3a|q4h|q4a|oth|ota|winner|totalh|totala|ft|summismatch",
+              "rows": 1000,
+              "cols": 26
+            }
+          }
+        },
+        "RawRecentHome": {
+          "titles": [
+            "RawRecentHome_1",
+            "RawRecentHome_2",
+            "RawRecentHome_3",
+            "RawRecentHome_4",
+            "RawRecentHome_5",
+            "RawRecentHome_6",
+            "RawRecentHome_7",
+            "RawRecentHome_8",
+            "RawRecentHome_9",
+            "RawRecentHome_10",
+            "RawRecentHome_11",
+            "RawRecentHome_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {
+            "RawRecentHome_1": {
+              "headers_raw": [
+                "27/122025"
+              ],
+              "header_fp": "27/122025",
+              "rows": 1000,
+              "cols": 26
+            },
+            "RawRecentHome_2": {
+              "headers_raw": [
+                "23/122025"
+              ],
+              "header_fp": "23/122025",
+              "rows": 1000,
+              "cols": 26
+            }
+          }
+        },
+        "CleanRecentHome": {
+          "titles": [
+            "CleanRecentHome_1",
+            "CleanRecentHome_2",
+            "CleanRecentHome_3",
+            "CleanRecentHome_4",
+            "CleanRecentHome_5",
+            "CleanRecentHome_6",
+            "CleanRecentHome_7",
+            "CleanRecentHome_8",
+            "CleanRecentHome_9",
+            "CleanRecentHome_10",
+            "CleanRecentHome_11",
+            "CleanRecentHome_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {
+            "CleanRecentHome_1": {
+              "headers_raw": [
+                "Date",
+                "Home",
+                "Away",
+                "Q1H",
+                "Q1A",
+                "Q2H",
+                "Q2A",
+                "Q3H",
+                "Q3A",
+                "Q4H",
+                "Q4A",
+                "OTH",
+                "OTA",
+                "Winner",
+                "TotalH",
+                "TotalA",
+                "FT",
+                "SumMismatch"
+              ],
+              "header_fp": "date|home|away|q1h|q1a|q2h|q2a|q3h|q3a|q4h|q4a|oth|ota|winner|totalh|totala|ft|summismatch",
+              "rows": 1000,
+              "cols": 26
+            },
+            "CleanRecentHome_2": {
+              "headers_raw": [
+                "Date",
+                "Home",
+                "Away",
+                "Q1H",
+                "Q1A",
+                "Q2H",
+                "Q2A",
+                "Q3H",
+                "Q3A",
+                "Q4H",
+                "Q4A",
+                "OTH",
+                "OTA",
+                "Winner",
+                "TotalH",
+                "TotalA",
+                "FT",
+                "SumMismatch"
+              ],
+              "header_fp": "date|home|away|q1h|q1a|q2h|q2a|q3h|q3a|q4h|q4a|oth|ota|winner|totalh|totala|ft|summismatch",
+              "rows": 1000,
+              "cols": 26
+            }
+          }
+        },
+        "RawRecentAway": {
+          "titles": [
+            "RawRecentAway_1",
+            "RawRecentAway_2",
+            "RawRecentAway_3",
+            "RawRecentAway_4",
+            "RawRecentAway_5",
+            "RawRecentAway_6",
+            "RawRecentAway_7",
+            "RawRecentAway_8",
+            "RawRecentAway_9",
+            "RawRecentAway_10",
+            "RawRecentAway_11",
+            "RawRecentAway_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {
+            "RawRecentAway_1": {
+              "headers_raw": [
+                "26/122025"
+              ],
+              "header_fp": "26/122025",
+              "rows": 1000,
+              "cols": 26
+            },
+            "RawRecentAway_2": {
+              "headers_raw": [
+                "27/122025"
+              ],
+              "header_fp": "27/122025",
+              "rows": 1000,
+              "cols": 26
+            }
+          }
+        },
+        "CleanRecentAway": {
+          "titles": [
+            "CleanRecentAway_1",
+            "CleanRecentAway_2",
+            "CleanRecentAway_3",
+            "CleanRecentAway_4",
+            "CleanRecentAway_5",
+            "CleanRecentAway_6",
+            "CleanRecentAway_7",
+            "CleanRecentAway_8",
+            "CleanRecentAway_9",
+            "CleanRecentAway_10",
+            "CleanRecentAway_11",
+            "CleanRecentAway_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {
+            "CleanRecentAway_1": {
+              "headers_raw": [
+                "Date",
+                "Home",
+                "Away",
+                "Q1H",
+                "Q1A",
+                "Q2H",
+                "Q2A",
+                "Q3H",
+                "Q3A",
+                "Q4H",
+                "Q4A",
+                "OTH",
+                "OTA",
+                "Winner",
+                "TotalH",
+                "TotalA",
+                "FT",
+                "SumMismatch"
+              ],
+              "header_fp": "date|home|away|q1h|q1a|q2h|q2a|q3h|q3a|q4h|q4a|oth|ota|winner|totalh|totala|ft|summismatch",
+              "rows": 1000,
+              "cols": 26
+            },
+            "CleanRecentAway_2": {
+              "headers_raw": [
+                "Date",
+                "Home",
+                "Away",
+                "Q1H",
+                "Q1A",
+                "Q2H",
+                "Q2A",
+                "Q3H",
+                "Q3A",
+                "Q4H",
+                "Q4A",
+                "OTH",
+                "OTA",
+                "Winner",
+                "TotalH",
+                "TotalA",
+                "FT",
+                "SumMismatch"
+              ],
+              "header_fp": "date|home|away|q1h|q1a|q2h|q2a|q3h|q3a|q4h|q4a|oth|ota|winner|totalh|totala|ft|summismatch",
+              "rows": 1000,
+              "cols": 26
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    {
+      "id": "1EUZaAsg341gr57XsgNuGHRp8_zt4U-puTTpxDo_LoVA",
+      "name": "Uruguay Liga (BLU) F11",
+      "worksheets": [
+        "SportConfig",
+        "Raw",
+        "Clean",
+        "ResultsRaw",
+        "ResultsClean",
+        "Accuracy_Report",
+        "Standings",
+        "UpcomingRaw",
+        "UpcomingClean",
+        "LeagueQuarterStats",
+        "Stats",
+        "Stats_Tier2_Simulation",
+        "LeagueQuarterO_U_Stats",
+        "Stats_Tier2_Optimization",
+        "Analysis_Tier1",
+        "TeamQuarterStats_Tier2",
+        "Stats_Tier2_Accuracy",
+        "RawH2H_1",
+        "CleanH2H_1",
+        "RawRecentHome_1",
+        "CleanRecentHome_1",
+        "RawRecentAway_1",
+        "CleanRecentAway_1",
+        "RawH2H_2",
+        "CleanH2H_2",
+        "RawRecentHome_2",
+        "CleanRecentHome_2",
+        "RawRecentAway_2",
+        "T2_Tuner_Log",
+        "CleanRecentAway_2",
+        "RawH2H_3",
+        "CleanH2H_3",
+        "RawRecentHome_3",
+        "CleanRecentHome_3",
+        "RawRecentAway_3",
+        "CleanRecentAway_3",
+        "RawH2H_4",
+        "CleanH2H_4",
+        "RawRecentHome_4",
+        "CleanRecentHome_4",
+        "RawRecentAway_4",
+        "CleanRecentAway_4",
+        "RawH2H_5",
+        "CleanH2H_5",
+        "RawRecentHome_5",
+        "CleanRecentHome_5",
+        "RawRecentAway_5",
+        "CleanRecentAway_5",
+        "RawH2H_6",
+        "CleanH2H_6",
+        "RawRecentHome_6",
+        "CleanRecentHome_6",
+        "RawRecentAway_6",
+        "CleanRecentAway_6",
+        "RawH2H_7",
+        "CleanH2H_7",
+        "RawRecentHome_7",
+        "CleanRecentHome_7",
+        "RawRecentAway_7",
+        "CleanRecentAway_7",
+        "RawH2H_8",
+        "CleanH2H_8",
+        "RawRecentHome_8",
+        "CleanRecentHome_8",
+        "RawRecentAway_8",
+        "CleanRecentAway_8",
+        "RawH2H_9",
+        "CleanH2H_9",
+        "RawRecentHome_9",
+        "CleanRecentHome_9",
+        "RawRecentAway_9",
+        "CleanRecentAway_9",
+        "RawH2H_10",
+        "CleanH2H_10",
+        "RawRecentHome_10",
+        "CleanRecentHome_10",
+        "RawRecentAway_10",
+        "CleanRecentAway_10",
+        "RawH2H_11",
+        "CleanH2H_11",
+        "RawRecentHome_11",
+        "CleanRecentHome_11",
+        "RawRecentAway_11",
+        "CleanRecentAway_11",
+        "RawH2H_12",
+        "CleanH2H_12",
+        "RawRecentHome_12",
+        "CleanRecentHome_12",
+        "RawRecentAway_12",
+        "CleanRecentAway_12",
+        "Config_Tier1",
+        "Config_Tier1_Proposals",
+        "Config_Tier2",
+        "HQ_Backtest_Data",
+        "HQ_Prediction_Log",
+        "HQ_Accuracy",
+        "HQ_Backtest_Report",
+        "Config_HighestQ_Proposals",
+        "Config_Tier2_Proposals",
+        "Tier1_Predictions",
+        "Config_Accumulator",
+        "Tier2_Log",
+        "Bet_Slips",
+        "Acca_Central"
+      ],
+      "core": {
+        "Raw": {
+          "title": "Raw",
+          "headers_raw": [
+            "BLU"
+          ],
+          "header_fp": "blu",
+          "rows": 1667,
+          "cols": 26
+        },
+        "Clean": {
+          "title": "Clean",
+          "headers_raw": [
+            "League",
+            "Game Type",
+            "Home",
+            "Away",
+            "Date",
+            "Time",
+            "Prob %",
+            "Pred",
+            "Pred Score",
+            "Avg",
+            "Odds",
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4",
+            "OT",
+            "Status",
+            "FT Score",
+            "t2-q1",
+            "t2-q2",
+            "t2-q3",
+            "t2-q4"
+          ],
+          "header_fp": "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4",
+          "rows": 1000,
+          "cols": 26
+        },
+        "UpcomingRaw": {
+          "title": "UpcomingRaw",
+          "headers_raw": [
+            "BLU"
+          ],
+          "header_fp": "blu",
+          "rows": 1000,
+          "cols": 26
+        },
+        "UpcomingClean": {
+          "title": "UpcomingClean",
+          "headers_raw": [
+            "League",
+            "Game Type",
+            "Home",
+            "Away",
+            "Date",
+            "Time",
+            "Prob %",
+            "Pred",
+            "Pred Score",
+            "Avg",
+            "Odds",
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4",
+            "OT",
+            "Status",
+            "FT Score",
+            "t2-q1",
+            "t2-q2",
+            "t2-q3",
+            "t2-q4",
+            "t2-q1",
+            "t2-q1-conf",
+            "t2-q2",
+            "t2-q2-conf",
+            "t2-q3",
+            "t2-q3-conf",
+            "t2-q4",
+            "t2-q4-conf",
+            "t2-edge-score",
+            "ou-q1",
+            "ou-q1-conf",
+            "ou-q1-ev",
+            "ou-q1-edge",
+            "ou-q1-push",
+            "ou-q1-tier",
+            "ou-q2",
+            "ou-q2-conf",
+            "ou-q2-ev",
+            "ou-q2-edge",
+            "ou-q2-push",
+            "ou-q2-tier",
+            "ou-q3",
+            "ou-q3-conf",
+            "ou-q3-ev",
+            "ou-q3-edge",
+            "ou-q3-push",
+            "ou-q3-tier",
+            "ou-q4",
+            "ou-q4-conf",
+            "ou-q4-ev",
+            "ou-q4-edge",
+            "ou-q4-push",
+            "ou-q4-tier",
+            "ou-best",
+            "ou-best-q",
+            "ou-best-ev",
+            "ou-best-edge",
+            "ou-best-conf",
+            "ou-best-dir",
+            "ou-edge-score",
+            "ou-game-tier",
+            "ou-highest-est",
+            "ou-fb-used",
+            "ou-bayesian-used",
+            "t2-q1",
+            "t2-q1-conf",
+            "t2-q2",
+            "t2-q2-conf",
+            "t2-q3",
+            "t2-q3-conf",
+            "t2-q4",
+            "t2-q4-conf",
+            "t2-edge-score",
+            "ou-q1",
+            "ou-q1-conf",
+            "ou-q1-ev",
+            "ou-q1-edge",
+            "ou-q1-push",
+            "ou-q1-tier",
+            "ou-q2",
+            "ou-q2-conf",
+            "ou-q2-ev",
+            "ou-q2-edge",
+            "ou-q2-push",
+            "ou-q2-tier",
+            "ou-q3",
+            "ou-q3-conf",
+            "ou-q3-ev",
+            "ou-q3-edge",
+            "ou-q3-push",
+            "ou-q3-tier",
+            "ou-q4",
+            "ou-q4-conf",
+            "ou-q4-ev",
+            "ou-q4-edge",
+            "ou-q4-push",
+            "ou-q4-tier",
+            "ou-best",
+            "ou-best-q",
+            "ou-best-ev",
+            "ou-best-edge",
+            "ou-best-conf",
+            "ou-best-dir",
+            "ou-edge-score",
+            "ou-game-tier",
+            "ou-highest-est",
+            "ou-fb-used",
+            "ou-bayesian-used",
+            "enh-high-q",
+            "enh-high-q-conf",
+            "enh-1h",
+            "enh-1h-conf",
+            "enh-high-q-pq1",
+            "enh-high-q-pq2",
+            "enh-high-q-pq3",
+            "enh-high-q-pq4",
+            "enh-high-q-pwin"
+          ],
+          "header_fp": "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4|t2-q1|t2-q1-conf|t2-q2|t2-q2-conf|t2-q3|t2-q3-conf|t2-q4|t2-q4-conf|t2-edge-score|ou-q1|ou-q1-conf|ou-q1-ev|ou-q1-edge|ou-q1-push|ou-q1-tier|ou-q2|ou-q2-conf|ou-q2-ev|ou-q2-edge|ou-q2-push|ou-q2-tier|ou-q3|ou-q3-conf|ou-q3-ev|ou-q3-edge|ou-q3-push|ou-q3-tier|ou-q4|ou-q4-conf|ou-q4-ev|ou-q4-edge|ou-q4-push|ou-q4-tier|ou-best|ou-best-q|ou-best-ev|ou-best-edge|ou-best-conf|ou-best-dir|ou-edge-score|ou-game-tier|ou-highest-est|ou-fb-used|ou-bayesian-used|t2-q1|t2-q1-conf|t2-q2|t2-q2-conf|t2-q3|t2-q3-conf|t2-q4|t2-q4-conf|t2-edge-score|ou-q1|ou-q1-conf|ou-q1-ev|ou-q1-edge|ou-q1-push|ou-q1-tier|ou-q2|ou-q2-conf|ou-q2-ev|ou-q2-edge|ou-q2-push|ou-q2-tier|ou-q3|ou-q3-conf|ou-q3-ev|ou-q3-edge|ou-q3-push|ou-q3-tier|ou-q4|ou-q4-conf|ou-q4-ev|ou-q4-edge|ou-q4-push|ou-q4-tier|ou-best|ou-best-q|ou-best-ev|ou-best-edge|ou-best-conf|ou-best-dir|ou-edge-score|ou-game-tier|ou-highest-est|ou-fb-used|ou-bayesian-used|enh-high-q|enh-high-q-conf|enh-1h|enh-1h-conf|enh-high-q-pq1|enh-high-q-pq2|enh-high-q-pq3|enh-high-q-pq4|enh-high-q-pwin",
+          "rows": 1000,
+          "cols": 119
+        },
+        "ResultsRaw": {
+          "title": "ResultsRaw",
+          "headers_raw": [
+            "BLU"
+          ],
+          "header_fp": "blu",
+          "rows": 1000,
+          "cols": 26
+        },
+        "ResultsClean": {
+          "title": "ResultsClean",
+          "headers_raw": [
+            "League",
+            "Game Type",
+            "Home",
+            "Away",
+            "Date",
+            "Time",
+            "Prob %",
+            "Pred",
+            "Pred Score",
+            "Avg",
+            "Odds",
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4",
+            "OT",
+            "Status",
+            "FT Score",
+            "t2-q1",
+            "t2-q2",
+            "t2-q3",
+            "t2-q4"
+          ],
+          "header_fp": "league|game type|home|away|date|time|prob %|pred|pred score|avg|odds|q1|q2|q3|q4|ot|status|ft score|t2-q1|t2-q2|t2-q3|t2-q4",
+          "rows": 1000,
+          "cols": 26
+        }
+      },
+      "patterns": {
+        "RawH2H": {
+          "titles": [
+            "RawH2H_1",
+            "RawH2H_2",
+            "RawH2H_3",
+            "RawH2H_4",
+            "RawH2H_5",
+            "RawH2H_6",
+            "RawH2H_7",
+            "RawH2H_8",
+            "RawH2H_9",
+            "RawH2H_10",
+            "RawH2H_11",
+            "RawH2H_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {}
+        },
+        "CleanH2H": {
+          "titles": [
+            "CleanH2H_1",
+            "CleanH2H_2",
+            "CleanH2H_3",
+            "CleanH2H_4",
+            "CleanH2H_5",
+            "CleanH2H_6",
+            "CleanH2H_7",
+            "CleanH2H_8",
+            "CleanH2H_9",
+            "CleanH2H_10",
+            "CleanH2H_11",
+            "CleanH2H_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {}
+        },
+        "RawRecentHome": {
+          "titles": [
+            "RawRecentHome_1",
+            "RawRecentHome_2",
+            "RawRecentHome_3",
+            "RawRecentHome_4",
+            "RawRecentHome_5",
+            "RawRecentHome_6",
+            "RawRecentHome_7",
+            "RawRecentHome_8",
+            "RawRecentHome_9",
+            "RawRecentHome_10",
+            "RawRecentHome_11",
+            "RawRecentHome_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {}
+        },
+        "CleanRecentHome": {
+          "titles": [
+            "CleanRecentHome_1",
+            "CleanRecentHome_2",
+            "CleanRecentHome_3",
+            "CleanRecentHome_4",
+            "CleanRecentHome_5",
+            "CleanRecentHome_6",
+            "CleanRecentHome_7",
+            "CleanRecentHome_8",
+            "CleanRecentHome_9",
+            "CleanRecentHome_10",
+            "CleanRecentHome_11",
+            "CleanRecentHome_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {}
+        },
+        "RawRecentAway": {
+          "titles": [
+            "RawRecentAway_1",
+            "RawRecentAway_2",
+            "RawRecentAway_3",
+            "RawRecentAway_4",
+            "RawRecentAway_5",
+            "RawRecentAway_6",
+            "RawRecentAway_7",
+            "RawRecentAway_8",
+            "RawRecentAway_9",
+            "RawRecentAway_10",
+            "RawRecentAway_11",
+            "RawRecentAway_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {}
+        },
+        "CleanRecentAway": {
+          "titles": [
+            "CleanRecentAway_1",
+            "CleanRecentAway_2",
+            "CleanRecentAway_3",
+            "CleanRecentAway_4",
+            "CleanRecentAway_5",
+            "CleanRecentAway_6",
+            "CleanRecentAway_7",
+            "CleanRecentAway_8",
+            "CleanRecentAway_9",
+            "CleanRecentAway_10",
+            "CleanRecentAway_11",
+            "CleanRecentAway_12"
+          ],
+          "max_index": 12,
+          "sampled_headers": {}
+        }
+      },
+      "errors": [
+        "core_tab_error:Standings:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "core_tab_error:TeamQuarterStats_Tier2:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "core_tab_error:LeagueQuarterStats:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "core_tab_error:LeagueQuarterO_U_Stats:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "core_tab_error:Stats:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:RawH2H:RawH2H_1:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:RawH2H:RawH2H_2:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:CleanH2H:CleanH2H_1:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:CleanH2H:CleanH2H_2:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:RawRecentHome:RawRecentHome_1:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:RawRecentHome:RawRecentHome_2:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:CleanRecentHome:CleanRecentHome_1:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:CleanRecentHome:CleanRecentHome_2:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:RawRecentAway:RawRecentAway_1:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:RawRecentAway:RawRecentAway_2:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:CleanRecentAway:CleanRecentAway_1:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'.",
+        "pattern_tab_error:CleanRecentAway:CleanRecentAway_2:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'."
+      ]
+    },
+    {
+      "id": "1LzSNaUDqd1kLXwQ5E74BIYH2kAUXDlHTSTal-IQRs9M",
+      "name": "Austria Superliga Women (ATW) F20",
+      "worksheets": [],
+      "core": {},
+      "patterns": {
+        "RawH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        }
+      },
+      "errors": [
+        "open_error:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'."
+      ]
+    },
+    {
+      "id": "1nc655ZjL-9q4yXc5A1RbwdhTT1D08aUbLLfljsa5VFs",
+      "name": "Germany (DE2) J17",
+      "worksheets": [],
+      "core": {},
+      "patterns": {
+        "RawH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        }
+      },
+      "errors": [
+        "open_error:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'."
+      ]
+    },
+    {
+      "id": "1Hs3XJGWZm_edTMWKZNrebF58URO4xvMN_Qejw9YSNso",
+      "name": "Russia United League (VTB) J17",
+      "worksheets": [],
+      "core": {},
+      "patterns": {
+        "RawH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        }
+      },
+      "errors": [
+        "open_error:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'."
+      ]
+    },
+    {
+      "id": "13oFN_X9gm0v_vkLhdFl4h5TC4EIYAWceU1kkMRZTfkM",
+      "name": "Argentina (LAA) J13",
+      "worksheets": [],
+      "core": {},
+      "patterns": {
+        "RawH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanH2H": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentHome": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "RawRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        },
+        "CleanRecentAway": {
+          "titles": [],
+          "max_index": 0,
+          "sampled_headers": {}
+        }
+      },
+      "errors": [
+        "open_error:APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:404679792328'."
+      ]
+    }
+  ]
+}
