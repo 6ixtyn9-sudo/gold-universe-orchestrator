@@ -1,22 +1,21 @@
-# Secrets
-.env
-*.env
-GOOGLE_SERVICE_ACCOUNT_JSON
-.replit
-replit.nix
 
-# Python
-.pythonlibs/
 __pycache__/
+.env
+.pythonlibs/
+.replit
+*.env
 *.pyc
-*.pyo
 *.pyd
-
-# Submodule internals
-Ma_Golide_Mothership/.git
-Ma_Assayer/.git
-Ma_Golide_Satellites/.git
-
+*.pyo
 # Misc
-secrets/
+# Python
+# Secrets
+# Submodule internals
 attached_assets/*.txt
+GOOGLE_SERVICE_ACCOUNT_JSON
+Ma_Assayer/.git
+Ma_Golide_Mothership/.git
+Ma_Golide_Satellites/.git
+replit.nix
+secrets/
+service_account.json
