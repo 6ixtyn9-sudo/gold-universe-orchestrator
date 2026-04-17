@@ -260,6 +260,117 @@ def api_assay_smoke():
     except Exception as e:
         return jsonify({"error": "assay-smoke failed", "detail": str(e)}), 500
 
+
+@app.route("/api/leagues", methods=["GET"])
+def api_leagues():
+    import math
+    from pathlib import Path
+
+    # Query params
+    use_cache = request.args.get("use_cache", "true").lower() != "false"
+    cache_only = request.args.get("cache_only", "false").lower() == "true"
+    try:
+        max_sats = int(request.args.get("max_sats", "50"))
+    except Exception:
+        max_sats = 50
+    try:
+        min_graded = int(request.args.get("min_graded", "5"))
+    except Exception:
+        min_graded = 5
+
+    sats = list_satellites()
+    sats = sats[:max_sats] if max_sats > 0 else sats
+
+    # Credentials: required unless cache_only=true
+    creds = None
+    if is_configured():
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets.readonly",
+            "https://www.googleapis.com/auth/drive.readonly",
+        ]
+        try:
+            from auth.google_auth import get_service_account_credentials
+            creds = get_service_account_credentials(scopes)
+        except Exception as e:
+            if not cache_only:
+                return jsonify({"error": str(e)}), 503
+    else:
+        if not cache_only:
+            return jsonify({"error": "Google auth not configured — add GOOGLE_SERVICE_ACCOUNT_JSON secret"}), 503
+
+    def wilson_lower(hits: int, n: int, z: float = 16) -> float:
+        if n <= 0:
+            return 0.0
+        p = hits / n
+        denom = 1.0 + (z * z / n)
+        centre = p + (z * z) / (2.0 * n)
+        margin = z * math.sqrt((p * (1 - p) / n) + (z * z) / (4.0 * n * n))
+        return (centre - margin) / denom
+
+    league_totals = {}  # league -> {hits, graded}
+    errors = []
+    sats_used = 0
+
+    for sat in sats:
+        sheet_id = (sat.get("sheet_id") or "").strip()
+        if not sheet_id:
+            continue
+
+        if cache_only:
+            manifest = Path("cache/satellites") / sheet_id / "manifest.json"
+            if not manifest.exists():
+                continue
+
+        try:
+            rep = run_smoke_assay(
+                sheet_id,
+                use_cache=use_cache,
+                credentials=creds,
+            )
+            sats_used += 1
+            for row in rep.get("leagues", []) or []:
+                lg = (row.get("league") or "Unknown").strip() or "Unknown"
+                hits = int(row.get("hits") or 0)
+                graded = int(row.get("graded") or 0)
+                agg = league_totals.setdefault(lg, {"league": lg, "hits": 0, "graded": 0})
+                agg["hits"] += hits
+                agg["graded"] += graded
+        except Exception as e:
+            errors.append({"sheet_id": sheet_id, "error": str(e)})
+
+    leagues = []
+    for lg, agg in league_totals.items():
+        n = int(agg["graded"])
+        if n < min_graded:
+            continue
+        h = int(agg["hits"])
+        hr = (h / n) if n else 0.0
+        leagues.append({
+            "league": lg,
+            "graded": n,
+            "hits": h,
+            "hit_rate": hr,
+            "wilson_lower_95": wilson_lower(h, n),
+        })
+
+    leagues.sort(key=lambda x: (x["wilson_lower_95"], x["graded"]), reverse=True)
+
+    return jsonify({
+        "leagues": leagues,
+        "satellites_total": len(sats),
+        "satellites_used": sats_used,
+        "errors": errors[:50],
+        "timestamp": datetime.utcnow().isoformat(),
+        "params": {
+            "use_cache": use_cache,
+            "cache_only": cache_only,
+            "max_sats": max_sats,
+            "min_graded": min_graded,
+        },
+    })
+
+
+
 @app.route("/api/fetch-all", methods=["POST"])
 def api_fetch_all():
     if not is_configured():
