@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 from pathlib import Path
 
 def main():
@@ -49,14 +48,18 @@ def main():
     print("key:", key)
     print("requested_range:", req)
     if ret and ret != req:
-        print("returned_range:", re
+        print("returned_range:", ret)
 
     print("rows:", len(values))
-    if values:
+    if values and isinstance(values[0], list):
         print("cols(first row):", len(values[0]))
+
     print("--- preview ---")
     for i, row in enumerate(values[: args.rows]):
-        row2 = row[: args.cols] if isinstance(row, list) else [row]
+        if isinstance(row, list):
+            row2 = row[: args.cols]
+        else:
+            row2 = [row]
         print(f"{i+1:>3}:", row2)
 
 if __name__ == "__main__":
