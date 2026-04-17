@@ -1,1 +1,43 @@
-# (paste the entire robust .clinerules content here)
+# Gold Universe Orchestrator — Cline Guardrails (robust)
+
+# 1) ALWAYS operate from repo root (prevents missing relative paths)
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  cd "$(git rev-parse --show-toplevel)" || exit 1
+else
+  echo "ERROR: not inside a git worktree. cd into a repo/worktree first." >&2
+  exit 1
+fi
+
+# 2) Non-interactive git (never open vim / never prompt)
+export GIT_TERMINAL_PROMPT=0
+export GIT_ASKPASS=echo
+export GIT_EDITOR=true
+export VISUAL=true
+export EDITOR=true
+export GIT_MERGE_AUTOEDIT=no
+
+# 3) Worktree-safe lock cleanup (DO NOT use .git/index.lock in worktrees)
+# Before git operations run:
+#   rm -f "$(git rev-parse --git-path index.lock)"
+
+# 4) Python: this machine uses python3 (python is not available)
+export PYTHON_BIN=python3
+
+# 5) Hard scope limits (deadline focus)
+# - Do NOT refactor/touch satellite GAS (.gs).
+# - Do NOT do mass satellite updates.
+# - Ship endpoints: POST /apassay-smoke, GET /api/leagues, POST /api/build-accas, UI /leagues.
+
+# 6) Parallelism rule
+# - Never let two agents write to the same working tree.
+# - Use worktrees:
+#   /Users/apple/Projects/guo-agent-auth
+#   /Users/apple/Projects/guo-agent-api
+#   /Users/apple/Projects/guo-agent-ui
+#   /Users/apple/Projects/guo-agent-ops
+
+# 7) Auto-commit rule
+# Every card MUST end with:
+#   rm -f "$(git rev-parse --git-path index.lock)"
+#   git add -A
+#   git commit -m "<message>"
