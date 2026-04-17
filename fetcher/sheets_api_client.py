@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 import time
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -70,16 +71,43 @@ def execute_with_backoff(
 class SheetsApiClient:
     def __init__(
         self,
+        credentials: Optional[Any] = None,
         service_account_file: str = "service_account.json",
         min_interval_s: float = 1.1,
     ) -> None:
+        """Sheets API wrapper with backoff + simple rate limiting.
+
+        Credentials resolution order:
+        1) explicit `credentials` argument (preferred for Flask/prod)
+        2) GOOGLE_SERVICE_ACCOUNT_JSON via auth.google_auth.get_service_account_credentials()
+        3) service_account_file if it exists (local dev fallback)
+        """
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets.readonly",
             "https://www.googleapis.com/auth/drive.readonly",
         ]
-        creds = service_account.Credentials.from_service_account_file(
-            service_account_file, scopes=scopes
-        )
+
+        creds = credentials
+        env_err = None
+
+        if creds is None:
+            try:
+                from auth.google_auth import get_service_account_credentials
+                creds = get_service_account_credentials(scopes)
+            except Exception as e:
+                env_err = e
+
+        if creds is None:
+            if service_account_file and Path(service_account_file).exists():
+                creds = service_account.Credentials.from_service_account_file(
+                    service_account_file, scopes=scopes
+                )
+            else:
+                raise RuntimeError(
+                    "No Google credentials available. Provide `credentials=...`, "
+                    "or set GOOGLE_SERVICE_ACCOUNT_JSON, or provide an existing service_account_file."
+                ) from env_err
+
         self._service = build(
             "sheets",
             "v4",
