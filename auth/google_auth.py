@@ -58,3 +58,25 @@ def is_configured():
         return True
     except Exception:
         return False
+
+
+# --- New helper for Sheets API client (bundle fetcher) ---
+def get_service_account_credentials(scopes):
+    """Return google.oauth2.service_account.Credentials for given scopes.
+
+    Prefers GOOGLE_SERVICE_ACCOUNT_JSON (prod). Falls back to GOOGLE_APPLICATION_CREDENTIALS (local dev).
+    """
+    import os, json
+    from pathlib import Path
+    from google.oauth2 import service_account
+
+    raw = (os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or "").strip()
+    if raw:
+        info = json.loads(raw)
+        return service_account.Credentials.from_service_account_info(info, scopes=scopes)
+
+    path = (os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or "").strip()
+    if path and Path(path).exists():
+        return service_account.Credentials.from_service_account_file(path, scopes=scopes)
+
+    raise RuntimeError("Missing GOOGLE_SERVICE_ACCOUNT_JSON (or GOOGLE_APPLICATION_CREDENTIALS file)")
