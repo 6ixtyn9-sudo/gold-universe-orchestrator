@@ -24,25 +24,21 @@ def main():
     d = args.bundle_dir
     print("Bundle:", d)
 
-    standings_vals = load_values(d, "core__Standings.json")
-    st = parse_standings(standings_vals)
-    print("✅ standings parsed:", len(s)
-    print("first 5:", st[:5])
+    st = parse_standings(load_values(d, "core__Standings.json"))
+    print("✅ standings parsed:", len(st))
+    print("firs3:", st[:3])
 
-    h2h_vals = load_values(d, "pattern__CleanH2H__CleanH2H_1.json")
-    h2h = parse_game_log_table(h2h_vals)
+    h2h = parse_game_log_table(load_values(d, "pattern__CleanH2H__CleanH2H_1.json"))
     print("✅ cleanh2h_1 parsed:", len(h2h))
     print("first 2:", h2h[:2])
 
-    rh_vals = load_values(d, "pattern__CleanRecentHome__CleanRecentHome_1.json")
-    rh = parse_game_log_table(rh_vals)
+    rh = parse_game_log_table(load_values(d, "pattern__CleanRecentHome__CleanRecentHome_1.json"))
     print("✅ cleanrecenthome_1 parsed:", len(rh))
     print("first 2:", rh[:2])
 
-    ra_vals = load_values(d, "pattern__CleanRecentAway__CleanRecentAway_1.json")
-    ra = parse_game_log_table(ra_vals)
+    ra = parse_game_log_table(load_values(d, "pattern__CleanRecentAway__CleanRecentAway_1.json"))
     print("✅ cleanrecentaway_1 parsed:", len(ra))
-    print("first 2:", ra[:2])
+ nt("first 2:", ra[:2])
 
 if __name__ == "__main__":
     main()
