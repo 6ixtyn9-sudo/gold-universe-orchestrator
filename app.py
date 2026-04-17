@@ -221,10 +221,10 @@ def api_assay_one(sat_id):
 @app.route("/api/assay-smoke", methods=["POST"])
 def api_assay_smoke():
     if not is_configured():
-        return jsonify({"error": "Google auth not configured — add GOOGLE_SERVICE_ACCOUNT_JSON secret"}), 503
+        return jsonify({"error": "Google auth not configured — add GOOGLE_SERVICE_ACCOUNT_JSON sect"}), 503
 
     data = request.get_json(silent=True) or {}
-    sheet_id = (data.ge"sheet_id") or data.get("spreadsheet_id") or "").strip()
+    sheet_id = (data.get("sheet_id") or data.get("spreadsheet_id") or "").strip()
     if not sheet_id:
         return jsonify({"error": "sheet_id is required"}), 400
 
@@ -259,7 +259,6 @@ def api_assay_smoke():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": "assay-smoke failed", "detail": str(e)}), 500
-
 
 @app.route("/api/fetch-all", methods=["POST"])
 def api_fetch_all():
