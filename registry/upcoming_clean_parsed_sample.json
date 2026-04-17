@@ -1,0 +1,72 @@
+[
+  {
+    "league": "NBA",
+    "date": "2026-01-11",
+    "time": "22:30",
+    "home": "Memphis Grizzlies",
+    "away": "Brooklyn Nets",
+    "pred": "1",
+    "prob_pct": 0.0,
+    "game_id": "2026-01-11|memphisgrizzlies|brooklynnets"
+  },
+  {
+    "league": "NBA",
+    "date": "2026-01-11",
+    "time": "22:00",
+    "home": "Orlando Magic",
+    "away": "New Orleans Pelicans",
+    "pred": "1",
+    "prob_pct": 0.0,
+    "game_id": "2026-01-11|orlandomagic|neworleanspelicans"
+  },
+  {
+    "league": "NBA",
+    "date": "2026-01-11",
+    "time": "04:30",
+    "home": "Utah Jazz",
+    "away": "Charlotte Hornets",
+    "pred": "2",
+    "prob_pct": 0.0,
+    "game_id": "2026-01-11|utahjazz|charlottehornets"
+  },
+  {
+    "league": "NBA",
+    "date": "2026-01-11",
+    "time": "03:00",
+    "home": "Boston Celtics",
+    "away": "San Antonio Spurs",
+    "pred": "1",
+    "prob_pct": 0.0,
+    "game_id": "2026-01-11|bostonceltics|sanantoniospurs"
+  },
+  {
+    "league": "NBA",
+    "date": "2026-01-11",
+    "time": "03:00",
+    "home": "Chicago Bulls",
+    "away": "Dallas Mavericks",
+    "pred": "1",
+    "prob_pct": 0.0,
+    "game_id": "2026-01-11|chicagobulls|dallasmavericks"
+  },
+  {
+    "league": "NBA",
+    "date": "2026-01-11",
+    "time": "02:30",
+    "home": "Detroit Pistons",
+    "away": "Los Angeles Clippers",
+    "pred": "1",
+    "prob_pct": 0.0,
+    "game_id": "2026-01-11|detroitpistons|losangelesclippers"
+  },
+  {
+    "league": "NBA",
+    "date": "2026-01-11",
+    "time": "02:00",
+    "home": "Indiana Pacers",
+    "away": "Miami Heat",
+    "pred": "1",
+    "prob_pct": 0.0,
+    "game_id": "2026-01-11|indianapacers|miamiheat"
+  }
+]
