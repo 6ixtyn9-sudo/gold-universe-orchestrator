@@ -51,13 +51,22 @@ def reset_client():
 
 def is_configured():
     raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
-    if not raw:
-        return False
-    try:
-        json.loads(raw)
-        return True
-    except Exception:
-        return False
+    if raw:
+        try:
+            json.loads(raw)
+            return True
+        except Exception:
+            return False
+
+    path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    if path:
+        try:
+            from pathlib import Path
+            return Path(path).exists()
+        except Exception:
+            return False
+
+    return False
 
 
 # --- New helper for Sheets API client (bundle fetcher) ---
