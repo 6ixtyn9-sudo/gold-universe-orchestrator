@@ -18,6 +18,37 @@ def sheet_date_to_iso(v: Any) -> str:
         return d.isoformat()
     return str(v)
 
+def sheet_time_to_hhmm(v: Any) -> str:
+    """
+    Handles:
+      - float day fractions (0..1): 0.5 -> 12:00
+      - float datetime serials: use fractional part
+      - strings like "13:30" -> "13:30"
+      - strings like "0.9375" -> parsed as float fraction
+    """
+    if v is None or v == "":
+        return ""
+    if isinstance(v, str):
+        s = v.strip()
+        if ":" in s and len(s) >= 4:
+            return s[:5]
+        try:
+            fv = float(s)
+            v = fv
+        except Exception:
+            return s
+
+    if isinstance(v, (int, float)):
+        fv = float(v)
+        frac = fv % 1.0
+        mins = int(round(frac * 24 * 60))
+        mins = mins % (24 * 60)
+        hh = mins // 60
+        mm = mins % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    return str(v)
+
 def to_int(v: Any, default: int = 0) -> int:
     if v is None or v == "":
         return default
