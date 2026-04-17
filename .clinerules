@@ -1,0 +1,18 @@
+# .clinerules – enforce repository root for all Cline actions
+# This file is read by the Cline automation to ensure commands are executed
+# from the correct working directory, avoiding relative‑path errors.
+# It also disables interactive prompts that could stall automation.
+
+# Always change to the repository root before any command
+cd $(git rev-parse --show-toplevel)
+
+# Disable interactive confirmations for git and other tools
+export GIT_TERMINAL_PROMPT=0
+export GIT_ASKPASS=echo
+
+# Ensure Python virtualenv is activated if present
+if [ -f .venv/bin/activate ]; then
+  source .venv/bin/activate
+fi
+
+# End of .clinerules
