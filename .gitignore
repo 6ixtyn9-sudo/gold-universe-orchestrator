@@ -19,3 +19,6 @@ Ma_Golide_Satellites/.git
 replit.nix
 secrets/
 service_account.json
+
+# local caches
+cache/
