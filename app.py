@@ -372,107 +372,6 @@ def api_leagues():
 
 
 
-@app.route("/api/build-accas", methods=["POST"])
-def api_build_accas():
-    """Placeholder acca builder: selects top leagues by purity and returns legs skeleton."""
-    body = request.get_json(silent=True) or {}
-
-    use_cache = bool(body.get("use_cache", True))
-    cache_only = bool(body.get("cache_only", True))
-    try:
-        max_sats = int(body.get("max_sats", 50))
-    except Exception:
-        max_sats = 50
-    try:
-        min_graded = int(body.get("min_graded", 5))
-    except Exception:
-        min_graded = 5
-    try:
-        max_legs = int(body.get("max_legs", 5))
-    except Exception:
-        max_legs = 5
-
-    # Reuse the /api/leagues computation by calling run_smoke_assay over registry sats
-    sats = list_satellites()
-    sats = sats[:max_sats] if max_sats > 0 else sats
-
-    creds = None
-    if not cache_only:
-        if not is_configured():
-            return jsonify({"error": "Google auth not configured — add GOOGLE_SERVICE_ACCOUNT_JSON secret"}), 503
-
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets.readonly",
-            "https://www.googleapis.com/auth/drive.readonly",
-        ]
-        try:
-            from auth.google_auth import get_service_account_credentials
-            creds = get_service_account_credentials(scopes)
-        except Exception as e:
-            return jsonify({"error": str(e)}), 503
-
-    from pathlib import Path
-    league_totals = {}
-    errors = []    for sat in sats:
-        sheet_id = (sat.get("sheet_id") or "").strip()
-        if not sheet_id:
-            continue
-
-        if cache_only:
-            if not (Path("cache/satellites") / sheet_id / "manifest.json").exists():
-                continue
-
-        try:
-            rep = run_smoke_assay(sheet_id, use_cache=use_cache, credentials=creds)
-            for row in rep.get("leagues", []) or []:
-                lg = (row.get("league") or "Unknown").strip() or "Unknown"
-                hits = int(row.get("hits") or 0)
-                graded = int(row.get("graded") or 0)
-                agg = league_totals.setdefault(lg, {"league": lg, "hits": 0, "graded": 0})
-                agg["hits"] += hits
-                agg["graded"] += graded
-        except Exception as e:
-            errors.append({"sheet_id": sheet_id, "error": str(e)})
-
-    leagues = []
-    for lg, agg in league_totals.items():
-        n = int(agg["graded"])
-        if n < min_graded:
-            continue
-        h = int(agg["hits"])
-        leagues.append({
-            "league": lg,
-            "graded": n,
-            "hits": h,
-            "hit_rate": (h / n) if n else 0.0,
-        })
-
-    leagues.sort(key=lambda x: (x["hit_rate"], x["graded"]), reverse=True)
-
-    legs = []
-    for row in leagues[: max_legs if max_legs > 0 else 5]:
-        legs.append({
-            "league": row["league"],
-            "selection": None,
-            "reason": f"Top league by purity (hit_rate={row['hit_rate']:.3f}, graded={row['graded']})",
-        })
-
-    return jsonify({
-        "note": "Placeholder acca builder. Next phase will select specific upcoming games/picks.",
-        "legs": legs,
-        "leagues_considered": len(leagues),
-        "errors": errors[:50],
-        "params": {
-            "use_cache": use_cache,
-            "cache_only": cache_only,
-            "max_sats": max_sats,
-            "min_graded": min_graded,
-            "max_legs": max_legs,
-        },
-    })
-
-
-
 @app.route("/api/fetch-all", methods=["POST"])
 def api_fetch_all():
     if not is_configured():
@@ -624,6 +523,94 @@ def api_edges():
     return jsonify({
         "note": "Full edge storage coming in Phase 2. Run assay on individual satellites for edge details.",
         "satellites_assayed": sum(1 for s in sats if s.get("last_assayed")),
+    })
+
+
+@app.route("/api/build-accas", methods=["POST"])
+def api_build_accas():
+    """Placeholder acca builder - returns top leagues by purity as legs."""
+    body = request.get_json(silent=True) or {}
+    use_cache = bool(body.get("use_cache", True))
+    cache_only = bool(body.get("cache_only", True))
+    max_sats = int(body.get("max_sats", 50))
+    min_graded = int(body.get("min_graded", 5))
+    max_legs = int(body.get("max_legs", 5))
+
+    sats = list_satellites()
+    sats = sats[:max_sats] if max_sats > 0 else sats
+
+    creds = None
+    if not cache_only and is_configured():
+        scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly",
+                  "https://www.googleapis.com/auth/drive.readonly"]
+        try:
+            from auth.google_auth import get_service_account_credentials
+            creds = get_service_account_credentials(scopes)
+        except:
+            pass
+
+    league_totals = {}
+    errors = []
+    sats_used = 0
+    from pathlib import Path
+
+    for sat in sats:
+        sheet_id = (sat.get("sheet_id") or "").strip()
+        if not sheet_id:
+            continue
+        if cache_only and not (Path("cache/satellites") / sheet_id / "manifest.json").exists():
+            continue
+        try:
+            rep = run_smoke_assay(sheet_id, use_cache=use_cache, credentials=creds)
+            sats_used += 1
+            for row in rep.get("leagues", []) or []:
+                lg = (row.get("league") or "Unknown").strip() or "Unknown"
+                hits = int(row.get("hits") or 0)
+                graded = int(row.get("graded") or 0)
+                agg = league_totals.setdefault(lg, {"league": lg, "hits": 0, "graded": 0})
+                agg["hits"] += hits
+                agg["graded"] += graded
+        except Exception as e:
+            errors.append({"sheet_id": sheet_id, "error": str(e)})
+
+    leagues = []
+    for lg, agg in league_totals.items():
+        n = int(agg["graded"])
+        if n < min_graded:
+            continue
+        h = int(agg["hits"])
+        hr = (h / n) if n else 0.0
+        leagues.append({
+            "league": lg,
+            "graded": n,
+            "hits": h,
+            "hit_rate": hr,
+            "wilson_lower_95": hr
+        })
+
+    leagues.sort(key=lambda x: (x["wilson_lower_95"], x["graded"]), reverse=True)
+
+    legs = [
+        {
+            "league": row["league"],
+            "selection": None,
+            "reason": f"Top league by purity (hit_rate={row["hit_rate"]:.3f}, graded={row["graded"]})"
+        }
+        for row in leagues[:max_legs]
+    ]
+
+    return jsonify({
+        "note": "Placeholder acca builder. Next phase will select specific upcoming games/picks.",
+        "legs": legs,
+        "leagues_considered": len(leagues),
+        "errors": errors[:50],
+        "params": {
+            "use_cache": use_cache,
+            "cache_only": cache_only,
+            "max_sats": max_sats,
+            "min_graded": min_graded,
+            "max_legs": max_legs
+        }
     })
 
 
