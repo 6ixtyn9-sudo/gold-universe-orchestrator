@@ -26,7 +26,7 @@ def main():
 
     standings_vals = load_values(d, "core__Standings.json")
     st = parse_standings(standings_vals)
-    print("✅ standings parsed:", len(st))
+    print("✅ standings parsed:", len(s)
     print("first 5:", st[:5])
 
     h2h_vals = load_values(d, "pattern__CleanH2H__CleanH2H_1.json")
@@ -37,7 +37,7 @@ def main():
     rh_vals = load_values(d, "pattern__CleanRecentHome__CleanRecentHome_1.json")
     rh = parse_game_log_table(rh_vals)
     print("✅ cleanrecenthome_1 parsed:", len(rh))
-    pfirst 2:", rh[:2])
+    print("first 2:", rh[:2])
 
     ra_vals = load_values(d, "pattern__CleanRecentAway__CleanRecentAway_1.json")
     ra = parse_game_log_table(ra_vals)
