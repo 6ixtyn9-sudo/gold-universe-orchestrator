@@ -22,3 +22,7 @@ service_account.json
 
 # local caches
 cache/
+
+# secrets
+service_account.json
+.venv/
