@@ -11,6 +11,6 @@ print("First 15:", titles[:15])
 for tab in ["UpcomingClean", "ResultsClean", "Standings", "Raw", "Clean"]:
     if tab in titles:
         hdr = client.get_header_row(SHEET_ID, tab, max_cols=80)
-        print(f"✅ {tab} header_len=dr)} sample={hdr[:12]}")
+        print(f"✅ {tab} header_len={len(hdr)} sample={hdr[:12]}")
     else:
         print(f"⚠️ {tab} not found on this satellite")
