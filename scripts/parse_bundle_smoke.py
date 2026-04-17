@@ -22,23 +22,23 @@ def main():
     args = ap.parse_args()
 
     d = args.bundle_dir
-    print("Bundle:", d)
+    print("BUNDLE_DIR:", d)
 
     st = parse_standings(load_values(d, "core__Standings.json"))
-    print("✅ standings parsed:", len(st))
-    print("firs3:", st[:3])
+    print("STANDINGS_PARSED:", len(st))
+    print("STANDINGS_FIRST_3:", st[:3])
 
     h2h = parse_game_log_table(load_values(d, "pattern__CleanH2H__CleanH2H_1.json"))
-    print("✅ cleanh2h_1 parsed:", len(h2h))
-    print("first 2:", h2h[:2])
+    print("CLEANH2H1_PARSED:", len(h2h))
+    print("CLEANH2H1_FIRST_2:", h2h[:2])
 
     rh = parse_game_log_table(load_values(d, "pattern__CleanRecentHome__CleanRecentHome_1.json"))
-    print("✅ cleanrecenthome_1 parsed:", len(rh))
-    print("first 2:", rh[:2])
+    print("CLEANRECENTHOME1_PARSED:", len(rh))
+    print("CLEANRECENTHOME1_FIRST_2:", rh[:2])
 
     ra = parse_game_log_table(load_values(d, "pattern__CleanRecentAway__CleanRecentAway_1.json"))
-    print("✅ cleanrecentaway_1 parsed:", len(ra))
- nt("first 2:", ra[:2])
+    print("CLEANRECENTAWAY1_PARSED:", len(ra))
+    print("CLEANRECENTAWAY1_FIRST_2:", ra[:2])
 
 if __name__ == "__main__":
     main()
