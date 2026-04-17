@@ -12,6 +12,7 @@ from registry.satellite_registry import (
 )
 from fetcher.sheet_fetcher import fetch_satellite, batch_fetch
 from assayer.assayer_engine import run_full_assay
+from assayer.smoke_assay import run_smoke_assay
 
 logging.basicConfig(
     level=logging.INFO,
@@ -205,6 +206,54 @@ def api_assay_one(sat_id):
 # ─────────────────────────────────────────────────────────────────────────────
 # Batch Fetch All
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+# -----------------------------------------------------------------------------
+# Smoke Assay (bundle-based)
+# -----------------------------------------------------------------------------
+
+@app.route("/api/assay-smoke", methods=["POST"])
+def api_assay_smoke():
+    if not is_configured():
+        return jsonify({"error": "Google auth not configured — add GOOGLE_SERVICE_ACCOUNT_JSON secret"}), 503
+
+    data = request.get_json(silent=True) or {}
+    sheet_id = (data.get("sheet_id") or data.get("spreadsheet_id") or "").strip()
+    if not sheet_id:
+        return jsonify({"error": "sheet_id is required"}), 400
+
+    use_cache = bool(data.get("use_cache", True))
+    include_patterns = bool(data.get("include_patterns", False))
+
+    try:
+        min_interval_s = float(data.get("min_interval_s", 1.2))
+    except Exception:
+        min_interval_s = 1.2
+
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
+    ]
+    try:
+      from auth.google_auth import get_service_account_credentials
+        creds = get_service_account_credentials(scopes)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 503
+
+    try:
+        report = run_smoke_assay(
+            sheet_id,
+            use_cache=use_cache,
+            include_patterns=include_patterns,
+            min_interval_s=min_interval_s,
+            credentials=creds,
+        )
+        return jsonify(report)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": "assay-smoke failed", "detail": str(e)}), 500
+
 
 @app.route("/api/fetch-all", methods=["POST"])
 def api_fetch_all():
