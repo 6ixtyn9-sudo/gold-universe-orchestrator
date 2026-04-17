@@ -64,6 +64,12 @@ def dashboard():
 # Status
 # ─────────────────────────────────────────────────────────────────────────────
 
+
+@app.route("/leagues")
+def leagues_page():
+    """League purity browser page"""
+    return render_template("leagues.html")
+
 @app.route("/api/status")
 def api_status():
     configured = is_configured()
