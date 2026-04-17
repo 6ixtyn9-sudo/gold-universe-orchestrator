@@ -117,6 +117,7 @@ def build_range(tab_title: str, max_rows: int, max_cols: int) -> str:
 def fetch_satellite_bundle(
     spreadsheet_id: str,
     out_dir: str,
+    credentials: Optional[Any] = None,
     include_patterns: bool = True,
     min_interval_s: float = 1.2,
     max_rows_override: Optional[Dict[str, int]] = None,
@@ -126,7 +127,7 @@ def fetch_satellite_bundle(
     outp = Path(out_dir)
     outp.mkdir(parents=True, exist_ok=True)
 
-    client = SheetsApiClient(min_interval_s=min_interval_s)
+    client = SheetsApiClient(credentials=credentials, min_interval_s=min_interval_s)
 
     errors: List[str] = []
     tabs_written: List[str] = []
