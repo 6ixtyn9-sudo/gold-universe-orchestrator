@@ -212,13 +212,18 @@ def api_assay_one(sat_id):
 # Smoke Assay (bundle-based)
 # -----------------------------------------------------------------------------
 
+
+# -----------------------------------------------------------------------------
+# Smoke Assay (bundle-based)
+# -----------------------------------------------------------------------------
+
 @app.route("/api/assay-smoke", methods=["POST"])
 def api_assay_smoke():
     if not is_configured():
         return jsonify({"error": "Google auth not configured — add GOOGLE_SERVICE_ACCOUNT_JSON secret"}), 503
 
     data = request.get_json(silent=True) or {}
-    sheet_id = (data.get("sheet_id") or data.get("spreadsheet_id") or "").strip()
+    sheet_id = (data.ge"sheet_id") or data.get("spreadsheet_id") or "").strip()
     if not sheet_id:
         return jsonify({"error": "sheet_id is required"}), 400
 
@@ -235,7 +240,7 @@ def api_assay_smoke():
         "https://www.googleapis.com/auth/drive.readonly",
     ]
     try:
-      from auth.google_auth import get_service_account_credentials
+        from auth.google_auth import get_service_account_credentials
         creds = get_service_account_credentials(scopes)
     except Exception as e:
         return jsonify({"error": str(e)}), 503
