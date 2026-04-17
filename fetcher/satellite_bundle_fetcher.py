@@ -160,11 +160,16 @@ def fetch_satellite_bundle(
                 range_to_key[r] = f"pattern::{key}::{t}"
 
     all_values: Dict[str, Any] = {}
+    returned_ranges: Dict[str, str] = {}
+
     for chunk in _chunk(ranges, batch_chunk_size):
         resp = client.batch_get_values(spreadsheet_id, chunk)
-        for vr in resp.get("valueRanges", []) or []:
-            rr = vr.get("range")
-            all_values[rr] = vr.get("values") or []
+        vrs = (resp.get("valueRanges") or [])
+
+        # batchGet returns valueRanges in the same order as the requested ranges.
+        for req_range, vr in zip(chunk, vrs):
+            all_values[req_range] = vr.get("values") or []
+            returned_ranges[req_range] = vr.get("range") or req_range
 
     manifest = {
         "spreadsheet_id": spreadsheet_id,
@@ -187,7 +192,7 @@ def fetch_satellite_bundle(
             .replace("'", "")
             .replace(" ", "_")
         )
-        payload = {"range": r, "key": key, "values": values}
+        payload = {"requested_range": r, "returned_range": returned_ranges.get(r, r), "key": key, "values": values}
         (outp / f"{safe}.json").write_text(json.dumps(payload), encoding="utf-8")
         tabs_written.append(key)
 
