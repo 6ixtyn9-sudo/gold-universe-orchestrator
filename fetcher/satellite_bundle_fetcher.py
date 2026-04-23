@@ -16,6 +16,7 @@ CORE_TABS = [
     "Standings",
     "TeamQuarterStats_Tier2", "LeagueQuarterStats", "LeagueQuarterO_U_Stats",
     "Stats",
+    "Bet_Slips", "BetSlips",
 ]
 
 PATTERNS: Dict[str, re.Pattern] = {
@@ -39,6 +40,8 @@ DEFAULT_MAX_ROWS: Dict[str, int] = {
     "LeagueQuarterStats": 2000,
     "LeagueQuarterO_U_Stats": 2000,
     "Stats": 2000,
+    "Bet_Slips": 2000,
+    "BetSlips": 2000,
 }
 
 DEFAULT_MAX_COLS: Dict[str, int] = {
@@ -53,6 +56,8 @@ DEFAULT_MAX_COLS: Dict[str, int] = {
     "LeagueQuarterStats": 60,
     "LeagueQuarterO_U_Stats": 60,
     "Stats": 80,
+    "Bet_Slips": 60,
+    "BetSlips": 60,
 }
 
 PATTERN_MAX_ROWS = 2000

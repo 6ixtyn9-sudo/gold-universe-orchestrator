@@ -133,17 +133,22 @@ def run_smoke_assay(
             "core__ResultsRaw.json",
         ],
     )
+    bet_slips_file = _first_existing(
+        bdir,
+        [
+            "core__Bet_Slips.json",
+            "core__BetSlips.json",
+        ],
+    )
 
-    if not upcoming_file:
-        raise RuntimeError(f"Missing Upcoming core tab in bundle dir: {bdir}")
-    if not results_file:
-        raise RuntimeError(f"Missing Results core tab in bundle dir: {bdir}")
+    if not upcoming_file and not bet_slips_file:
+        raise RuntimeError(f"Missing both Upcoming and Bet_Slips core tabs in bundle dir: {bdir}")
 
-    upcoming_values = _load_values_json(upcoming_file)
-    results_values = _load_values_json(results_file)
-
-    upcoming = parse_upcoming_clean(upcoming_values)
-    results = parse_results_clean(results_values)
+    upcoming_values = _load_values_json(upcoming_file) if upcoming_file else []
+    results_values = _load_values_json(results_file) if results_file else []
+    
+    upcoming = parse_upcoming_clean(upcoming_values) if upcoming_values else []
+    results = parse_results_clean(results_values) if results_values else []
 
     # Build results index: game_id -> result row
     result_by_id: Dict[str, Dict[str, Any]] = {}
@@ -188,12 +193,65 @@ def run_smoke_assay(
             "prob_pct": u.get("prob_pct", 0.0),
             "ft_h": ft_h,
             "ft_a": ft_a,
+            "source": "upcoming",
         }
         graded.append(rec)
 
         st = league_stats.setdefault(league, {"league": league, "graded": 0, "hits": 0})
         st["graded"] += 1
         st["hits"] += 1 if hit else 0
+
+    if bet_slips_file:
+        from fetcher.parsers.common import build_header_map, norm_lower
+        bs_vals = _load_values_json(bet_slips_file)
+        if len(bs_vals) > 1:
+            hm = build_header_map(bs_vals[0])
+            for row in bs_vals[1:]:
+                def _get_bs(keys):
+                    for k in keys:
+                        if k in hm and hm[k] < len(row):
+                            return row[hm[k]]
+                    return ""
+
+                outcome_str = str(_get_bs(["outcome", "result"])).strip().lower()
+                if outcome_str in ("win", "w", "1", "yes", "correct", "hit", "true"):
+                    hit = True
+                elif outcome_str in ("loss", "l", "0", "no", "wrong", "miss", "false"):
+                    hit = False
+                else:
+                    continue
+
+                league = _league_key(_get_bs(["league"]))
+                date_val = str(_get_bs(["date"]))
+                time_val = str(_get_bs(["time"]))
+                pred_val = str(_get_bs(["selection_side", "selection_team", "pick"]))
+                prob_val = _get_bs(["confidence", "confidence_pct"])
+                try:
+                    prob_pct = float(str(prob_val).replace("%", ""))
+                except:
+                    prob_pct = 0.0
+
+                rec = {
+                    "game_id": "bs_" + str(len(graded)),
+                    "league": league,
+                    "date": date_val,
+                    "time": time_val,
+                    "home": "N/A",
+                    "away": "N/A",
+                    "pred_raw": pred_val,
+                    "pick_side": pred_val,
+                    "actual_side": "N/A",
+                    "hit": hit,
+                    "prob_pct": prob_pct,
+                    "ft_h": None,
+                    "ft_a": None,
+                    "source": "bet_slips",
+                }
+                graded.append(rec)
+
+                st = league_stats.setdefault(league, {"league": league, "graded": 0, "hits": 0})
+                st["graded"] += 1
+                st["hits"] += 1 if hit else 0
 
     leagues_out: List[Dict[str, Any]] = []
     for league, st in league_stats.items():
@@ -239,7 +297,8 @@ def run_smoke_assay(
         "leagues": report.leagues,
         "samples": report.samples,
         "source_files": {
-            "upcoming": str(upcoming_file),
-            "results": str(results_file),
+            "upcoming": str(upcoming_file) if upcoming_file else None,
+            "results": str(results_file) if results_file else None,
+            "bet_slips": str(bet_slips_file) if bet_slips_file else None,
         },
     }

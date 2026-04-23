@@ -171,6 +171,43 @@ def assay_totals_data(totals_rows, source_label="Totals"):
     return _build_edges(segments)
 
 
+def assay_bet_slips_data(bet_slips_rows, source_label="BetSlips"):
+    """
+    Process Bet_Slips sheet rows into edge segments.
+    Each segment is keyed by (league, market, tier, pick, conf_bucket, source).
+    """
+    segments = defaultdict(lambda: {"wins": 0, "losses": 0})
+
+    for row in bet_slips_rows:
+        outcome = _parse_outcome(
+            row.get("outcome") or row.get("Outcome") or
+            row.get("result") or row.get("Result") or ""
+        )
+        if outcome is None:
+            continue
+
+        league = _normalise(row.get("league") or row.get("League") or "unknown")
+        market = _normalise(row.get("market") or row.get("Market") or "unknown")
+        tier = _normalise(row.get("tier") or row.get("Tier") or "unknown")
+        pick = _normalise(row.get("selection_side") or row.get("Selection_Side") or
+                          row.get("selection_team") or row.get("Selection_Team") or
+                          row.get("pick") or row.get("Pick") or "unknown")
+
+        conf_raw = _parse_float(
+            row.get("confidence") or row.get("Confidence") or
+            row.get("Confidence_Pct") or 0
+        )
+        conf_bucket = _conf_bucket(conf_raw)
+
+        key = (league, market, tier, pick, conf_bucket, source_label)
+        if outcome == "win":
+            segments[key]["wins"] += 1
+        else:
+            segments[key]["losses"] += 1
+
+    return _build_edges(segments)
+
+
 def _build_edges(segments):
     """Convert segment win/loss counts into edge dicts."""
     edges = []
@@ -273,10 +310,13 @@ def run_full_assay(satellite_payload):
     data = satellite_payload.get("data", {})
     side_rows = data.get("side", [])
     totals_rows = data.get("totals", [])
+    bet_slips_rows = data.get("bet_slips", [])
 
     side_edges = assay_side_data(side_rows, source_label="Side")
     totals_edges = assay_totals_data(totals_rows, source_label="Totals")
-    all_edges = side_edges + totals_edges
+    bet_slips_edges = assay_bet_slips_data(bet_slips_rows, source_label="BetSlips")
+    
+    all_edges = side_edges + totals_edges + bet_slips_edges
 
     league_purity = compute_league_purity(all_edges)
 

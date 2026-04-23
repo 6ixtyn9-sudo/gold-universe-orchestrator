@@ -10,6 +10,7 @@ LEGACY_SHEETS = {"Predictions", "Results", "BetSlips", "Accuracy"}
 SIDE_NAMES = {"Side", "side"}
 TOTALS_NAMES = {"Totals", "totals"}
 RESULTS_NAMES = {"ResultsClean", "Results", "results"}
+BET_SLIPS_NAMES = {"Bet_Slips", "BetSlips", "bet_slips", "betslips"}
 
 
 def _sheet_to_dicts(ws):
@@ -70,7 +71,7 @@ def fetch_satellite(client, sat):
     payload = {
         "satellite": sat,
         "format": "unknown",
-        "data": {"side": [], "totals": [], "results": []},
+        "data": {"side": [], "totals": [], "results": [], "bet_slips": []},
         "sheet_titles": [],
         "error": None,
     }
@@ -107,6 +108,12 @@ def fetch_satellite(client, sat):
                     time.sleep(RATE_LIMIT_DELAY)
                     break
 
+            for name in BET_SLIPS_NAMES:
+                if name in ws_map:
+                    payload["data"]["bet_slips"] = _sheet_to_dicts(ws_map[name])
+                    time.sleep(RATE_LIMIT_DELAY)
+                    break
+
         elif fmt == "legacy":
             if "Predictions" in ws_map:
                 payload["data"]["side"] = _sheet_to_dicts(ws_map["Predictions"])
@@ -114,6 +121,11 @@ def fetch_satellite(client, sat):
             if "Results" in ws_map:
                 payload["data"]["results"] = _sheet_to_dicts(ws_map["Results"])
                 time.sleep(RATE_LIMIT_DELAY)
+            for name in BET_SLIPS_NAMES:
+                if name in ws_map:
+                    payload["data"]["bet_slips"] = _sheet_to_dicts(ws_map[name])
+                    time.sleep(RATE_LIMIT_DELAY)
+                    break
 
         else:
             # Unknown — try to grab anything that looks useful
@@ -127,12 +139,14 @@ def fetch_satellite(client, sat):
             len(payload["data"]["side"])
             + len(payload["data"]["totals"])
             + len(payload["data"]["results"])
+            + len(payload["data"]["bet_slips"])
         )
         logger.info(
             f"Fetched {sat_name}: format={fmt}, "
             f"side={len(payload['data']['side'])}, "
             f"totals={len(payload['data']['totals'])}, "
             f"results={len(payload['data']['results'])}, "
+            f"bet_slips={len(payload['data']['bet_slips'])}, "
             f"total_rows={total_rows}"
         )
 
