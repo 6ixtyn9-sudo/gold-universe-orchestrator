@@ -8,6 +8,7 @@ SCOPES = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/script.projects",
 ]
 
 _client_cache = None
@@ -91,5 +92,10 @@ def get_service_account_credentials(scopes):
     path = (os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or "").strip()
     if path and Path(path).exists():
         return service_account.Credentials.from_service_account_file(path, scopes=scopes)
+
+    # Fallback to local service_account.json in repo root
+    local_path = Path(os.path.dirname(os.path.dirname(__file__))) / "service_account.json"
+    if local_path.exists():
+        return service_account.Credentials.from_service_account_file(str(local_path), scopes=scopes)
 
     raise RuntimeError("Missing GOOGLE_SERVICE_ACCOUNT_JSON (or GOOGLE_APPLICATION_CREDENTIALS file)")

@@ -486,6 +486,49 @@ def api_assay_all():
     return jsonify({"job_id": job_id, "satellites": len(sats)})
 
 
+@app.route("/api/sync-scripts", methods=["POST"])
+def api_sync_scripts():
+    """
+    Push local .gs files to all satellite sheets.
+    """
+    sats = list_satellites()
+    if not sats:
+        return jsonify({"error": "No satellites in registry"}), 400
+
+    job_id = f"sync_scripts_{datetime.utcnow().strftime('%H%M%S')}"
+    _set_job(job_id, "running", f"Starting script sync for {len(sats)} satellites")
+
+    def _run():
+        try:
+            from fetcher.script_api_client import ScriptApiClient
+            from scripts.deploy_gs_to_satellites import load_local_gs_files, deploy_to_satellite
+            from pathlib import Path
+
+            client = ScriptApiClient()
+            docs_dir = Path(os.path.dirname(__file__)) / "Ma_Golide_Satellites" / "docs"
+            files = load_local_gs_files(docs_dir)
+            
+            success = 0
+            for i, sat in enumerate(sats):
+                try:
+                    deploy_to_satellite(client, sat["id"], files, dry_run=False)
+                    success += 1
+                    _set_job(job_id, "running", f"[{i+1}/{len(sats)}] Synced {sat.get('league')} {sat.get('date')}")
+                    time.sleep(1.5) # Rate limit safety
+                except Exception as e:
+                    logger.error(f"Sync error for {sat['id']}: {e}")
+                    _set_job(job_id, "running", f"[{i+1}/{len(sats)}] FAILED {sat.get('league')}: {e}")
+
+            _set_job(job_id, "done", f"Script sync complete: {success}/{len(sats)} successful")
+        except Exception as e:
+            logger.exception("Sync job fatal error")
+            _set_job(job_id, "error", str(e))
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    return jsonify({"job_id": job_id, "satellites": len(sats)})
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Job status
 # ─────────────────────────────────────────────────────────────────────────────

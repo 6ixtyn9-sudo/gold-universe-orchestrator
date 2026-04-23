@@ -416,6 +416,10 @@
               onclick="runBatchJob('/api/assay-all', 'Full Assay All')">
         Run Full Assay on All
       </button>
+      <button class="btn btn-blue" id="btn-sync-scripts" {% if not configured %}disabled{% endif %}
+              onclick="runBatchJob('/api/sync-scripts', 'Sync Latest .gs to Batch')">
+        Sync Latest .gs to Batch
+      </button>
       <button class="btn btn-outline" onclick="location.reload()">
         Refresh Dashboard
       </button>
