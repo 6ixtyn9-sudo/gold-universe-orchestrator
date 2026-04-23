@@ -76,26 +76,37 @@ def is_configured():
 
 # --- New helper for Sheets API client (bundle fetcher) ---
 def get_service_account_credentials(scopes):
-    """Return google.oauth2.service_account.Credentials for given scopes.
+    """Return google.oauth2.service_account.Credentials or google.oauth2.credentials.Credentials.
 
-    Prefers GOOGLE_SERVICE_ACCOUNT_JSON (prod). Falls back to GOOGLE_APPLICATION_CREDENTIALS (local dev).
+    1. Checks for token.json (User OAuth2 - Path B)
+    2. Checks for GOOGLE_SERVICE_ACCOUNT_JSON (Service Account)
+    3. Checks for service_account.json (Local Service Account)
     """
     import os, json
     from pathlib import Path
     from google.oauth2 import service_account
+    from google.oauth2.credentials import Credentials
 
+    # 1. Path B: User Token (for @gmail.com accounts)
+    token_path = Path(os.path.dirname(os.path.dirname(__file__))) / "token.json"
+    if token_path.exists():
+        try:
+            return Credentials.from_authorized_user_file(str(token_path), scopes=scopes)
+        except Exception as e:
+            logger.warning(f"Failed to load token.json: {e}")
+
+    # 2. Service Account (Env Var)
     raw = (os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or "").strip()
     if raw:
         info = json.loads(raw)
         return service_account.Credentials.from_service_account_info(info, scopes=scopes)
 
-    path = (os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or "").strip()
-    if path and Path(path).exists():
-        return service_account.Credentials.from_service_account_file(path, scopes=scopes)
-
-    # Fallback to local service_account.json in repo root
+    # 3. Path A/Default: Local service_account.json
     local_path = Path(os.path.dirname(os.path.dirname(__file__))) / "service_account.json"
     if local_path.exists():
+        path = (os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or "").strip()
+        if path and Path(path).exists():
+             return service_account.Credentials.from_service_account_file(path, scopes=scopes)
         return service_account.Credentials.from_service_account_file(str(local_path), scopes=scopes)
 
-    raise RuntimeError("Missing GOOGLE_SERVICE_ACCOUNT_JSON (or GOOGLE_APPLICATION_CREDENTIALS file)")
+    raise RuntimeError("Missing token.json or GOOGLE_SERVICE_ACCOUNT_JSON")
