@@ -73,6 +73,7 @@ def parse_upcoming_clean(values: List[List[Any]]) -> List[Dict[str, Any]]:
 
         pred = norm(_get(hm, r, ["pred", "prediction", "pick", "winner"], ""))
         prob = _pct(_get(hm, r, ["prob %", "prob%", "prob", "probability", "confidence", "conf"], 0))
+        avg = to_float(_get(hm, r, ["avg"], ""))
 
         rec = {
             "league": league,
@@ -82,7 +83,31 @@ def parse_upcoming_clean(values: List[List[Any]]) -> List[Dict[str, Any]]:
             "away": away,
             "pred": pred,
             "prob_pct": prob,
+            "avg": avg,
+            "q1": to_float(_get(hm, r, ["q1"], "")),
+            "q2": to_float(_get(hm, r, ["q2"], "")),
+            "q3": to_float(_get(hm, r, ["q3"], "")),
+            "q4": to_float(_get(hm, r, ["q4"], "")),
+            "ot": to_float(_get(hm, r, ["ot"], "")),
+            "ft_score_raw": str(_get(hm, r, ["ft score"], "")),
+            "ou_game": to_float(_get(hm, r, ["ou-game", "ou_game"], "")),
+            "ou_game_tier": norm(_get(hm, r, ["ou-game-tier", "ou_game_tier"], "")),
         }
+
+        # Extract O/U signals if present
+        ou_signals = []
+        for q in ["q1", "q2", "q3", "q4", "game"]:
+            val = _get(hm, r, [f"ou-{q}", f"ou_{q}"], "")
+            if val:
+                ou_signals.append({"quarter": q.upper() if q != "game" else "FT", "signal": str(val)})
+        rec["ou_signals"] = ou_signals
+
+        # Extract High Scoring Quarter (HQ) signal
+        hq_pick = norm(_get(hm, r, ["enh-high-q", "enh_high_q"], ""))
+        if hq_pick:
+            rec["hq_pick"] = hq_pick
+            rec["hq_conf"] = to_float(_get(hm, r, ["enh-high-q-conf", "enh_high_q_conf"], ""))
+
         rec["game_id"] = normalize_game_id(rec["date"], rec["home"], rec["away"])
         out.append(rec)
 

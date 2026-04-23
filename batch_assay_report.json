@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-04-23 04:31:01",
+  "total_satellites": 3,
+  "errors": 0,
+  "results": [
+    {
+      "id": "1DOw4qQDremLTFzD9wpztXTPeZYkF4iB1VaZV2u2XNjk",
+      "name": " Brazil (NBB) F10",
+      "graded": 6,
+      "hits": 0,
+      "hit_rate": 0.0,
+      "status": "success"
+    },
+    {
+      "id": "1nrpUQbKrV_wYn6heDhdJ1zHTcyVsACxDKscL7GOkHOU",
+      "name": " Brazil (NBB) M10.2",
+      "graded": 5,
+      "hits": 3,
+      "hit_rate": 0.6,
+      "status": "success"
+    },
+    {
+      "id": "1-bbIssWRusm6ULMO5UOvoToyf-UrNJ-5s9YNEL8J9RA",
+      "name": " Czech Republic 1. Liga (CZ2) M13.2",
+      "graded": 9,
+      "hits": 5,
+      "hit_rate": 0.5555555555555556,
+      "status": "success"
+    }
+  ],
+  "avg_hit_rate": 0.38518518518518513,
+  "total_graded": 20
+}

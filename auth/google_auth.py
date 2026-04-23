@@ -26,15 +26,19 @@ def get_client():
 
     raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
     if not raw:
-        raise RuntimeError(
-            "GOOGLE_SERVICE_ACCOUNT_JSON secret is not set. "
-            "Add it in Replit Secrets to enable Google Sheets access."
-        )
+        path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "service_account.json")
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                raw = f.read()
+        else:
+            raise RuntimeError(
+                "GOOGLE_SERVICE_ACCOUNT_JSON secret is not set and service_account.json not found."
+            )
 
     try:
         info = json.loads(raw)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON: {e}")
+        raise RuntimeError(f"Credentials data is not valid JSON: {e}")
 
     creds = Credentials.from_service_account_info(info, scopes=SCOPES)
     client = gspread.authorize(creds)

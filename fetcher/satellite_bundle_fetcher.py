@@ -16,6 +16,7 @@ CORE_TABS = [
     "Standings",
     "TeamQuarterStats_Tier2", "LeagueQuarterStats", "LeagueQuarterO_U_Stats",
     "Stats",
+    "Config_Tier1", "Config_Tier2",
     "Bet_Slips", "BetSlips",
 ]
 
