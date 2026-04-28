@@ -14,6 +14,7 @@ from registry.satellite_registry import (
 from fetcher.sheet_fetcher import fetch_satellite, batch_fetch
 from assayer.assayer_engine import run_full_assay
 from assayer.smoke_assay import run_smoke_assay
+from syncer.script_syncer import batch_sync, sync_one, load_gs_sources
 
 logging.basicConfig(
     level=logging.INFO,
@@ -486,47 +487,96 @@ def api_assay_all():
     return jsonify({"job_id": job_id, "satellites": len(sats)})
 
 
-@app.route("/api/sync-scripts", methods=["POST"])
-def api_sync_scripts():
-    """
-    Push local .gs files to all satellite sheets.
-    """
-    sats = list_satellites()
-    if not sats:
-        return jsonify({"error": "No satellites in registry"}), 400
 
-    job_id = f"sync_scripts_{datetime.utcnow().strftime('%H%M%S')}"
+# ── SYNC ONE ─────────────────────────────────────────────────────────────────
+@app.route("/api/sync/<sat_id>", methods=["POST"])
+def api_sync_one(sat_id):
+    """Push latest .gs code to one satellite script project."""
+    sat = get_satellite(sat_id)
+    if not sat:
+        return jsonify({"error": "Satellite not found"}), 404
+
+    result = sync_one(sat)
+
+    if result.get("script_id") and not sat.get("script_id"):
+        update_satellite(sat_id, script_id=result["script_id"])
+
+    if result["ok"]:
+        update_satellite(sat_id,
+                         last_synced=datetime.utcnow().isoformat(),
+                         sync_status="synced")
+    else:
+        update_satellite(sat_id, sync_status="sync_error")
+
+    return jsonify(result)
+
+
+# ── SYNC ALL (background) ─────────────────────────────────────────────────────
+@app.route("/api/sync-all", methods=["POST"])
+def api_sync_all():
+    """Push latest .gs code to ALL registered satellites in background."""
+    body     = request.json or {}
+    only_ids = body.get("satellite_ids")
+    sats     = list_satellites()
+    if only_ids:
+        sats = [s for s in sats if s.get("id") in only_ids]
+    if not sats:
+        return jsonify({"error": "No satellites to sync"}), 400
+
+    job_id = f"sync_all_{datetime.utcnow().strftime('%H%M%S')}"
     _set_job(job_id, "running", f"Starting script sync for {len(sats)} satellites")
 
     def _run():
-        try:
-            from fetcher.script_api_client import ScriptApiClient
-            from scripts.deploy_gs_to_satellites import load_local_gs_files, deploy_to_satellite
-            from pathlib import Path
+        def on_progress(done, total, sat, result):
+            icon = "✅" if result["ok"] else "❌"
+            msg  = (f"[{done}/{total}] {icon} {sat.get('league')} {sat.get('date')}"
+                    + (f" — {result['error']}"       if result.get("error") else
+                       f" — {result['pushed_files']} files pushed"))
+            _set_job(job_id, "running", msg)
+            sat_id = sat.get("id")
+            if sat_id:
+                if result.get("script_id") and not sat.get("script_id"):
+                    update_satellite(sat_id, script_id=result["script_id"])
+                update_satellite(sat_id,
+                    **({"last_synced": datetime.utcnow().isoformat(),
+                        "sync_status": "synced"}
+                       if result["ok"] else {"sync_status": "sync_error"}))
 
-            client = ScriptApiClient()
-            docs_dir = Path(os.path.dirname(__file__)) / "Ma_Golide_Satellites" / "docs"
-            files = load_local_gs_files(docs_dir)
-            
-            success = 0
-            for i, sat in enumerate(sats):
-                try:
-                    deploy_to_satellite(client, sat["id"], files, dry_run=False)
-                    success += 1
-                    _set_job(job_id, "running", f"[{i+1}/{len(sats)}] Synced {sat.get('league')} {sat.get('date')}")
-                    time.sleep(1.5) # Rate limit safety
-                except Exception as e:
-                    logger.error(f"Sync error for {sat['id']}: {e}")
-                    _set_job(job_id, "running", f"[{i+1}/{len(sats)}] FAILED {sat.get('league')}: {e}")
+        summary = batch_sync(sats, on_progress=on_progress)
+        _set_job(job_id, "done",
+                 f"Sync complete: {summary['success']}/{summary['total']} OK "
+                 f"({summary['failed']} failed) | {summary['files_per_sat']} files each")
 
-            _set_job(job_id, "done", f"Script sync complete: {success}/{len(sats)} successful")
-        except Exception as e:
-            logger.exception("Sync job fatal error")
-            _set_job(job_id, "error", str(e))
-
-    t = threading.Thread(target=_run, daemon=True)
-    t.start()
+    threading.Thread(target=_run, daemon=True).start()
     return jsonify({"job_id": job_id, "satellites": len(sats)})
+
+
+# ── SOURCE MANIFEST ───────────────────────────────────────────────────────────
+@app.route("/api/sync/sources", methods=["GET"])
+def api_sync_sources():
+    """Return manifest of source .gs files ready to be pushed."""
+    files, err = load_gs_sources()
+    if err:
+        return jsonify({"error": err}), 500
+    manifest = [
+        {"name": f["name"], "lines": f["source"].count("\n"), "bytes": len(f["source"])}
+        for f in files
+    ]
+    return jsonify({"files": manifest, "count": len(manifest)})
+
+
+# ── MANUAL SCRIPT-ID REGISTRATION ────────────────────────────────────────────
+@app.route("/api/satellites/<sat_id>/script-id", methods=["POST"])
+def api_set_script_id(sat_id):
+    """Register the Apps Script project ID for a satellite."""
+    body      = request.json or {}
+    script_id = body.get("script_id", "").strip()
+    if not script_id:
+        return jsonify({"error": "script_id required"}), 400
+    sat = update_satellite(sat_id, script_id=script_id)
+    if not sat:
+        return jsonify({"error": "Satellite not found"}), 404
+    return jsonify({"ok": True, "script_id": script_id})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
