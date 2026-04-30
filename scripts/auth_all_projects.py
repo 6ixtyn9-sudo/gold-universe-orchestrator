@@ -27,6 +27,10 @@ def auth_slot(slot_idx: int):
         print(f"Skipping slot {slot_idx}: {client_secret.name} not found.")
         return
 
+    if token_file.exists():
+        print(f"Skipping slot {slot_idx}: {token_file.name} already exists.")
+        return
+
     print(f"\n--- Authorizing Slot {slot_idx} ---")
     print(f"Using {client_secret.name}")
     
@@ -45,7 +49,7 @@ def main():
     
     # We assume token_0 is already done (personal_token.json)
     # But we can re-run it if credentials.json exists
-    for i in range(1, 10):
+    for i in range(1, 11):
         auth_slot(i)
     
     print("\nAll slots processed. Check the 'creds/' folder.")

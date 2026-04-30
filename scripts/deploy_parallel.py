@@ -313,7 +313,7 @@ def main():
     # ── Load credentials ──────────────────────────────────────────────────
     creds_list = load_credentials(args.creds_dir)
     if not creds_list:
-        print(f\"\"\"
+        print(f"""
 ERROR: No credential files found in {args.creds_dir}
 
 Expected files: token_0.json, token_1.json, ... token_9.json
@@ -323,7 +323,7 @@ Quick start (for 1 credential you already have):
   mkdir -p creds
   cp personal_token.json creds/token_0.json
   python3 scripts/deploy_parallel.py   # runs single-threaded
-\"\"\")
+""")
         sys.exit(1)
 
     n_slots = min(len(creds_list), args.workers)

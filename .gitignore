@@ -26,3 +26,11 @@ cache/
 # secrets
 service_account.json
 .venv/
+token.json
+credentials.json
+service_account.json
+*.json.bak
+credentials_*.json
+creds/
+deploy_progress.json
+personal_token.json
