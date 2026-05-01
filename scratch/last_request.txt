@@ -1,0 +1,24 @@
+<USER_REQUEST>
+Let me map out exactly what's left and what code needs to change. Let me re-read the current state of the files that need modification:
+
+Good, I can see the O/U model structure. Now let me check the Assayer's `Stats_` module for what calibration infrastructure exists, and the `Discovery_` edge staleness area:
+
+Now I have a complete understanding of all three remaining phases. This is a large amount of code across multiple files. Let me write the comprehensive patch set:
+
+Now let me start writing the actual code. Config_Tuner.gs first (new file, zero merge risk), then the patches for the existing files:
+
+Now the Phase 5 patches for the Assayer:
+
+Now the Phase 3 patches for the satellite model fixes:
+
+Now let me create the summary of everything:
+
+All patches are ready. Here's the complete summary:
+
+---
+
+## Phase 3, 4, 5 — Patch Files Ready
+
+| File | Phase | Type | Target |
+|------|-------|------|--------|
+<truncated 126092 bytes>
