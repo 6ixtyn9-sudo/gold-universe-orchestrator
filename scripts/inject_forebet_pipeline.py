@@ -11,7 +11,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from googleapiclient.discovery import build
-from auth.google_auth import get_service_account_credentials
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from fetcher.script_api_client import ScriptApiClient
 from scripts.deploy_gs_to_satellites import load_local_gs_files, deploy_to_satellite
 
@@ -40,29 +41,44 @@ def inject_pipeline():
         logger.error("CSV is empty!")
         return
 
-    # 2. Authenticate
-    logger.info("Authenticating with Google Workspace...")
-    creds = get_service_account_credentials(SCOPES)
-    sheets_service = build("sheets", "v4", credentials=creds, cache_discovery=False)
-    
-    # 3. Create the new Google Sheet (Satellite)
+    # 2. Authenticate & Create Sheet
+    logger.info("Searching for a valid credential slot to create the sheet...")
+    sheet_id = None
     today_str = datetime.now().strftime("%Y-%m-%d")
     sheet_title = f"Ma_Golide_Friday_Predictions_{today_str}"
     
     spreadsheet_body = {
         "properties": {"title": sheet_title},
-        "sheets": [
-            {"properties": {"title": "UpcomingClean"}}
-        ]
+        "sheets": [{"properties": {"title": "UpcomingClean"}}]
     }
-    
-    logger.info(f"Creating new Satellite Google Sheet: {sheet_title}")
-    spreadsheet = sheets_service.spreadsheets().create(
-        body=spreadsheet_body, fields="spreadsheetId"
-    ).execute()
-    
-    sheet_id = spreadsheet.get("spreadsheetId")
-    logger.info(f"✅ Created successfully! Spreadsheet ID: {sheet_id}")
+
+    creds_dir = REPO_ROOT / "creds"
+    for i in range(1, 11): # Try slots 1-10
+        token_file = creds_dir / f"token_{i}.json"
+        if not token_file.exists(): continue
+        
+        try:
+            logger.info(f"Trying credential slot {i}...")
+            creds = Credentials.from_authorized_user_file(str(token_file), scopes=SCOPES)
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                token_file.write_text(creds.to_json())
+            
+            sheets_service = build("sheets", "v4", credentials=creds, cache_discovery=False)
+            spreadsheet = sheets_service.spreadsheets().create(
+                body=spreadsheet_body, fields="spreadsheetId"
+            ).execute()
+            
+            sheet_id = spreadsheet.get("spreadsheetId")
+            logger.info(f"✅ Created successfully using slot {i}! Spreadsheet ID: {sheet_id}")
+            break
+        except Exception as e:
+            logger.warning(f"Slot {i} failed: {str(e)[:100]}")
+            continue
+
+    if not sheet_id:
+        logger.error("Failed to create sheet with any available credential slots. Please ensure Google Sheets API is enabled for your projects.")
+        return
 
     # 4. Blast the Data into the `UpcomingClean` tab
     logger.info(f"Pushing {len(csv_data)} rows into UpcomingClean tab...")
