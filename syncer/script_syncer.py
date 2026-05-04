@@ -55,6 +55,8 @@ def load_gs_sources() -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
         logger.exception("Failed to load GS sources")
         return None, str(e)
 
+from registry.satellite_registry import update_satellite
+
 def sync_one(sat: Dict[str, Any]) -> Dict[str, Any]:
     """
     Push latest code to a single satellite.
@@ -76,12 +78,24 @@ def sync_one(sat: Dict[str, Any]) -> Dict[str, Any]:
         
         # If we don't have a script_id, try to find one bound to the sheet
         if not script_id:
+            logger.info(f"Searching for bound script for {sat_id}...")
             script_id = client.find_bound_script(spreadsheet_id)
+            if script_id:
+                logger.info(f"Found existing script {script_id} for {sat_id}. Registering.")
+                update_satellite(sat_id, script_id=script_id)
         
         # If still no script_id, create one
         if not script_id:
-            script_id = client.create_bound_script(spreadsheet_id, f"Ma Golide Satellite Logic - {sat.get('league')} {sat.get('date')}")
+            logger.info(f"No script found for {sat_id}. Creating new bound project.")
+            title = f"Ma Golide Satellite Logic - {sat.get('league')} {sat.get('date')}"
+            script_id = client.create_bound_script(spreadsheet_id, title)
+            if script_id:
+                logger.info(f"Created new script {script_id} for {sat_id}. Registering.")
+                update_satellite(sat_id, script_id=script_id)
         
+        if not script_id:
+            return {"ok": False, "error": "Failed to find or create a script project", "sat_id": sat_id}
+
         client.update_project_content(script_id, files)
         
         return {

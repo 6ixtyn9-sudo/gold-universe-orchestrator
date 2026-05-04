@@ -27,7 +27,7 @@ if str(REPO_ROOT) not in sys.path:
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
-from registry.satellite_registry import list_satellites, update_satellite
+from registry.supabase_registry import list_satellites, update_satellite_script_id
 
 logging.basicConfig(
     level=logging.INFO,
@@ -96,7 +96,7 @@ def create_and_register(script_svc, sat: dict, files: list) -> dict:
         script_id = project["scriptId"]
         
         # 2. IMMEDIATELY update registry
-        update_satellite(sat["id"], script_id=script_id)
+        update_satellite_script_id(sheet_id, script_id)
         
         # 3. Push code
         script_svc.projects().updateContent(

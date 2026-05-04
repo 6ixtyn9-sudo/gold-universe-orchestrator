@@ -21,7 +21,7 @@ def get_client():
 
     try:
         import gspread
-        from google.oauth2.service_account import Credentials
+        from google.oauth2.service_account import Credentials as SACredentials
     except ImportError:
         raise RuntimeError("gspread / google-auth not installed")
 
@@ -41,7 +41,7 @@ def get_client():
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Credentials data is not valid JSON: {e}")
 
-    creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+    creds = SACredentials.from_service_account_info(info, scopes=SCOPES)
     client = gspread.authorize(creds)
     _client_cache = client
     logger.info("Google Sheets client authenticated successfully")
@@ -110,3 +110,43 @@ def get_service_account_credentials(scopes):
         return service_account.Credentials.from_service_account_file(str(local_path), scopes=scopes)
 
     raise RuntimeError("Missing token.json or GOOGLE_SERVICE_ACCOUNT_JSON")
+
+
+def get_credentials(slot_idx):
+    """
+    Returns credentials for a given slot.
+    - Slots 0-10: Prioritize creds/token_{slot_idx}.json (Authorized User).
+    - Slots 11-14+: Use credentials_{slot_idx}.json (Service Account).
+    """
+    import os, json
+    from pathlib import Path
+    from google.oauth2 import service_account as sa
+    from google.oauth2 import credentials as user
+    
+    repo_root = Path(os.path.dirname(os.path.dirname(__file__)))
+    
+    # 1. Check for Authorized User Token first (preferred for 0-10)
+    token_path = repo_root / "creds" / f"token_{slot_idx}.json"
+    if token_path.exists():
+        try:
+            return user.Credentials.from_authorized_user_file(str(token_path))
+        except Exception as e:
+            logger.warning(f"Failed to load token_{slot_idx}.json: {e}")
+
+    # 2. Check for Service Account Key (for 11-14)
+    sa_path = repo_root / f"credentials_{slot_idx}.json"
+    if sa_path.exists():
+        try:
+            with open(sa_path, 'r') as f:
+                info = json.load(f)
+            if info.get('type') == 'service_account':
+                return sa.Credentials.from_service_account_info(info, scopes=SCOPES)
+            else:
+                logger.debug(f"credentials_{slot_idx}.json is not a service account (likely client secret).")
+        except Exception as e:
+            logger.warning(f"Failed to load credentials_{slot_idx}.json: {e}")
+        
+    raise RuntimeError(f"No valid credentials found for slot {slot_idx}")
+
+
+

@@ -127,7 +127,7 @@ def remove_satellite(sat_id):
     return True
 
 
-def update_satellite(sat_id, updates):
+def update_satellite(sat_id, updates=None, **kwargs):
     """Thread-safe satellite update. updates can be a dict or keyword args."""
     with _registry_lock:
         data = _load()
@@ -137,6 +137,8 @@ def update_satellite(sat_id, updates):
             if s.get("id") == sat_id:
                 if isinstance(updates, dict):
                     s.update(updates)
+                if kwargs:
+                    s.update(kwargs)
                 found = True
                 break
         if found:
