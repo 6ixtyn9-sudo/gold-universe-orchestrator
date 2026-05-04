@@ -24,7 +24,7 @@ from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from concurrent.futures import ThreadPoolExecutor
-from registry.satellite_registry import list_satellites
+from registry.supabase_registry import list_satellites
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("audit")

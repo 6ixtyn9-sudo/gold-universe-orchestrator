@@ -12,7 +12,9 @@ class ScriptApiClient:
     def __init__(self, credentials=None):
         scopes = [
             "https://www.googleapis.com/auth/script.projects",
+            "https://www.googleapis.com/auth/script.deployments",
             "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/spreadsheets",
         ]
         if credentials is None:
             credentials = get_service_account_credentials(scopes)
