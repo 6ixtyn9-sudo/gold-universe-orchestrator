@@ -79,3 +79,27 @@ class ScriptApiClient:
         except Exception as e:
             logger.error(f"Failed to update script project {script_id}: {e}")
             raise
+
+    def run_function(self, script_id: str, function_name: str, parameters: List[Any] = None):
+        """
+        Run a function in the script project.
+        Note: The script must be deployed as an API Executable for this to work via the API.
+        Alternatively, if using the same project as the caller, it might work.
+        """
+        body = {
+            "function": function_name,
+            "parameters": parameters or []
+        }
+        try:
+            # We use projects().run for V1 API execution
+            response = self.script_service.scripts().run(scriptId=script_id, body=body).execute()
+            
+            if "error" in response:
+                error = response["error"]
+                logger.error(f"Function {function_name} on {script_id} failed: {error}")
+                return {"ok": False, "error": error}
+            
+            return {"ok": True, "response": response.get("response")}
+        except Exception as e:
+            logger.error(f"API call to run function {function_name} on {script_id} failed: {e}")
+            return {"ok": False, "error": str(e)}
