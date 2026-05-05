@@ -54,7 +54,7 @@ Secret	Value
 SUPABASE_URL	Your Supabase project URL
 SUPABASE_SERVICE_KEY	Your Supabase service role key (for Python)
 SUPABASE_SERVICE_ROLE_KEY	Your Supabase service role key (for Edge Functions)
-SUPABASE_BRIDGE_TOKEN	Secure token for Apps Script to sync data
+BRIDGE_TOKEN	Secure token for Apps Script to sync data
 GOOGLE_SERVICE_ACCOUNT_JSON	Full JSON of Google service account
 Step 3: Run First Deployment
 Option A: GitHub Actions (Recommended)

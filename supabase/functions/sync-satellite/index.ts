@@ -15,17 +15,21 @@ serve(async (req) => {
   }
 
   try {
-    const bridgeToken = Deno.env.get('SUPABASE_BRIDGE_TOKEN');
+    const bridgeToken = Deno.env.get('BRIDGE_TOKEN');
     
-    // Verify authorization if token is set in env
-    if (bridgeToken) {
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader || authHeader !== `Bearer ${bridgeToken}`) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (!bridgeToken) {
+      return new Response(JSON.stringify({ error: 'BRIDGE_TOKEN is not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || authHeader !== `Bearer ${bridgeToken}`) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const payload = await req.json();

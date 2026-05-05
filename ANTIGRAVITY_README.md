@@ -133,7 +133,7 @@ GOOGLE_SERVICE_ACCOUNT_JSON={...}
 For Supabase Edge Functions:
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_key
-SUPABASE_BRIDGE_TOKEN=your_secure_bridge_token
+BRIDGE_TOKEN=your_secure_bridge_token
 3. GitHub Secrets (for CI/CD)
 SUPABASE_URL
 SUPABASE_SERVICE_KEY
