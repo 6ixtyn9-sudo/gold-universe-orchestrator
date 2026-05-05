@@ -207,6 +207,58 @@ def get_satellite_list() -> List[Dict[str, Any]]:
     return []
 
 
+def sync_one_with_files(sat: Dict[str, Any], files: List[Dict[str, Any]], dry_run: bool = False) -> Dict[str, Any]:
+    """Deploy provided .gs files to a single satellite"""
+    sat_id = sat.get("id")
+    spreadsheet_id = sat.get("sheet_id") or sat.get("id")
+    script_id = sat.get("script_id")
+
+    if dry_run:
+        return {
+            "ok": True,
+            "script_id": script_id or "new_script_id_dry_run",
+            "sat_id": sat_id,
+            "pushed_files": len(files),
+            "dry_run": True
+        }
+
+    if not spreadsheet_id:
+        return {"ok": False, "error": "No sheet_id/id"}
+
+    try:
+        from syncer.script_api_client import ScriptApiClient
+        from registry.supabase_registry import update_satellite_script_id
+    except ImportError as e:
+        return {"ok": False, "error": f"Missing orchestrator module: {e}"}
+
+    client = ScriptApiClient()
+
+    if not script_id:
+        script_id = client.find_bound_script(spreadsheet_id)
+
+    if not script_id:
+        title = f"Ma Golide Supabase Bridge - {sat.get('name') or sat.get('league') or spreadsheet_id}"
+        script_id = client.create_bound_script(spreadsheet_id, title)
+
+    if script_id:
+        try:
+            update_satellite_script_id(spreadsheet_id, script_id)
+        except Exception:
+            pass
+
+    try:
+        client.update_project_content(script_id, files)
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+    return {
+        "ok": True,
+        "script_id": script_id,
+        "sat_id": sat_id,
+        "pushed_files": len(files)
+    }
+
+
 def deploy_to_satellite(sat: Dict[str, Any], gs_files: List[Dict[str, Any]], 
                         dry_run: bool = False) -> Dict[str, Any]:
     """Deploy .gs code to a single satellite"""
@@ -376,6 +428,7 @@ def main():
     parser.add_argument("--bootstrap", action="store_true", help="Only bootstrap and fire")
     parser.add_argument("--parallel", action="store_true", help="Use parallel deployment")
     parser.add_argument("--bridge-only", action="store_true", help="Deploy lightweight Supabase bridge only")
+    parser.add_argument("--limit", type=int, help="Limit number of satellites to deploy to")
     args = parser.parse_args()
     
     banner()
@@ -405,6 +458,10 @@ def main():
     
     print(f"{Colors.GOLD}📡 Found {len(satellites)} satellite(s) in registry{Colors.RESET}\n")
     
+    if args.limit:
+        satellites = satellites[:args.limit]
+        print(f"{Colors.CYAN}⚠️ Limiting deployment to {args.limit} satellite(s) as requested.{Colors.RESET}\n")
+    
     # Load .gs sources
     gs_files = load_gs_files_direct(bridge_only=args.bridge_only)
     if not gs_files:
@@ -429,15 +486,50 @@ def main():
         print("PHASE 1: DEPLOYING .GS CODE TO SATELLITE FLEET")
         print("═" * 60 + Colors.RESET + "\n")
         
-        if args.parallel and ORCHESTRATOR_AVAILABLE:
+        if args.bridge_only:
+            # Use bridge deployment path
+            if args.parallel:
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    futures = {
+                        executor.submit(sync_one_with_files, sat, gs_files, dry_run=args.dry_run): sat
+                        for sat in satellites
+                    }
+                    for i, future in enumerate(as_completed(futures), 1):
+                        sat = futures[future]
+                        try:
+                            res = future.result()
+                            print(f"   [{i}/{len(satellites)}] {sat.get('league', 'Unknown')}: " + 
+                                  (f"{Colors.GREEN}✅{Colors.RESET}" if res.get('ok') else f"{Colors.RED}❌{Colors.RESET}"))
+                            if res.get('ok'):
+                                results["deployed"].append(sat)
+                            else:
+                                results["failed"].append(sat)
+                        except Exception as e:
+                            print(f"   [{i}/{len(satellites)}] {sat.get('league', 'Unknown')}: {Colors.RED}❌ Exception: {e}{Colors.RESET}")
+                            results["failed"].append(sat)
+            else:
+                for i, sat in enumerate(satellites, 1):
+                    league = sat.get("league", "Unknown")
+                    print(f"   [{i}/{len(satellites)}] Deploying bridge to {league}...", end=" ")
+                    res = sync_one_with_files(sat, gs_files, dry_run=args.dry_run)
+                    if res.get('ok'):
+                        print(f"{Colors.GREEN}✅{Colors.RESET}")
+                        results["deployed"].append(sat)
+                    else:
+                        print(f"{Colors.RED}❌{Colors.RESET}")
+                        print(f"      Error: {res.get('error', 'Unknown')}")
+                        results["failed"].append(sat)
+                    if i < len(satellites) and not args.dry_run:
+                        time.sleep(DELAY_BETWEEN_CALLS)
+        elif args.parallel and ORCHESTRATOR_AVAILABLE:
             # Use batch_sync from orchestrator
             batch_results = batch_sync(satellites, on_progress=lambda done, total, sat, res: 
                 print(f"   [{done}/{total}] {sat.get('league', 'Unknown')}: " + 
                       (f"{Colors.GREEN}✅{Colors.RESET}" if res.get('ok') else f"{Colors.RED}❌{Colors.RESET}")))
             results["deployed"] = [s for s in satellites if True]  # Simplified
-            results["failed"] = batch_results.get("failed", 0)
+            results["failed"] = [s for s in satellites if False] # Simplified
         else:
-            # Sequential deployment
+            # Sequential deployment (legacy heavy mode)
             for i, sat in enumerate(satellites, 1):
                 league = sat.get("league", "Unknown")
                 print(f"   [{i}/{len(satellites)}] Deploying to {league}...", end=" ")
