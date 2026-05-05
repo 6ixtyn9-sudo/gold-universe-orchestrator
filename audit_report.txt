@@ -1,0 +1,2514 @@
+MA GOLIDE SCRIPT AUDIT REPORT - 2026-05-04T18:18:16.623788
+============================================================
+OK                  : 0
+DUPLICATE_SCRIPTS   : 0
+UNREGISTERED        : 0
+MISMATCH            : 0
+NO_SCRIPT           : 501
+============================================================
+
+[NO_SCRIPT] Brazil (NBB) F10
+  Sheet ID:  1DOw4qQDremLTFzD9wpztXTPeZYkF4iB1VaZV2u2XNjk
+  Registry:  1Zh3Zux8xK4RQG02Y2u5yXS74C_ne8UizkcmJkrS7md-5qlbBqz9bTIUj
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) M10.2
+  Sheet ID:  1nrpUQbKrV_wYn6heDhdJ1zHTcyVsACxDKscL7GOkHOU
+  Registry:  1767yKhWw2S0TYRhR_hmO264zcObxFMxzVJtkXWJPcnl9lhLbVsxcpVjk
+  Drive:     
+
+[NO_SCRIPT] Czech Republic 1. Liga (CZ2) M13.2
+  Sheet ID:  1-bbIssWRusm6ULMO5UOvoToyf-UrNJ-5s9YNEL8J9RA
+  Registry:  1qkGEmLDfLeoex9YxykA1kqoBhWcu6ctXRlg8SA8NE3iTgsdzOd2WGiUu
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) J14
+  Sheet ID:  1lB9TR-o5-Dn_dX532OFaSTgN_9dI85gRcx6JfJGB8ks
+  Registry:  1V8nZro_LK3ORyV8YlwZLxj-yHZGRgBLpPotupDUx31c9hLtoTk__yybT
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (PLI) J15
+  Sheet ID:  19RzqTfhFYsKnxNVwz6MsaBxi6HPQNY44n4TDGmtsd48
+  Registry:  1QfAHLQDI73_ohNZbkeTUXdkSQFOqu-fG54BGhOcLasWLuxBVoP1DthJx
+  Drive:     
+
+[NO_SCRIPT] Italy (LAI) F09
+  Sheet ID:  1u5f9Mnwo6d3HISxfdC1SktFuXC6RJR8LS1pFDAYHkNs
+  Registry:  1q47cPhCP-ECTevkAtd7d7LIBrx67SwytrTQgHxfXTWsRa_B7vsozSptd
+  Drive:     
+
+[NO_SCRIPT] Italy Serie (IT2) J11
+  Sheet ID:  1z0XUsQAtRHwPytvjkXZB8VFLNdv8H4zGVrjnp9PuXCg
+  Registry:  1kl66dj-OHcnbksl2tTp9ByM0okGJgJqVhGAE6cm3Ebl6JG4YcxEYG0Nr
+  Drive:     
+
+[NO_SCRIPT] Italy Serie A2 (IT2) F21
+  Sheet ID:  1f9keUg3OCokYxjxgKTEzZ4jP0INtOk7fqmrpfkwnIZY
+  Registry:  12Tpgvh-GczCx9ogfb7hxZkIA5g3WdHbmc1GR6jahzC2GD-MbkETGrnHM
+  Drive:     
+
+[NO_SCRIPT] Poland Energa (PLW) F25
+  Sheet ID:  15nO6P4ZDMmr2O7tWCw8JNQ78FcSOCGBiydITuqKPAoU
+  Registry:  1urm-mruAZFe0nkfm50BxqI8gci-pdCZLKV40Qc3xx9hhaKiAvH-trlEU
+  Drive:     
+
+[NO_SCRIPT] Spain Plata (ESP) F21
+  Sheet ID:  1Yx_Fg5ZSpK22FBPU1gXkicpQSp0Ek30K6OlDpW-aW4M
+  Registry:  15vOiaoPNTHwBSvTFlTSovsKqeIYsa-pql07tnlu3BEI11cbnKcvgzhg0
+  Drive:     
+
+[NO_SCRIPT] Türkiye W (TLW) M2.1
+  Sheet ID:  1M8pvDEgx3FepEZiv8doqeX5PIfQFnEZJZSyOYINZhVA
+  Registry:  1fa7y07afLp8rsZHwHSnHUh-FjdCodacdHABsnGwhd-J4BQgjIk_DX7vz
+  Drive:     
+
+[NO_SCRIPT] Türkiye W (TLW) M2.2
+  Sheet ID:  1yzQEcUFgOeFqVFWKL64_CNe7CRnXU1aEUdh63bm46CY
+  Registry:  1Re_ZeB6JMBJaq_qZZKV9jSuI2ikHPjQqmHGTdiwJ6AwXJd_3TF4BaNgX
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J11
+  Sheet ID:  14P08gCtl7FbWVXWbT_Mq2UNhb10bXfN1G4AoOVPoMk8
+  Registry:  1viZVGL9fnLAAh8IAeET3JblO0Stv6Yx64h9JAILVkmdhuO3CBKKOwwHw
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M5.2
+  Sheet ID:  1Q09gaPDxCsRmRWEWtge94PzCnR2rEK253mhm7TbeXXo
+  Registry:  1PPAbilVUKuiP1yTnHdcAf3sNm_pMjSuY5WT679up3COMgARl03qyY7Ds
+  Drive:     
+
+[NO_SCRIPT] ABA League (ABA) J27
+  Sheet ID:  1VkN1jJcY5Fdj1DQqJ0-ekUvAtsxEL3I39eapVYzntvc
+  Registry:  1l6p0vGgfujDUDb8wKW6iKn5Mg8jcPfV1gF7S_RAO4xg70V1nBhMGd5sP
+  Drive:     
+
+[NO_SCRIPT] ABA League (NLE) M13.2
+  Sheet ID:  1KMP0_yhMSd0Zoy2yvmoEajHwslltfqS5iBoP79GCwpk
+  Registry:  1UdNrXxjib84GC9MZu4SoJqeov24cGVCdQ2-RH_tZCigbubrg-0OI1IQ8
+  Drive:     
+
+[NO_SCRIPT] ABA League (NLE) M3.2
+  Sheet ID:  1pp6TyMZHA-IYGEo-qn2JUn-PnFfhhVDbP33ywr0_3Oo
+  Registry:  14-a69BIh_Q8wweghHit2QdrkaXkK0fRDcUI4uOo1rewIryK1qxmaw2DG
+  Drive:     
+
+[NO_SCRIPT] Argentina (ARW) J14
+  Sheet ID:  1YYvrIJDeHkrWZXLlqMjfaccbri2-upzhodTh5YTbFOg
+  Registry:  1zGduQ0L3qixQeHUwSOLlr_rCrIis2ey15wzzUAz_xVIoSrgm3TNqZrGg
+  Drive:     
+
+[NO_SCRIPT] Argentina (ARW) J15
+  Sheet ID:  1-UHvAUKnkjUGst_6Pk9NB5iry8b3vC9yDNvJKB5QZ7k
+  Registry:  1llvvQYkURFhsSQZNmwuJt6FfIGqX2mkwIyUyaVsFsXQjRpGyP3dqv9Xa
+  Drive:     
+
+[NO_SCRIPT] Argentina (ARW) J15
+  Sheet ID:  1a8-EDCAEZtk7-B_4V-5fCpzaBI4qm5Bip_pMZOHdI5o
+  Registry:  1CZMdZlAMxtE0ePFCefvAEoMtzcejl1RDLUPCbNgYAf5_s8XBZfdblHoL
+  Drive:     
+
+[NO_SCRIPT] Argentina (ARW) J17
+  Sheet ID:  1Tb9IFOL4WOSmIqs3eK_OQkA-5KXqZpNG3vQypUPKjFI
+  Registry:  1sny6QgPRGjGEjjRXaNk9_9oZrAySjxyJC4dL3oVp3_H6LoAdX-snOJlp
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J16
+  Sheet ID:  1SiyQe6gnqqD_Q347mKdNGCOjUVGcYuxIaj07nO2WvMI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J19
+  Sheet ID:  1e8nuRij_15BfwZbiHzB6H-Ig58xBAAqQIQ8uRyqLmdU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J22
+  Sheet ID:  1knuGAtdE2o1j26FnJqDtQU8cmYv-1nLQ3a6qIx9ET8w
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J24
+  Sheet ID:  1K6Z2vmz2ZcL-kbMUSH5nJ-qxpS013l9YFEucJ-WRfhw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J28
+  Sheet ID:  110Wza2sE5g4wCCLhJgoLauV7AvzcBkRZPmYvDUXxO4g
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (ARW) F11
+  Sheet ID:  1Nv1_9uSbCtw4gMdOpIx3nyM4prWDxrVuTQaO3Unvo_E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (ARW) F17
+  Sheet ID:  1S-72I-2QVWhHI5i8RcAq5angWCLYIrl9VztAm1VTaL8
+  Registry:  1NoJB9lkyypl1OHLXCFG7zQNDhqvlqElzYhp5bJeYcPxQ2WUPUZRYY7cq
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (ARW) F18
+  Sheet ID:  1N0-SvzwN8wHjDKx12WiC286g7ZiHGtzF1J7hzBM5Bxw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (ARW) J30
+  Sheet ID:  1pn8ccRqKF-EzqsARuw6CILj59RAsGpPuqjB18vMnGOU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) F17
+  Sheet ID:  11MIMBJ0IM86cIreGwKNJLLGzn2_NQ5OBgMAsyc57UyY
+  Registry:  16DNBsnxROY6i-t11kCtmBraB6ppVKNt0uhMoXGsLgIKSdf2lEw8zJvU2
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) F18
+  Sheet ID:  1XMyq0c7Y58E0nSJ9A8IFXnifPP1Tdh-CFc6nfblGNvU
+  Registry:  1Dcvsw7lLBdsaqDv6o4Up2fNq_Hx1t3Sv34hY8G9cQ_i59b7m06yjJ76H
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) F19
+  Sheet ID:  1p-sZH3br96P5bE4_2WLyyFiFNcAD5T4c4EHuBArkH4c
+  Registry:  11ZfynP3KeYBUSyoNYTLCAPBoeVMeE1j35uzD6SgfTdPN7wSUfPlsac-D
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) F20
+  Sheet ID:  1wGMPG-Bk5RkSjqzX55Inr01oS_4hQqeiyvF3UbSnwko
+  Registry:  1zwKfW0YtnElccftXROG_KNoI1jcqC_w-C9hnqU7R2gMIPAu1KO25vTvn
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) F21
+  Sheet ID:  1edq-NNg3fWPIxb8IEf55ESbXWSd1gtGyQ9jnMhP9ysQ
+  Registry:  1vHsPHkal0ocno-2f18oimjjpKUvy0JCS3yYhBnr-lmRk83Mk7o_pn5XV
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) F22
+  Sheet ID:  1MxSZGMSvY2oYZOhjYx3Mi9NatjcNHn0kBrJdynp6t0g
+  Registry:  129fzqag0m28j0ClWBw96xSKNaEWDloIRLQDiYZ_RopdRKNK-C2XywZLd
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) F17
+  Sheet ID:  1_1fZJjQzwolEHjpz1vmKgt7SG5nTaFr6EFSN8uu50Vk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J14
+  Sheet ID:  1dmow92_8pVcMYXyBFWwbzj4zF-o5fIgnkpofqyyqLaM
+  Registry:  1NdEwG58DlIvBUHVOPzLaJFNx7foahdhspALncDwcAtBorUQy9ClBp97E
+  Drive:     
+
+[NO_SCRIPT] Argentina (ARW) J19
+  Sheet ID:  12Rk5yc17JFrwbdH7rI3el9u9lDYZbetzFem94MjIqOU
+  Registry:  1xCFhZyHkCjOFV9O_uuKYwsgOlPXa6bIua1wd6aJmkI9HntZ5YPreOB2y
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) F11
+  Sheet ID:  1mXDsbg1PrX6wSzrTWI4b5yzb35R2M8pc2DRzTwXHpIw
+  Registry:  1M87QDASOpUc9G4drH0lHVvAaOLd_KywVKPvl9ORBXgm5LUDhijp_VpO2
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) F24
+  Sheet ID:  13j5HYWdV1_wFUjMbpU_iMfWlQj8hwz34_lV1HNJs2po
+  Registry:  14GYB25-GsiczmNZarLFzByY4-wWT2hwWelOkD4TLcQa5BoMnDaw-UKbe
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) J27
+  Sheet ID:  1MEOVMOVgqUbUTI_NOtNq6vQkpixDVyzVxHiG9qXHypQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) M10.2
+  Sheet ID:  1lWJx2HwY8yNJk4Tawnl__7Lb8Y2-n49L10t2Wens_iQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) M12.2
+  Sheet ID:  1o8Jagvl4WGxL9R3SAPec0T-I6f5fAbkogz226mAYt0U
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) M13.2
+  Sheet ID:  1b-iewTHuZfL6NZfVycMOHlBs39VejQBonFA_X4k_nt8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) M14.2
+  Sheet ID:  19kipeJBVdDmPLS8K9cHEOItzM-ooHW6AWrTQA3TluAA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga (LAA) M5.2
+  Sheet ID:  1-54Z_a5rl0KXeSG7_BQT0R8frlDXzLg5I9W3yWUbDGU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F19
+  Sheet ID:  1K7q0EDNlfoBQIUomxb_FfCRPIV1aka1i0dbwQ0euKqo
+  Registry:  1gyoRw98bPMCXoQzv23RLxd_X6Cnzl-__bRYs9JshWM6oD3a4yfBiOKLI
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F20
+  Sheet ID:  1ZUBL0uBZgibPc4-CnZFZdjNDlU6lZNFMSeDzMtowGrs
+  Registry:  19yAunWhfDv2gJu5I6WhQqcy4ykJIcu6HCOckwPBfqe-jm7KHz4oKCgmk
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F21
+  Sheet ID:  1nHB1H5XMESjPwIq3duQQXgrqvvL2KfpDjL9ZFl2vFUo
+  Registry:  1vN-lSLrzS3rsda_oMYwTyHhznJQf4vJZKZ8M_yPzBxyVpgrxXbGydlMk
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F22
+  Sheet ID:  16Uq9hZtHF0pojyPo-8ts8nK1VXeOxz6bleUHHOWg8bk
+  Registry:  1MbZaZgJS2trQS8TbQe8mi3GvL8NfBmlFe-q2HlyRsJYf1G_jffZgDcw7
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F23
+  Sheet ID:  1Ir70Q_7mP2YYYfvw2UsN1Ed4q0XD_oChmBN-X49H2DQ
+  Registry:  1SQFS7epJCd0wtak2X8FOjTYJJQSkn_Z9-ZRYFy11FIOMcv9QvRMRHd9V
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F24
+  Sheet ID:  1-wj3II-0alHEuP2emnbfG7_gH5rtl3ST6x8NLK2yxvg
+  Registry:  1HyasjooKA_K67yHAC10DVdTbRnCiIAhpw_gGmy5ThwSqGX8wZCbUkwLH
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F25
+  Sheet ID:  1sO0gdA2B3Rc3UMvw98IpmpPgcXCFKbdvIX4AvOWA658
+  Registry:  1YOQOHtEnVL3BgwslsU2zvXCd-0jNxV-qhJxBXJ5MNwq6RsoLef-GpNRs
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F26
+  Sheet ID:  1Jd_3Dd_bc0yuGFMxyS_d7DzVRB2b5DdHDWmOKAI4mz0
+  Registry:  1YOxdfUj_QNwBM9sm68Otlv1_R6rNS7TAFx8BFnHCKJaC2btLxOtyMAo5
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) F27
+  Sheet ID:  1IorZaBv7aZ5Z4YPus_1bnLKvfO9JXD_7y5y4tCvj67o
+  Registry:  1LKvThCMuWpbNRFxWRJLBFIDC-y4nm5MvXy7qsxopD-DutudnJ221azgA
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) J22
+  Sheet ID:  1mtYFwy6R92_8LglW7G_AKjmU1FfHvtVTqNasJz5vi5s
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) J24
+  Sheet ID:  1LkikUdbP3Bc0WkMIEpQUy3YDL1sIIMEquXoB9dAiZUM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) J26
+  Sheet ID:  1TxNFa4wXo_44PZmTKuY8RTZNQJOFv5O767MOwCv9N7I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) J27
+  Sheet ID:  1gh0TVc3tJEKsE_k9Bg810ujQldmwU6ux7Q_9ynRylF4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) J28
+  Sheet ID:  18v8bBR7fwTsLFc3ZDC3T9cBQSIcENvOiwvbU8TeS4Dw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) M1
+  Sheet ID:  1r9PZRTVqJJk-Mly2blo9Hihs5iAqPKrFqa98LN-p5Tw
+  Registry:  1tqxlp_5QT1JUwqFd_wUVC0p29e7PthmkbNDRnBjxl_rwG3sVPXsmkQ2U
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) M2.1
+  Sheet ID:  1yk7bEkurpaFp8mwMR-t1W2EdwjlodXrnQzF9kRjRVAE
+  Registry:  1k6Zz9F3Ow5Nu7WwtbwKEcDMCOaATkIJqEjGP9FgnTBNNjUO3Zgz31Dn6
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) M2.2
+  Sheet ID:  1cysl4zVnN6aJpkYfuuj-YFmmT8gIvgQqkAEdSG3O9Fg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina (ARW) M3.2
+  Sheet ID:  1qQCe5vkOcLD2lzzNcOeO1yh4PNGWiQngf_qLAUS3hUQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina Women (ARW) J21
+  Sheet ID:  13xO75pRrj79XRuJhBJs3HfjDZ_mY7bV09O8jyXaxEkU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina Women (ARW) J23
+  Sheet ID:  1em8nufAYOniUT-IZxgm9aoEQjQtm_TmaIlleXG6BOF0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina Women (ARW) M4.2
+  Sheet ID:  1D9BSBfayg4Jp2ABBaBQClUnbkYODZkcgTK54voTUFa0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina Liga Femenina Women (ARW) M5.2
+  Sheet ID:  1r9x4B-8656kz0kDVbL-HBdi7J2YIN69MMVT3FARL8gE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Australia (AUW) F26
+  Sheet ID:  1QyN9UXARm3Pr_P9_rxvgiBgozgH_3cOHzVuhvGDLuR8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Australia (NBL) F19
+  Sheet ID:  1HADHwbNQIVwBJBKIwHLkcsCBi0lcuW2NaL-XhLIRnQ4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Australia (NBL) M5.2
+  Sheet ID:  12bKxEuZNQBahDoiaAUqnRoIwaRc9OQ_LGWtQ4mjV5GI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Austria Superliga (AT1) F21
+  Sheet ID:  14A98-r0eCYx27x2Hy9qneg88THbHzUQoTzPlIA1B8AU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Austria Superliga (AT1) J10
+  Sheet ID:  17p4ak4QZgbnNcjH2mQ_mgwyGHT3QgAEFCVCqQGp_XQo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Austria Superliga (AT1) J23
+  Sheet ID:  1cI7hTME6_xu467gF1huvmG6PRqvhGg67IGkBb4PwnRU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Austria Superliga (AT1) M13.2
+  Sheet ID:  1aL4B98O7KOIIzqdkC8Vo1_738h6XRPEmVrQCD6M-Cuk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Austria Superliga Women (ATW) F20
+  Sheet ID:  1LzSNaUDqd1kLXwQ5E74BIYH2kAUXDlHTSTal-IQRs9M
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Austria Zweite Liga (AT2) F28
+  Sheet ID:  12LqjDzVBPCVbq_VGDrcG3BczFvawcS-XF-VcqPtm5XA
+  Registry:  1UGtMcQoedPwnUiYrx5fjaAKPEWsw1PB-z4QF-A9DS6d-xpwMZj9eZffi
+  Drive:     
+
+[NO_SCRIPT] Austria Zweite Liga (AT2) J17
+  Sheet ID:  1e0yjkc2struKFzzIZQb00Dn1K9wwJjaRAQU7HU1n-2k
+  Registry:  1_guM6dW9nbEW6JjtMahR25FJSWQV2J9Bn1L0cOhWYn-FfBoO7xZt_P4h
+  Drive:     
+
+[NO_SCRIPT] Austria Zweite Liga (AT2) J25
+  Sheet ID:  1Rbb2BdktIbkQHX-n2gHK7D2vBPE1Xk34JqyQDt97U5k
+  Registry:  1yS4YqoNncVWWAsNrfJW0FryTyr8DsczZJ4pwsVb7B3e5fmvE1iKm-bbl
+  Drive:     
+
+[NO_SCRIPT] Austria Zweite Liga (AT2) JW30
+  Sheet ID:  19fHXkF6tCA4PMGlbS6byylBL1k1F4fsmX-oQAi78Z4w
+  Registry:  1Pk3rfw05pXi4Gz0KhB1pmEonTNWkLTex6FUlWg1E6pEQPhCT0-ae_Pub
+  Drive:     
+
+[NO_SCRIPT] BNXT League (BNX) M13.2
+  Sheet ID:  1O7qRIVe8XfjaZ86hyakgTt4uXL4M1BSXPbQ-681Cy4Y
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Bosnia and Herzegovina (PBH) F11
+  Sheet ID:  1opdd-X_s3j8g71zlJrlykorGmHish6nAaU7UHUjQNj0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) F12
+  Sheet ID:  15ieZwax7nNcx5j0af1sFHKf6SIKahsMFVllj9AAjKuI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) F18
+  Sheet ID:  1DJOI89wBPBdQq3_Eqq8NBk9bqtVtBPyPEtyrNu3PspQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) F19
+  Sheet ID:  15FJtvLEMt4AFIfVIX9hf0SkN0nLtB3rTWgXuV5yoJ0E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) F20
+  Sheet ID:  1-HnthqPJG96FE7VvYwNgZ1WCaIeReI88UXhr4-2S9kw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) F21
+  Sheet ID:  1BMsQ5is5ASUw-nFxNycx_19E9xdrKUMdP9bpqnouBR8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) F22
+  Sheet ID:  1SW2qFdTLkRiKSh6mYYxwlHZd4MBJYdlOLl0eIb_AI3I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J10
+  Sheet ID:  1cxIFMujOoo3v_0--0UaoLGNaNWIGy77WSDTq2a-67jo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J13
+  Sheet ID:  1cUI3rR6b_FBQvhkHfiJdpoMpQHLFtFaoolBegWydC0o
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J14
+  Sheet ID:  1mPiMb6zCb7FrB9yz2oqoDjNCUZ_wUf3CuMhHq1a2epA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J15
+  Sheet ID:  1ky9GOo-_KLMtxjHwVLGosm-lgI2tmWzx6S9Aamwlpfw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J15
+  Sheet ID:  1p91LEnmGloGRJsBp9Oz3sIDTg4B6fG57Okx4B3PlCJY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J20
+  Sheet ID:  1II9Jzd4ukq5kOsxpE00jRD-f9qAOCFyZFbS9_-mawPk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J21
+  Sheet ID:  1ugzwBl4Sf2TaX7Qs7ZTHBu837k5HopmXkFqqzmf41Nw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) J22
+  Sheet ID:  18TVpYEQQbzA0jVkrBtPn_f9VHXSdZuQ16lz7B5zh12w
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) M12.2
+  Sheet ID:  1VFrEJsotZiTjJKsdHDIiQf-DMN5fObw7EZpSl-TCjIM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) M13.2
+  Sheet ID:  1J_Z8PF7-a7F0rLsoM9xMRRhIyrsjE5H_s9g5Iotm_Mg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) M14.2
+  Sheet ID:  1JuIADv_zdzVnVrYqCP4TFPRacp8VVd4_qF18hrSVs6Q
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Brazil (NBB) M5.2
+  Sheet ID:  1tpQQWlsQ_tcbIheCq06mRHQuYicu6B8PAmOCtyHTMws
+  Registry:  1ThthKy6NnkmFduAdmnOg8mad24p8oOPsHtZJCkoGY3noeQEMcN3TARyu
+  Drive:     
+
+[NO_SCRIPT] Brazil NBB (NBB) J17
+  Sheet ID:  1u-GsTVeKxhFfs6jk-OyGWuGC8PRdvHY2mQqwApdxqrM
+  Registry:  1bfdLHe0_D2s74i6gPdUQp4IwPA48_W4oROjA1qQ_u5wmWKiYCk4td5_M
+  Drive:     
+
+[NO_SCRIPT] Bulgaria (NLB) J12
+  Sheet ID:  1VL8pR1GLHmo3LsN7cj-qjiFzI6u10hhKyNmpQokAPD4
+  Registry:  1FcHIhUHeMV84MnqTM6SZC0PuEfjMm9qk8Gev87HsPbtPbJlkVRL0SEpu
+  Drive:     
+
+[NO_SCRIPT] Bulgaria (NLB) J24
+  Sheet ID:  1XWFYZtQsuNpu4-ndWpc8geudvVvGO_swBCMkSPlA2qc
+  Registry:  1J6Ka1x4UBD_y5WPWWPHtg-Kfpi3yLkOr-XU-atJyc7pyAYR8PWoiR3Gi
+  Drive:     
+
+[NO_SCRIPT] Champions League (CHL) J21
+  Sheet ID:  1I1werhhgJXxKN26ajBOPmXC32XSpzpPGLH94mlFymic
+  Registry:  1FoYf3bnKwrGilrd1eBGnHCK3HUY6ZvYQWMd1nID9m7FfnQKFTyfwYfLG
+  Drive:     
+
+[NO_SCRIPT] Champions League (CHL) J27
+  Sheet ID:  10H7NGBZiGeTSjL-K5Y8V5oUF1hoaLx1MB6om2k1IOzc
+  Registry:  1irxp_oWvJQM1_uJ5vT7sv27dK2NGvecvpPtPlkcsA0FDIYFfRue4TUuA
+  Drive:     
+
+[NO_SCRIPT] Champions League (CHL) J28
+  Sheet ID:  14AE9sXvae6Ln4jh9kD_Xb7NtzZ8X8wwsUpQICYjpZeo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Champions League (CHL) M10.2
+  Sheet ID:  1OwlYgeEIfAEPCjKk5pPsrIq5bowZHhOhKIeULCkiQAQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Champions League (CHL) M11.2
+  Sheet ID:  1jRt8y-hO3uYDaUN3wu8sNgLfZaA-sJZzjlsk5PcrL64
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] China (CBA) M14.2
+  Sheet ID:  1jCENTNI40XTC8uvhkpCOt10rxxTUt-RSQIdlQs3rSzo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] China (CBA) M15.2
+  Sheet ID:  1_IAK8iMKM2OojUPL_RfTWJqHIn09rLZGtOQhKVoZxqw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Croatia Premijer (HRW) J24
+  Sheet ID:  1AOIr6f6YvYBo8xpCJnr9e146uxpRAd7KpsXUJySAGnc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Croatia Premijer Liga (PLC) J14
+  Sheet ID:  1GnnIavLjXcL-L3V7Eb0_ExbDfQVlirxxDOjaiIBHS8c
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Croatia Premijer Liga (PLC) J9
+  Sheet ID:  1N2RXOwRDw-LWNHX7P9n89QazUmw4gpDMv4tqxyQaQdY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Cyprus (DAC) J16
+  Sheet ID:  1IY9KLo3_oBxSnUyeygXnfFG-2hJ3zKs8Zu0W2LLkV40
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Cyprus Division (DAC) J11
+  Sheet ID:  14izR_qRhTyZ_eRsjiTvlD47XCOTcOLJM2lcSFtLQ82E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZ2) F20
+  Sheet ID:  1w2rgxC-Pdw3m5fnuRpumWA3nlq5AsCmO5hSXUNlyDyY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZ2) F22
+  Sheet ID:  1-6rvhFJemum82D6R4pSEy3BznzbCfH5jpDDdsj5Jkzc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZ2) J11
+  Sheet ID:  188uCvECSDG1eLJkuzoApBx44NZwKlb0JxlB_J6gV2V4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZ2) J18
+  Sheet ID:  1BzICKwY5HcCBb9ok-JpiEsUiO-tJmRLxXUZFRDOS2MQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZW) F25
+  Sheet ID:  1J-7xDvcqIKkW7aD2SRzM41DnqkmoO5BkSC0UvPE68Jg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZW) F26
+  Sheet ID:  1YPZZVneTZRMkE14FoHzXalSp2VyXXARPJy3Z2qBi3a8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZW) J11
+  Sheet ID:  1JPV21ulOW2bI74JYLVOq_lGl-1Udqkf7TBjOwBi0ifU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZW) J16
+  Sheet ID:  1GyLIhnzCB1bk1oZulIhFGUYD4Gal7iVl_lcfVkI6PqI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (CZW) J25
+  Sheet ID:  1Pvh6W-fAyVn7HxKEjmSNsOfk-JhT_5NbcTDanT4JwEk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (NBC) F14
+  Sheet ID:  1vYO1D2otxD5UFuwvSbzhd7yhNK-YD-e0tX2RJ8RXjF0
+  Registry:  1_2_Mv2FaAuAvI4zuRedlvvOQcJM1m_eiQEQcWcdocI_PJoLFBkFlaoi5
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (NBC) F15
+  Sheet ID:  165tTogzTHsTHG8E8f5GiJbrdfPoCtsBnJPBvdN8EeBI
+  Registry:  1MVj1bShX4TdGn1gceqpwFcr9cw1Tr0zVJ7ichaXrWDPeOJmuQs33a46o
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (NBC) F17
+  Sheet ID:  1KHCSZA14u1kxPk-yUpIrwhZFFxmTa1alVQuAQVBgXZU
+  Registry:  1PQJAJKKPkHmLS-8Pu2fbEBFvLxxj13_BcU65AKNBsJokHR2dYxt5QjLY
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (NBC) F18
+  Sheet ID:  1EPkXa63z6p6WoRy4qf01mXtjiqgs3zXb-byeOxWkSm8
+  Registry:  1HODiJRFpCDSa3cwG-vEhyaK5AgSxj4R-UeZRq6ZcokF-xg5gUX-IYUVF
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (NBC) J10
+  Sheet ID:  1RXiaKMjRm0BFCGO_s_PvU4yquI-7_W9ZL4Ym_HP2oyY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (NBC) J17
+  Sheet ID:  1uC9KJbPkmFiHWcGuFmBRM4gBf1zoF8MC3MUQ1l4O8oE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Czech Republic (NBC) J28
+  Sheet ID:  1jXQney3kjZmWJsLErTHKdujvHZSSr5umoMtF797SuVY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Denmark Basketligaen (BLD) F19
+  Sheet ID:  14GA_BPmWzCQI9fZreQMj62LKqI3Iy2mdRkutJV90f48
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Desparado M13
+  Sheet ID:  1xpaobNcfUdn5MLksMsTYpAxN2jrX5C2KrPOZrqiA1Jg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] EuroCup Women (ECW) J21
+  Sheet ID:  14VFbBIa2zD6VNKyrxNI66ZjZM0dcXt6ptQOpgsDAjUk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] EuroLeague (EUR) F03
+  Sheet ID:  1_XeWlqwK4wtFsMBa11R_F5auxPosof1qwBjctYUdxgk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] EuroLeague (EUR) F25
+  Sheet ID:  1Vz62yX0LJ_Zp3xHdkjO-7j0opX9C13KNVDDgkxaaCyU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] EuroLeague (EUR) F26
+  Sheet ID:  1Ngc6PtRWJxjnta16vK0owgfLIWVnL5NWFhEDgIr_6PU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] EuroLeague (EUR) J15
+  Sheet ID:  1fNj3R6mPzjCi3xK33W-UNABEDKqxw6o9-RMr8VVXQwQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] EuroLeague (EUR) J16
+  Sheet ID:  1eoHCG4uPyQaLxDUuMj6M7zdLKYTvJNmtALB6OCCVb5g
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] EuroLeague (EUR) M13.2
+  Sheet ID:  1Dth_eAwr4q5Rzkfxzp9OQu9bVkJ68K_s6w5r6FlCTwc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Eurocup (ECU) F11
+  Sheet ID:  1760kJef08G_HEkwYD1aVY2Tg08-FHWKQZ3RQt0Pr10o
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Eurocup (ECU) J27
+  Sheet ID:  1A534S-SF7U2ZO4ffkYmD4PowUBN1sKk4wJI5nAzftLw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Eurocup (ECU) J28
+  Sheet ID:  1W1oMmdXZJNc0cSUB8bTlxG3IDaAdZL8kwrWLYx-CzTo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Eurocup (ECU) M11.2
+  Sheet ID:  1QhvRb3dsBptxiZ1zEHTwVeYiHoCKyetEoiiWQY01YWE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Euroleague (EUW) F18
+  Sheet ID:  1T6gUI1T4JVVyu2e0uN6ceLg613BmMr3hZaSEZJEjJp8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Euroleague (EUW) F19
+  Sheet ID:  1OAv6hb9eFxh7BcNRS6TYR4lVNee9FGbYvG4yhP9tVio
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Euroleague (EUW) J28
+  Sheet ID:  1TBWM7v6ZftWFPTWAPukQi0yaKaee28Zm8xoQUJKfNpI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Euroleague Women (EUW) F25
+  Sheet ID:  1W4bu-e_7VjRc8uLG1Qd7EQn3g--CCYQunidolg4ycaA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Euroleague Women (EUW) M3.2
+  Sheet ID:  1w6PT6XPyd8wRslq2GpJMBaoGKU_mqxtSLciLw1zXt04
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe (ENB) J20
+  Sheet ID:  1fj8EZ-389tPBCYyniV9KJVlW-8keOdqv18ATpGegUKM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe (ENB) J21
+  Sheet ID:  1VXc1crJEhwbZIlbKTwN7cLaeElnEvjmcEAUX06Ahv3Y
+  Registry:  11MVq7lG4d9py8EngiNcT5ug6FYnE1w56Adt-aYROnnzbQzEQ5LdPl9Vc
+  Drive:     
+
+[NO_SCRIPT] Europe ABA (NLE) J12
+  Sheet ID:  13puuay8_dkQ0-aYTjYsyVCavP2m2QKNM3YDhnlmrN7w
+  Registry:  12FuWga0oErgde_OTq7cG6MSmN-flP1c9m3PkN4MFHAN0VBmZU3OYeas0
+  Drive:     
+
+[NO_SCRIPT] Europe Champions League (CHL) J20
+  Sheet ID:  1tnFzhBoF1g0HZap2dx75Obir5acqohaBkpniH0bZ5hs
+  Registry:  1_V4sT2Rws2AEk-nljJWLjTjVepdDUS44MUT1xM_fOR34f-e83vQJFOKf
+  Drive:     
+
+[NO_SCRIPT] Europe ENBL (ENB) M10.2
+  Sheet ID:  1ELWBPGX57z72ZM5afeym03hOJ9B1TqIUpYYpDX2pId4
+  Registry:  15cMGCkHT7sUZWDXn3jAxHNOXQMnAe6Lo6qjNDSNxbS6GFWWXPoXT_p0P
+  Drive:     
+
+[NO_SCRIPT] Europe EuroLeague (EUR) J20
+  Sheet ID:  1gDwwJrA6WpaDPqQEd1GmwMZdCKvUkpZe0igO6FvnpNs
+  Registry:  1lGw48D4P4S1y9fFOO441z_ejhInWs2eWzUixYzj84pw3JyE0wZ_lTIcX
+  Drive:     
+
+[NO_SCRIPT] Europe EuroLeague (EUR) J22
+  Sheet ID:  1xhbMcAD3BHcucHzXY4wMb0qn75zUQWaHUCMp0jOZ6zs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe EuroLeague (EUR) J23
+  Sheet ID:  1OE4apgNTA99YTdoi4pat2ds5ECmuUatEgk6KL_wUVIs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe Eurocup (ECU) J13
+  Sheet ID:  1pQBWDaqyJrgjkLptZ5n4T9Ukdpjtt-8KNGPCCv3lNSc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe Eurocup (ECU) J14
+  Sheet ID:  1eRWikvDCNuqHRcB9jVxkYSAp6z5jOec68TjdRZ-6JYc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe Eurocup (ECU) J20
+  Sheet ID:  1Q_1ZFelbTb5fLg5alM0yAJS8LQiJ2VaDKQaUo7RGYj8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe Eurocup (ECU) J21
+  Sheet ID:  1YsugGc5BpE3KTk1OuGL5U69ytDYKWesxTjxDSNcMmEw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe Euroleague (EUW) J21
+  Sheet ID:  1hQ0MeQp0qJ6rG5C42V_yC9hBrf7TPUBcNh-kUV9P08g
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe League (BNX) J10
+  Sheet ID:  1bSJmpAGWquryooE0-hMV2PUeRxGMzGdwE4SdyQJQdT8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe League (BNX) J16
+  Sheet ID:  1jtDG1ANWtY7FRwLuj8xapLX5i-YO04pcS7Gviie7KbU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe League (BNX) J23
+  Sheet ID:  1osNLmO12bpXh7mBuZ5a8VSXigJ1iFchieEWf2ES_S5k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe League Women (WAB) J21
+  Sheet ID:  10XmIQLuLJ5McSo3ul8Uj3J8oonTu0xRGGnc_tQmOz2w
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Europe WBBL Women (WBW) J25
+  Sheet ID:  1B0HoXwes4JuCE0Z33uKtDRe45ai4l-1tA69A9BWvhrM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] European North Basketball League (ENB) J27
+  Sheet ID:  1i6nWEBjcHmkyBtwfksa8kWg7pwcniFR8GDPbO_I74B4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Divisioona (FI2) J23
+  Sheet ID:  1j4eGf-3FM_Mb8UAVCpr2W-ANH2z0ovoyqWtnheIvC6Q
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland I Divisioona (FI2) F23
+  Sheet ID:  1VtHQRICQly8WPwRSV5VyzD8qIXgZoMLZ_MX9tOkIrdA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland I Divisioona A (FI2) JW30
+  Sheet ID:  1aSvEf_OFVMvuQKwaIdty2AFEbmS5XfMA8sSbVd-AnQw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland I Divisioona Women (FW2) J11
+  Sheet ID:  1ZXTqSHLgxP6AQ2owfjsFWXQXUy-GBqNYJrzUs7HNkt4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (FIW) F25
+  Sheet ID:  1_wwEp3PAJNakW8-hM5eItiY70NZRHx1AdzaqVS8Jg7s
+  Registry:  1iH0YGwjhDWY036aJtUvS7VEFBqgXA0bTIfb_CJehyD-kMCMNVWi0Osaj
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (FIW) J24
+  Sheet ID:  1JqeKbalYkAu3Te1VO7a0HPZsEIQrYGtCATQNRAVtTzc
+  Registry:  1AIMQmh5rgOZljgVkjVE90baEUC-ZvXS8GfU_xOKTN_gs_MkP30S-B6D0
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (FIW) J9
+  Sheet ID:  1Qjb6iFpSq9saDqsvYXaFmw8XRpev4tXoaa2FgGU1cDE
+  Registry:  1RnTJBoRqxwT3AVdJpmHEj93JO8T_F8B3puhFOoJK0MMothHL4oT8V3d7
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) F17
+  Sheet ID:  1cARvlgOBk-wEFdNh0GAdNPbWGatPGsOcK2is3pGEjtM
+  Registry:  1ffbDB7xtbMu7IBRn_7lCYFnUJZvbpEqvC9yyZnTfLIDwCULwhRox8Wbo
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) F18
+  Sheet ID:  1Syu4SKCeIguBXv5jak9br_Qi3KvWcvTx7nAAKA0Q5YY
+  Registry:  1vC8j2sPmQftTR7FC53AKubl2xm3hsbmFWeEN_Qvb6b9-n8IJNSi_z4HG
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) F19
+  Sheet ID:  1c19eqowV_DxjcwBA8_Pc8AW6pVms9m2cDot-qUrc41o
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) F20
+  Sheet ID:  1dvpU_GT-ZfuZqCNUxtVP5PUty1O3WS-XfrtixSffsg8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) F22
+  Sheet ID:  1nLIeFpWDzmF9uMPmMLr4j317QBaS4UtuqEf-53mn-lg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) J15
+  Sheet ID:  1z6zLQ-I3t--07aJ60JE_E8r1YYZ5gUXTUaNt3fRfLv8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) J20
+  Sheet ID:  1tRS05KkK4QpYbNmaDi4gi2Mc6OEv5ujccDWyQbygxbg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) J21
+  Sheet ID:  1Z6C7ac9khI7EzLZL9K5dzSb2vqWkg5Ku-xW1vRg8m4w
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) J9
+  Sheet ID:  1ZzE5pIOg-FNDbm1Wsv-TW7VqzY5GXr59XBrCv__yp2A
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Finland Korisliiga (KLF) M10.2
+  Sheet ID:  1Efr8FhyBM_gCrWzPgcM-ZY9L0dK2YIX7mShACQPPaQ0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (FR2) F13
+  Sheet ID:  1JclHIuOAwwp6Mo96suMucav3gQBZSPJbNv12NmH5XWw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (FR2) F17.2
+  Sheet ID:  1jYf_s6n5Pi_CBWnjjmRempcZxYE9oowObjchkq3LTZk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (FR2) J11
+  Sheet ID:  1cT3eteZ8jfZ6_WMxIEgE6AdBoInNL4V5lPD_UNvzYME
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (FR2) J23.2
+  Sheet ID:  1noYYKO8viqApt4oa_FHdBbVDejILZAydOUe3zFFYH4k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (FRW) J10
+  Sheet ID:  1sye5Kz3uvvjtp71KNgXXR8-cjTCyyY6hFJ12eIxgMko
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (LNB) J11
+  Sheet ID:  1uLDa7SrrxlVhR6XDX8C60-_BNc7-XNc6Z4WYp8-E3ss
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (LNB) J13
+  Sheet ID:  1JVJtkK7XQ8jP7Bi_obk3OmzzxW1h_Mb0M3sUrqXfc7I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France (LNB) J25
+  Sheet ID:  1O3yH38VUl2mMCQxcRtDyXTMlojzBvda86fwJo83Zj5I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France Espoirs U21(FRU) F11
+  Sheet ID:  1Gch7eTnl2Tmh93l8LOXBHyyDfNJ3qNF-Va8Ey_rvN3E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France LFB W (FRW) F20
+  Sheet ID:  1eE_OINSzxoT-PoPYQ28wJHL4-fc9mhINXPVkqu9bPAQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France Pro B (FR2) J9
+  Sheet ID:  11ue9b90OJbs2ftN7lhPcFeulYywhPWd_70b1vvRzlMA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] France Pro B (FR2) M13.2
+  Sheet ID:  1pe_k6GmJw2N4I6_VMntXfQEJWznO7LePt4HXEoljoMU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Germany (BBL) J11
+  Sheet ID:  1LeVkvLv7ATDAxwZzg7h-xnuFpmx6nJmZoHQzBnxZaeQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Germany (DE2) J11
+  Sheet ID:  174bLYk5LUFQSzK43DD9tvnCW7gzfr3RYwjNwgymJhGc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Germany (DE2) J17
+  Sheet ID:  1nc655ZjL-9q4yXc5A1RbwdhTT1D08aUbLLfljsa5VFs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Germany (DE2) J23
+  Sheet ID:  1NEMleV4GwbFdaAoXDg5ItuK1chLRStIsxgs93YZp8i4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Germany Pro A (DE2) F20
+  Sheet ID:  16PxLN8oDDdlS55ol-vMWC7LgUBak29nkCYufVY_cz9A
+  Registry:  1HaCE6y-lPMdifnesGoIab_BBLBQ41eFammUZVPYcDJQ3fTpUhmuB6gL5
+  Drive:     
+
+[NO_SCRIPT] Germany Pro A (DE2) F21
+  Sheet ID:  1qq0nb4KFW9NdMGiBaB4u8ipgdk74YkF3eHSxxcBZqNE
+  Registry:  1IHmnqBBYnlDCQCiQMAujIRQyEFEG5qTIIG_iVUVZPWp3egdLpxTHczUg
+  Drive:     
+
+[NO_SCRIPT] Germany Pro A (DE2) F22
+  Sheet ID:  1eeqIMYcEG2Oeae0yfmXKq2Ji_bjfxM2io0Z08nbAB4I
+  Registry:  1IGqu3exttNs6oiL32koN59DtGtpsyIU-Cff4hRzlqs4lKAjXWGCvQ5jn
+  Drive:     
+
+[NO_SCRIPT] Germany Pro A (DE2) J25
+  Sheet ID:  1Ub-M-CxWZFkoUoZlh69cY-mDwAqiVQjG1kh5OWFR8Nc
+  Registry:  15IMSyLG4owy4_NOSH3BUGgLYDAcpAuejit-1Ld0L3LCPtP2TYmqD3vCt
+  Drive:     
+
+[NO_SCRIPT] Greece (DEA) F11
+  Sheet ID:  1-0ShKch7Czxzf9UEebSPAsCM7OR-s-ma515aNaw9YXg
+  Registry:  1zGLs3eyL3wtv_27RClp7FCbaxbWuNQpOTQBJY9OdKuGUpNffuocHXjkG
+  Drive:     
+
+[NO_SCRIPT] Greece A2 (DEA) F23
+  Sheet ID:  1BhPQdBY6-ZWBSxROgRylIe9DWPPbX9KnrBmiIn-zB4M
+  Registry:  1FMDLS_mBtQJStjWsZN3C73XcmYPNixtr-o8pqZHUlJb3gNYdWYp1q7h7
+  Drive:     
+
+[NO_SCRIPT] Greece Basket League (BLG) J11
+  Sheet ID:  1E172A9ObX_pZCgOzZTCb8tN7y4zRdhirajCzcHFk_bc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Greece Basket League (BLG) J17
+  Sheet ID:  1ASxxwjn1PFeEIkMMtVDy_dWAROO7agM7OblglN3G3pI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Greece Basket League (BLG) J25
+  Sheet ID:  1qnQajlxPMngirNV43aI0tSza_CHv92BIvHq_zw50_Xo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Hungary (HW2) F25
+  Sheet ID:  1X7Yrm_u2L65KFnwRRilhXlWuwuECdgLZLwKjT2GlH4k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Hungary (HW2) J10
+  Sheet ID:  116PqPE6glPRL-0hH_LEAbopqYivi9_lpZSSMJ_Nj740
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Hungary (HW2) J18
+  Sheet ID:  10CxGS2HFqtG49uInHXpfk7xjTsMw6Lz2bsM-o9MQg7k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Hungary (HW2) JW30
+  Sheet ID:  1X37jSwMKkzNgDUl6lBJuCmB2k4eKvgVfmFJbxvlluBw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Hungary (NBI) J10
+  Sheet ID:  1kG9Smb5x6XshW3z-IZUS7GJ83c_Qz5lbRguERoaHZI8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) F17
+  Sheet ID:  1VzVmuouRYJ1YEaqSV4LPKUjvJH_iRiqvjYdcb1Qz1r4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) F18
+  Sheet ID:  1MzsXljcgJY0IZXM5m3zBPSzkpzVFwE-_J06n8IEPjYg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) F24
+  Sheet ID:  1rSl6ZkPEKt1Q6KqZM9E29PzU6rFHpLoVTOPaCoLarEw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) F25
+  Sheet ID:  1EKRksvPp8tdES9Bv4Opq9yFfHYe_Bu4MpqN9YkMs88Q
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) F28
+  Sheet ID:  1opaGMs6o7Ow4Vsm6cyBhiTi_lno0sxORkmvDFoq7R4w
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) J13
+  Sheet ID:  1OmyAf2fX5oP5hJHa6bHabtCnaVDOQjissIdXmww1P8c
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) J20
+  Sheet ID:  1wQ99rBXYKx2a1jDR4mji4zN25ksKDT3ihjjgXv4n5kA
+  Registry:  1dE5buocCs-EekXq3F9b8w1ZerC3zIzykPK6fCBZvBTvmknRvQSCzf1O3
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) J21
+  Sheet ID:  1tt9OzaWGlHjR2_6I1UPX2oGIhJZmdLLxFYAA56MjojU
+  Registry:  1A8bsTq6imqtgFNTZEyf_Vqs7Wf9PwFuWKjpUC8fY0YaD6hUUrYPUhMW0
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (ISW) M1
+  Sheet ID:  1NV1miOaf7zPlHhodB8Kv4R2YKWjkYng4n8PCXP8BsOA
+  Registry:  1i9-4fp23KDli1FP4723kXrIby-b1sPtboKJluy-xqK7ZWsVqbVhUZ3UW
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (PLI) F19
+  Sheet ID:  1dw3W4rA53FmhyL0oaCbZp4-lI0AmL-qitswOHOGBBvg
+  Registry:  1bZIamPsS9JCXNklRHlqO_w0SQ-Ocplrq1YKjWBdc8A5E4kJPxt-HKrTi
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (PLI) J16
+  Sheet ID:  1lKMZYJ1VfI4J4iT6LGpq8dxvRGepUsjLnD5Ud-8pRSE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (PLI) J22
+  Sheet ID:  1h4caZTdVFqnCvp9FBRFjvjLdwgxPDY2RvI-AvYT48QY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League (PLI) J23
+  Sheet ID:  117JpFyTUW-XLYo2iuXiVeUXSzLl-MEofk_23AkAhmIc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Iceland Premier League W (ISW) M4.2
+  Sheet ID:  1P9rbf8paioGQOrDVAHfne4Z0K2V1191xP1gsnpHza1E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Indonesia (IBL) J23
+  Sheet ID:  1Wpg1FmhH6X32U-8aRbEQYUU3LQc4VlrRU_r-mB8d_mU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel (ILW) F16
+  Sheet ID:  12UuPIZnauUADV__m5SMNtjGrTc6hE-d7oKNKVNHIkLk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel (ILW) J12
+  Sheet ID:  1p4FegTFAhOZuPEL3qNhT9zbstG249Yjgo4Bn-RMwoHs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel (SIS) J12
+  Sheet ID:  1keenmO5RmTELjigrf2Bb8FPHy3I4NDkM_BPsxdHxpnE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel Liga Leumit (IL2) J13
+  Sheet ID:  1vgwZ_yofeZPviZbwLbAjbcddSyPy6Yddn-njkwEDLxQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel Liga Leumit (IL2) J20
+  Sheet ID:  1Iuxd2kZNtqX9a1ZxgsG6DRiRa68OxiQUJNvw2YMZivY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel Liga Leumit (IL2) J24
+  Sheet ID:  169ZF2F9dm7hdzSfi0XLDugr-wTT8w1xAPt5TOpenY7A
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel Super League (SIS) J19
+  Sheet ID:  1TlUMVmPiN9FZmAmkn_HNtEwZ-9OjEbdVxYkVIT0zXT4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel Super League (SIS) J25
+  Sheet ID:  1oOBcQ0JRVAX8d88f1G8xKhZT8XsUlImK-e70vZdRNYg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel W (ILW) M2.1
+  Sheet ID:  1IxG7Ia5ST2QxB5zQxjbh-YPObOyhXm2zwnTgNk6JSOk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel W (ILW) M2.2
+  Sheet ID:  1ciIiw7CtFtIOS4mI6Ij0oKVZv7yCAXa6KEUZum0_NYk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Israel WBL Women (ILW) J19
+  Sheet ID:  1CmavVfZL8o-eTqCWisKfglLNTR1ewW4wY3QGFHWxhWY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy (IT2) J18
+  Sheet ID:  1ViC9A2DY6InwcH-fB6hXOxkB7XOrS4P_SdN0ddH7ym0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy (IT2) J21
+  Sheet ID:  1sXhlUNi_1TE6qTE1oBJr24px0cOfTN2YMitRL92e63M
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy (LAI) J18
+  Sheet ID:  1P67miu1U8PFuqgwK852uHsYI0X4Y0SuUxMj8c4kvL0w
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie (IT2) F11
+  Sheet ID:  1GUGmvkokYlR6nHmyq3GCl_rI6MBP1NJPafWkD3LBT10
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie (IT2) J9
+  Sheet ID:  1entMOOiSL8eCxLCMcA6cgK-3Pnur7BpCx41Afz1vx6U
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie (ITW) J11
+  Sheet ID:  1UlYL_i15ZXN0lC7A7h95fjsP-TvD8WN0s70_IO9B310
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie A1 (ITW) F28
+  Sheet ID:  1Ki8-WsTwgGxs-PrhC4bRI1K4E5VQRe5n7GGbw5Gng5U
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie A1 (ITW) J25
+  Sheet ID:  1fw1bJ5v4jwuekTIaqJHtYJuocyn6do-MehKlDhyGnkw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie A2 (IT2) F22
+  Sheet ID:  10lrKaEML6GZuXBpQBPF9OsIAhthcJPo-KQ4NU0mV8bs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie A2 (IT2) F25
+  Sheet ID:  1MUfzavLqU8eTfQQU7Dvy_aZB_8lWZsLSYOcoFTtWnzE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie A2 (IT2) J25
+  Sheet ID:  1F_x3JOXgubldr1qzIg8WZS3sMkqy9pw3E76aY9O8iPc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Italy Serie A2 (IT2) M1
+  Sheet ID:  1oz2UZGbARW7Dihn3dqHuo31HvdXxPAnpNyPllUwf4WU
+  Registry:  141OWFfbTkxSrtjskkEcZzEJOKv7HJi7jIqfraE8Rgr8QLWpJlhQEMZYV
+  Drive:     
+
+[NO_SCRIPT] Japan B League (BLJ) J25
+  Sheet ID:  1L0Izw7qBddYU4bxFoMmyR9NU-rtYxIA_-dPiycp2wjo
+  Registry:  1C0SP3Hm4JepfE0LPq7YYCIXONknWhmOec_gux-4eD21-fltRei3qsCmg
+  Drive:     
+
+[NO_SCRIPT] Japan B League (BLJ) J28
+  Sheet ID:  1Eu6IWK8_6Jr-x-kGg-BaYkpaRwhqd_00sVAmWqbjsSc
+  Registry:  1wihFhzuKXMuoyqQNVqrSjOqVDPDrE6lbLWUzIZt7TkPK_GE6W7uL986D
+  Drive:     
+
+[NO_SCRIPT] Japan B2 (JP2) F28
+  Sheet ID:  1-WYgn538oxiPuwqFfblQMiRQGh5xpr_XCCgoOZzB6x8
+  Registry:  1_D-kbwPLsnF9sDmhMFlqoXiqZhqLPGMWeGW7glpe-hzW1d02ZnkCL2Yb
+  Drive:     
+
+[NO_SCRIPT] Japan B2 (JP2) M1
+  Sheet ID:  1kgyTLaIcWCgUDDXkZFC9WKf8F1xTdK9TRXPrTbwl-SA
+  Registry:  1vQ3YmSz7q6WdgkEJekfNKIAnmnB6tY12xrVYJCksaqULaAlDdgGLaZXm
+  Drive:     
+
+[NO_SCRIPT] Japan B2 League (Jp2) J25
+  Sheet ID:  1-BN67ewIZpKrmFVGMzMsBqjhX48_qRniu4PwKaIDgnE
+  Registry:  1CilVjfRp6voMFceaKjWDmia3W7ClAVPurIPLZQdPGwLc2H09fzzSUZVM
+  Drive:     
+
+[NO_SCRIPT] Japan B2.League (JP2) M14.2
+  Sheet ID:  1TTX4ZiYdhQFLsQl1dwtQf_Og6MDcLHpJstC6zPQGP_4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Japan B2.League (JP2) M7.2
+  Sheet ID:  1Rrt6kcGCdGqSNy6eQ9tQuhuLBWZhujJvkqWnRmE8qYw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Japan League Women (JPW) J25
+  Sheet ID:  1ZIo_V11pVuegXUm-oBJeTKJOq-3LqCrnmNZrzC0zNKM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Kazakhstan National League (NLK) J11
+  Sheet ID:  1-LdoAJfoPxlf1b34kCkF6_hrqtQTNerquM-GlmDtI44
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Kazakhstan National League (NLK) M3.2
+  Sheet ID:  12C7pd0Ky_Kw6C8chrTHpS_IOMNikAcb3Kw8I0LQimVg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Korea (KRW) F23
+  Sheet ID:  1AFi6rjcdGmWeCfBjcmL8FaHjSzqTeTSsnZdo5rn1xac
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Korea (KRW) J28
+  Sheet ID:  1nrhpb4N3e4ZYvMXHvBodoGZdEfMXqryhoRoC-dkZfZ0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Kosovo Superliga (SLK) J14
+  Sheet ID:  13sim_y1vOai5Ewos-k_FJVVkBKOoBSbT6mK5k3Wqs_k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Kosovo Superliga (SLK) J15
+  Sheet ID:  1Vd8Oz_zMgRz4CDT4Zb1ELkkAt-aTriBDtcvNxRSxLXw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) F14
+  Sheet ID:  1TGfvqA-Pa76H7uWCy43u_IEpnSTM000BAjQUAt8HHU0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) F17
+  Sheet ID:  1iNurQcZnR6ohNO3udlx1kMFCLbzQturAh0WA5GVENEM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) F18
+  Sheet ID:  1qe2s_6s6m49SEfarjt7pPJD5XrGx-pilhfnUjwT1JnI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) F22
+  Sheet ID:  11IWcRgFOnVyJp6o_vMsVlk6RF1VfyNLxH9UjX7dgfog
+  Registry:  15xfbYcl8OrCLVwmKJ6ls93T1gaap5FVNWV0DsILqDTKOKDjB7rziiac9
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) J14
+  Sheet ID:  12iXh11mMcues991r09kMFMqsMy4DP5a4oVvxqBs6feQ
+  Registry:  1RSebQZoP6YINFhdsx8FxgdJ4cIHvLUFSb7XItj19wZRSOwew-X5Lskei
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) J20
+  Sheet ID:  1tdy5Xhr6YAlULS2aoU-GLATzHgiBcrEK2hG1P9ZC6tI
+  Registry:  1GE6VujUMHGMyX_C2Gc9mpYFjQiBSprAIuAK2dgCXHkHh0i3hlJ88sUpr
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) J21
+  Sheet ID:  1T7S-GWEbGUTAI5YA9yfEKw52Q2KXiVdx_Mgw02oSV2U
+  Registry:  1pD60fpmuRu6wJLMP-6PYAK2FOx0Mkwo2Jp1WKvimRDaSq2UEBD3Dw3hg
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) J24
+  Sheet ID:  1sadNTIdGIVKsMm9yWA7Hv6AQ_vp0U9vb8vEOmVEHXjc
+  Registry:  1WM9IQbX9wYUsdSLUENY3WGSvwS4gLbLvA3DBOpHOMqqLwK2yB-yRBECp
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) J27
+  Sheet ID:  1isOXHpVrROj3PHX9l7atnaDmRMppLlXoY5fFfRDynJc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) J28
+  Sheet ID:  1rDUIuom65Ut4xSZDzxczhTVW70XZIH_luwwTfRncq1c
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) M10.2
+  Sheet ID:  1fCGFmZ6O85zoViUIrw7amrOCPK8kazkvDfVEHtWQERw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) M2.1
+  Sheet ID:  1CocMJFcNa5PRKGbcw8DhaFo67hjU7Gm5oHNE8dq2iok
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) M2.2
+  Sheet ID:  1D9PQZDXf8pSYbQJ5t7JrppAJKBkaUnFppLtIO3t8Ji4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Latvia-Estonian League (LEL) M3.2
+  Sheet ID:  1WzA1dpNZ1Wa5-raeRzobKkpSnlIixgYr1OtiRZ2txY8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LKL) J11
+  Sheet ID:  1rsczwLwhtB-vrsyitb0huCfwZWEGndRVY5Af4sjPaU0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) F14
+  Sheet ID:  1RN8dmwtBWVg-L6HRJLegJIbvRhu-BU_7iOBb8uBVlz8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) F19
+  Sheet ID:  12pO9T8dTjSSdaQPJdyBXXV3Wm4iiQC-XhXe1cn6x44A
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) F19
+  Sheet ID:  1j93vgUjiabjIPWgzE0uolnYRmOp1jg_xNP7ULz-ypfo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) F21
+  Sheet ID:  1Yt2tF1-Noa-hLSsrdwihtI4je6kAu2VU3piuAl8RMqc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) F22
+  Sheet ID:  1XEPcEEeSYHBBF5Adxp4wdl1_TVcZMwmAb6Wj7Nrv1js
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) F26
+  Sheet ID:  19O3eUDTfEP4oGN4Z3BG2U9E-h5qLdlMHv1FpJZVM5ik
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) F28
+  Sheet ID:  1xkjG_BNMrAzSRuglJMLn-s0OC_YEf93yyEfLSvfJMwc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) J17
+  Sheet ID:  1GAKpiNzUM3ac9RCBdOHz_IsTcm8FXQAur5Bd1TYEJB0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) J22
+  Sheet ID:  1J9thgp0Ro2sf7MO7S9bcH75Yvw3NG1Wu0g19-S-_tX8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) J24
+  Sheet ID:  1lYKDHRVsHZI4qRrCDzzQwEXvMPXq034P8_xUCkIPuaw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) J27
+  Sheet ID:  1JAB0SNRT9powvIVxXgU7Y29zFDrgri2EMmh9JmEwvpQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) J31
+  Sheet ID:  1j5Qf6rFkGwdUT1eWrefo0y47ZVk6p26SOmtAH4zLjzw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (LT2) M3.2
+  Sheet ID:  1VYyXS0-bkLCyvnFwNXONu8t227lf53ZpuRGP17U7okE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Lithuania (NKL) J15
+  Sheet ID:  1AmkUF1HAev48aI-8yQRjDi0C8KPkmvD28UlbP60xnZU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Norway (BLN) J11
+  Sheet ID:  1JZR3SLL_WjlUzoYQGPUZe-LFNEcaxSTdTY1oNUmNjoU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland (EBL) J11
+  Sheet ID:  1T_co8a3Jh1VldqeJutmr5Ay1TuU1CRrjjDr3btAYI9s
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland (EBL) J17
+  Sheet ID:  1YFfpVH6VUQ9ZSIG0x3f2d71yJgRVpeoky5KkBmg2FHI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland (PL2) J11
+  Sheet ID:  1slzD0UP9T-OXsrRyjeqp3dd3uUItURdgCnPNWhoj0rA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland (PL2) J16
+  Sheet ID:  1fFBaTNQgMPA6NBMxDWbQ9ilfZqXUvhyXV1xgLhu3pJk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland (PL2) J24
+  Sheet ID:  1zlKldeZFFXHXGfyxcXWMSmeCa8iuOXgfkEpsJ9HJZFs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) F14
+  Sheet ID:  1ohbht_F3pklnaIoa7L3jj-cYMB0jFjgzMAk-6gF0GKQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) F18
+  Sheet ID:  1MY-_bfsiHFjCA4JUsBJvodILWhzUOgxd4QcNi4RQrlw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) F21
+  Sheet ID:  1rCSg7ZpjCcdgztzRJEm68UKsLyezBRxTl3v9dV6xzp4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) F22
+  Sheet ID:  1QwokBmuMPD5GBkIy1xFKaHoTIMXr4hp714xvYyKiTMs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) F28
+  Sheet ID:  1SN_TM9lhnBflWUJRLvJGXFQgYExhkidXAmeHGh99Flk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) J21
+  Sheet ID:  1eQahwp_ac-vOADEkqefoGon5XKNsQ0JNjXxOCrCJddg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) J25
+  Sheet ID:  1OWtF3cj9h_hM1WKf_B6pMkl6Nq4ipHzD26nmtSEEvXY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) J31
+  Sheet ID:  1irQ1yNdEnxx5HUlJ3yE68MrpwwNIu2ujgxCwXG590g4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) J9
+  Sheet ID:  1jyJF5Q95s_l_4ZyqMoVVSRSt8l81B_h_T28V8K8V4_c
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland 1 Liga (PL2) M1
+  Sheet ID:  1jJSZmLqwEwGN9c4seFTHPHNGoD7z0eRgRdQoJVDeb_o
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland Energa (EBL) J23
+  Sheet ID:  1B-E2IjNvz4AhuI1SPiUMZbFaKSddeJ7gycvgpzHctbQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland Energa (PLW) J28
+  Sheet ID:  1XdJoezMrrbZ0d7orBom5OcTSN_cw4PPlfTN7PAMiN68
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland Energa (PLW) M1
+  Sheet ID:  1Z38lvleNseSGmlzZDs8Rw_ZPJWexebAmBlVsDy9Qges
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland Energa Basket (PLW) JW31
+  Sheet ID:  1wMyJtVE4sv8ALj_My_WAyCsxhKIB9cLFVoM-Z3DoA4o
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Poland Energa Basket Liga (EBL) J24
+  Sheet ID:  1uKI75SKnbSzWVZXZpJ2lMcE-Ytm6Of9SZe0QZisrp4Y
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Portugal (LPB) J9
+  Sheet ID:  1tn0uGYL9i1zEwIpge8oRj_vIXbuQB6x3FR7eNL8USGk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Portugal Taca da Liga (PTC) J28
+  Sheet ID:  16xv_eLI_-pbZlkPal41KwqPdwyFYpIMuAmMQwqIcUx0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Qatar (QBL) J14
+  Sheet ID:  122G4dGePKl0xU3ZpEACC2tPxZW0kH6Sr9IS60BSFWNg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Qatar (QBL) J21
+  Sheet ID:  1c8l9lJAEOt7bZyAdAcYkVYEBCJ3NO2iwLHeSoSDR2kg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania (DAR) J12
+  Sheet ID:  1ZaNbTC6CpaFhi99oddSwgJkeS8ULdxD4NkkbsRjvPDI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania (DAR) J16
+  Sheet ID:  16qpjyyw4UhmYEJH7-6FKXlMjDwFxqdZG3YMIJzTLNYQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania Divizia (DAR) F01
+  Sheet ID:  1f-Dszv8A-AhMZvtqQXyzt9XCKEryJ6s2K5sd7bi0usQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania Divizia (DAR) F20
+  Sheet ID:  1G3KzHAeQvVSjmlRUb6AbX4-UH13O7HncAVtibca8sZQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania Divizia (DAR) J23
+  Sheet ID:  1REtENpbkKM1mlzjYFi2LKIO5WrNM9bse2BaybSm21Ck
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania Divizia (DAR) J28
+  Sheet ID:  1X1wY7MW3hP7ljXqwlAMZV-tRjd8pi8b-DXq7OsFjBus
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania Divizia (DAR) J9
+  Sheet ID:  1K94oJMuJWY8HeiwTd1TTNsQJqR3g-NJjYFMslD3EEmw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Romania Liga National (ROW) J9
+  Sheet ID:  1q5FE-TSgk1p8jG61I-8UeJp2kGXnd-Fk4lD-Qts_3x4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Russia United League (VTB) J11
+  Sheet ID:  1swJkQlA4c-V1Ryyf9w4DljIVrX9LTRZJUREYJdIPE2E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Russia United League (VTB) J17
+  Sheet ID:  1Hs3XJGWZm_edTMWKZNrebF58URO4xvMN_Qejw9YSNso
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Russia United League (VTB) M10.2
+  Sheet ID:  1DB_0qy3YwzZsN0NaV4nisLKYj8GeMW1iY4KWtZs8as8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Serbia (RSW) F20
+  Sheet ID:  19nolxIYeQI0_gWD_a-iJ2xevt_8n_jXYoYw7-rginiY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Serbia First League (RS2) F11
+  Sheet ID:  1WFrXsQE7AOeKsw4dmgljKBfoHjEcuKVZGXq3SIVCfTg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Serbia First League (RS2) F28
+  Sheet ID:  1Y8Nl3kfyFYj5hS-kefNVA3ZXC20HUjlmo4SgybXuRMk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Serbia Women (RSW) F25
+  Sheet ID:  1_b5Yb0PdsbA52viFRd71p_zzAEmIh1BJabTahsNEYK0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Serbia Women (RSW) M1
+  Sheet ID:  1J7wez3K3OdFxeiMHLVplZX1HdDNU4HaUPymwT0vTo0I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovakia Extraliga (ELS) F11
+  Sheet ID:  1C0wn3qgWbaj6mtswTErj4n0ZDZ96LVDbkiwrsTlaa2c
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovakia Extraliga (ELS) J17
+  Sheet ID:  15QXTzPI1ToTbbYpfmwkIk9KSAUFTTtH_urhFpJFBRkE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovakia Extraliga (ELS) J21
+  Sheet ID:  1Bk6V192oxSGUMnnoQay8bza6m3JeMu4EswsEBpfU7Ck
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovakia Extraliga (ELS) J28
+  Sheet ID:  1ZMLgZOphdUwjsHSoXOnILo2G93kzRQMdvyz5Vg6hZ_U
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovakia Extraliga (SKW) F25
+  Sheet ID:  1F4Lxt7_ejyBGHNSqp8TfsEk8UuNVQHBkZfRNwtIiUOY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovakia Extraliga (SKW) F28
+  Sheet ID:  1bLzVw66CzLxS1a3V-X4gow03HQOd1YtGvSpYdLyehcQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovakia Extraliga W (SKW) M3.2
+  Sheet ID:  1tZMEa5F3NFv_XvsN7a5yx54-QvFuyjKXer8AL_3y-gM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovenia (SIW) F24
+  Sheet ID:  1Yzs8kQFpa4cMKDa1KaIPc7qcrSdlvb_Z-c8O5b-fG2Q
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovenia (SIW) F28
+  Sheet ID:  1-l_E50e3pCz-8rfJMIXYmcD4XNjf-GL8STGyDnbxdtQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Slovenia W (SIW) M3.2
+  Sheet ID:  1GWmGAPwFwZP9Z7XX4-W9z6uZhPlEcG31dU7BUvDGOeQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) F16
+  Sheet ID:  1hoNP8udic13vJ6zrhsQPMDgPIGP5mdv2YjkNX4VbwnQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) F17
+  Sheet ID:  1V8Qq5QUT23JXMzjO8ODa17X-wKyVQSfTXkQPADYmLCQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) F18
+  Sheet ID:  1e-_Q447qizhrUFSZ4e8jdRYrlPE7WG4icpK83p2KsFo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) F19
+  Sheet ID:  1OEuWEaq4BEg8tO5sDIHwVbdu0soqhJNCvJhfB8SM84I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J11
+  Sheet ID:  17Gb-o4fr0N7FXoR9sMrNLGsZJEqr7V-m7Nt6NcEhyMU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J14
+  Sheet ID:  1TvFjLxWczBQp8xjrAoERua1GJhyDLZRnQjNnouOnzpI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J15
+  Sheet ID:  11kcYhV4c2007bVNPS_8qS5__SJytlCpGgeu-zuiFGtg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J21
+  Sheet ID:  1pHlytAcTsF95EAFa4fSDyoZYfK1T50wluRZyKJuLljI
+  Registry:  1zvB5KGEDrMAK8NiYMPhVTcBR4K9VSZg7LkzoObkLBnm0tcdHb3x83NB7
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J22
+  Sheet ID:  1UJaKX4Z9nYMUm5BJK_W4rE-C635cOB2C5qyiLreLB3k
+  Registry:  1KpAYIIWLp0wwVXaWnxsS14lLlWGqn_3xXvKBaciFuBnV3z9KnmqxbBBP
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J23
+  Sheet ID:  1g9uEmGlytV9mOZNDElKvRCo2-r1zlJw40WGZwTO3nDo
+  Registry:  1VBPeSMlh5o8B60mzFbw7J0tHRPeC7k5Vnj_Y1JNPHmKfwC5za2rqRRZq
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J24
+  Sheet ID:  1zHipvxiiL5ZQTKeWmeEbsYb4xFSYFHYGbxgnx-y4Zm8
+  Registry:  1xwqMTRrxSkVo65NahXbyBEgJC0UNzrBgt166TbywUm5uadfSXiEmRerj
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J25
+  Sheet ID:  1Y5JA02GRzNNNdX8vgpeDl-uQXeDen0ridRnsMbtkKrA
+  Registry:  1XLolenJAW0ZUxAm_1rSTyBKUVjMGyKwhfDD0ALzWJMS5qTRt_rloh2WJ
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J28
+  Sheet ID:  1nt7ES--1WPt3DrCTrvaYgAJimDVSbYjNz_b7reCkuZQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J30
+  Sheet ID:  1rNZVtuaCQU7llS4TL9fde_Sox55lRuJtqYEiC3W21lM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) J9
+  Sheet ID:  1OQ_LpyRB-ewoWDhmKsfQItXxAVq-ttPo2w556FQ4J2w
+  Registry:  1eSx0b3wGfRtrKwKt32VPjjFsfPUkvHmozK8TAn7u_6BFlFsAPS8seR5j
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) JW31
+  Sheet ID:  10txTAG1uergSR-4ae7ckG9p-ejQMBwuYTLeP4pHY8ZU
+  Registry:  1SYIcSTC4CP-ks_EzLDIkcJoGrwaffJvbg9qqCzvRSB74T5vtn1647AZ_
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) M13.2
+  Sheet ID:  1U_MOms08mOX-4-TqOWcy8T8k-Ry_hxL1ILNF8vpqBl8
+  Registry:  1R15nZ1meIgo6d8Iwzbq-HxejD4Z2aQH-_PgY087_xfTwANmMnc7XMLAl
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) M14.2
+  Sheet ID:  1C5Z98oWw6sqSkWdlLmUti4lJmkm3ycOBksa_Rv7EVdg
+  Registry:  19oCQ__32VfcsvUqs0Kn14sIhr5_b0EPlLgxDf_LQiukXpQllZtkT1vNz
+  Drive:     
+
+[NO_SCRIPT] South Korea (KBL) M5.2
+  Sheet ID:  184B26GHhBJHDQuyTj0of8pKvo2eapoH_61WkXP7u6GE
+  Registry:  1bcw-03pLrFecE_vF87he5JlgOj8_-UugPM-UWxrFI8ueaSXe0bs6lLQj
+  Drive:     
+
+[NO_SCRIPT] South Korea (KRW) F25
+  Sheet ID:  1NbOfBS2DZbQ55hUI5Iix2qt2SeQDuEg-uLtW7hJnMfU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KRW) J16
+  Sheet ID:  1U_of6XR986FLbgvUDexRKEIS-pwtgPF7SuRMs9TBxwI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KRW) J17
+  Sheet ID:  1bJ6_5PYg6YLerFrhiEJ5AHk0C4tSABHsX-if9_1FXMw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] South Korea (KRW) J24
+  Sheet ID:  1hUUqQxY9P4PoDBFBTRsP85WTpcX39xWr1vrsOTyWk3M
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain (ACB) J11
+  Sheet ID:  1t_TkPFBkYp5FwCKu-ODpBGzcmU-V5baBVDxcUrNurSU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain (ESO) J11
+  Sheet ID:  15u3Xx6xqQn6ktkexiTc9GUYgiqEPZyKT1ib2U9tQ6-0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain (ESP) F14
+  Sheet ID:  1LjFgw93fzr9f9LQcXMO8KhTQdvWbs2eMsfiXe7X2xcU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain (ESP) F15
+  Sheet ID:  1fVFKLwMYHyDhvYFuO5HamZ1zLGvxRLRf4tMk1ZkVf2I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain (ESP) J11
+  Sheet ID:  1mZevazp-VH5lmo8JaLkUa2Gmnk15VQA3fllb2US3g1g
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain (ESP) J17
+  Sheet ID:  1UGQ3X2cOSn62ANujKGlKBvJMGkJdTTzw5NhHjG647bo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain LEB (ESO) F11
+  Sheet ID:  1TvN98fGZQsWy1lFCLJzRE0rGTqOAVdXok88qpYCt_mc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) F14
+  Sheet ID:  1GSjsmOJNmdzMheUWvs2Paf5O2V2lzne_bgyxDVhBBTw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) F15
+  Sheet ID:  1YJAg0VSPKSA3rZt3MWAVL0u8O-OTO64MWN3HbRcYJiw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) F21
+  Sheet ID:  15ibA-fy6KN6F2QtG6C35R64Zzi1Qw4gDH5269cTQa14
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) F22
+  Sheet ID:  1Y8DTp1lI1Nzx7tjY2pO8Az1BpDjbVqCFMYSjIxfUgY8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) F28
+  Sheet ID:  1GSo3cFmsTIEETyEZr19Or2txo096WNnthdl6DFzy8_4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) J11
+  Sheet ID:  1CtAzsgxpoHzLzyvR4AcvnmZh-yX0xk4IKz7GdISpcqc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) J17
+  Sheet ID:  19hB4Ws3v9LEQFlkzxl4tG0P-pIKiI1J737HkclTXEEs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) J25
+  Sheet ID:  1DSK2Z34HGzSxB52MdPiXeTTz5wQtxDW5Kzb4_GIw47s
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) JW31
+  Sheet ID:  1VbGiV-28PwBIDmHgul5VAgJ6W1h1UGx5R8aEEx4ExCI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Liga Femenina (ESW) M1
+  Sheet ID:  1armo3SUlx1u8JJqfJTRqroRcfh5C9bCooblRuT4UR14
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Spain Plata (ESP) F22
+  Sheet ID:  1eaCQTIZXv6eveI_AjXoqrM99TgL5Jn9JxHO8FPZL8XU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketettan (SW2) F14
+  Sheet ID:  1665_auzaL64wz0R4GQS6C8eM4J5Gn1Qbql58s2e2DY8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketettan (SW2) F15
+  Sheet ID:  1z_48hG9l2HmDFxvmv4nY9RAC5WVfSLYCQkH59JQSmpY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketettan (SW2) F21
+  Sheet ID:  1HRDcn3XKfcbljvfgZaEwdQKljSSv9cAS0HmrqW19szY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketettan (SW2) J17
+  Sheet ID:  1aY2lCClLO7sJsI0kGlC6ae1HijekRoELdCms1sZQCmI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketettan (SW2) J24
+  Sheet ID:  1qNFSeDh7dHVZyrn2AvpUpfLQNRxr71BNsc3MCxElzlo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketettan (SW2) J25
+  Sheet ID:  1SZyvrSP7R_Un9QNBLFJprfswkRoLPinPRxqkOktowSY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (BLS) F17
+  Sheet ID:  1c6UHD5OI_zmnXe4Y0kqPvOHmZiodVFKHti2XSJSu04o
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (BLS) F20
+  Sheet ID:  1f_XrPlTrx9LfT545e3lvmGXL9sKJyftyd3vM3IiBodY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (BLS) J23
+  Sheet ID:  1IYg4a9d8ZkmrZhl3UtMhNCvAsaaxmPTmfiJxRiAm-dk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (BLS) J27
+  Sheet ID:  1Nu85il-9hnt4fPHS-S5wyIhcgvI3ymi-JoSaI1Tahks
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (BLS) JW30
+  Sheet ID:  1AXS8knaqeNFK4OwOFEQeIL1sDJaWAbdVc29d91H09xE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (BLS) M10.2
+  Sheet ID:  1U7JF-Q4ZW-rjzDIGWA_Lab_M5ssGqodMYUAefLgsxwo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (BLS) M13.2
+  Sheet ID:  1bRad67j0epB84PjTQ4572AZ4hHdB9TI8EyFuTqy6s_Y
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (SW1) F11
+  Sheet ID:  1XwlOox_2jj64zrpeiGuQtlP2C-TPhv-5exv_65qeyfs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (SW1) F20
+  Sheet ID:  1NlwKimStxt2nkV2VXuQhlyBy4FXLEm8wDAhD1riUtE0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (SW1) F24
+  Sheet ID:  1aFsU3c3I63MeZ19hlcxdqgBdrOVhOl61bgAWyLzV6jI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (SW1) F28
+  Sheet ID:  1A0DAVCac5G4TK5WOn0zQSaY5jmBv7RFHaYL6iswb0Oc
+  Registry:  1am4HYt26n70LokbJnvcodq-8mpPERKrGaYaKa847cXozpUj5paSogvCS
+  Drive:     
+
+[NO_SCRIPT] Sweden Basketligan (SW1) J24
+  Sheet ID:  1usBxk8arp_2RhUAl7lBC29kYKFgtx_tqC_BvbtVKz90
+  Registry:  14citA8bl6opnXFL5XkpmWvd7EoZM4qqWcDHGZF2GGPaDkGe26yz8Fovd
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) F18
+  Sheet ID:  1RK9mgDoFYPnyhfGMrQA7hVxYt0Fo3gV22vnAMBbQ-cI
+  Registry:  155fXZN3VI2_lIiPSvO_Kl0SxU3tSpM9A2smekSj3kPw3ap7qvSC0Rk6Y
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) F21
+  Sheet ID:  1EJKZLXl7iovNp0X5rkMzHOD5gaRy26Ai4toCb4gxQF0
+  Registry:  1xm5CZv6vTH790sCrtio9WcmyUx9it1HZ6IF2TJGabBjnzft24s_sWusS
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) F28
+  Sheet ID:  1hpgln-HXdDA1CnLO6wuvM2I8gua1fhuNTI4isx_BAX8
+  Registry:  1AE_lSTY85uuXbJRbDMgFLMY2yO2Cu_CGqcRq2WY9TH8NFa_d43vPVuTi
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) J10
+  Sheet ID:  13V-lOHe4h7eLTOOxKSenG9QGnFzGVdRPTEhO-UiCoQc
+  Registry:  11Q0DTYsPcMgf0I8s2r0m-skBufmhBzRRVOtD_KrVaEW5GLWm69Q9XcWJ
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) J11
+  Sheet ID:  1TSfs3tEodjgmbBvp-TAmn9wqYyNHKcQyYYH2UoUXTCE
+  Registry:  1Byk6o1Z1aDH3SO7ZBGOVP_yqXsUNK_NWta59GUYuQLZqwYLHZvOTJbAk
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) J17
+  Sheet ID:  1QEO2ZcVAATVQAC48BOGro3DAU_heGXcoEhSTjy3gSdI
+  Registry:  1ibUw63KAxOEtQLXwMtApSGWBNBBPmUzx1NUuE-NXHXKo1RIhaPmWwQD0
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) J31
+  Sheet ID:  1H5cmUyGlfOXOs52AYfa5ILr_4j74AM_weyQzWxGBtjA
+  Registry:  11aERqcp5j8luLXFGGKwjhrsK-1XWS_cbWXQ76G4DWkrP_T6BGDSAAbuv
+  Drive:     
+
+[NO_SCRIPT] Sweden Superettan (SE2) M1
+  Sheet ID:  1RJx-2tu6jbjZWLaYLUS0j991FqT7Fskx7C_3z1OfkQ8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Switzerland (CW1) J18
+  Sheet ID:  14WC5_8ODtdDMAmsbbU3T1TbhDajt74B6-tkGdbmcYko
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Switzerland (SBL) J10
+  Sheet ID:  1TXJEcJ_dD4gV5a5crHdQerCNh6siMVkXpVEsL8hpt7Y
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Switzerland (SBL) J21
+  Sheet ID:  1eLH1tYWk4O4EGMcTjgW170AGo-aKtMeFkJkQ1lsMk6E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Switzerland SB League (CW1) F28
+  Sheet ID:  1oegltx_xLXr_q-2op08b5O0zPLVVNI1Sj08s5jsVJ3Q
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Taiwan (TW4) J11
+  Sheet ID:  10-OIk5cqpGqp7pnFmCRhl3qjlYajlpDPAptScWdQzGE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Taiwan (TW4) J17
+  Sheet ID:  1Kn1KxVJnBT23ED7AafFqYYTsUvNjPNfRwc9snxOl5dA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (SLT) J17
+  Sheet ID:  1IqF4nzuHqdWigsGqJNaDG9aCJAUltaveAUk3dsa6vxg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TLW) J16
+  Sheet ID:  1ngCZciz22ianxXcQ1XTg4qPu6bx5oEktLfIK3CEpMYE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TR2) F09
+  Sheet ID:  1myPjUpapH7QB9DlWTCYF8B0MccB51reJGnwJ5b1IQ7s
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TR2) F23
+  Sheet ID:  1hgnaOPKBxFe8JIog1s2Fcu9r4zaeOszHSZ6BwAOzW7E
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TR3) F20
+  Sheet ID:  1kjjNipWrCU6Dg9i9H5vD4KyHxIM6fdRvrTCY-uiOLD0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TR3) J11
+  Sheet ID:  1I2Sk3H_7k0Psy7_v_K9ZBudB5vNPSrSWUn8yNwwXQ6I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TR3) J16
+  Sheet ID:  1dwA0MN5X6jQnhOKBaou9WCqCWlDHrs_7tjoqQC22Dhk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TRW) F14
+  Sheet ID:  1s8RoWEM2Sx9sAcvMKL-MXQEw_2c0HL5JNnd6KtladKo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye (TRW) J17
+  Sheet ID:  1NxiQ7OccNONVY0qVefQNAVR27x6AkDfbQAYBrDb0IkY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye Super (SLT) J11
+  Sheet ID:  1Cgc-f8MPGkx1k86Z1Jq_O9jO4r_l_33durum_KXylPs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye Super Lig (SLT) JW30
+  Sheet ID:  1WVoXTI6sN5e7dTq4LaIGLKDFd6FneYYo9Ui69oG-sVU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Türkiye TKBL Women (TLW) JW30
+  Sheet ID:  1fI0qBu35qkOVJ6qkizWeGWqTkgslIDx7DIYFe36-NmE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) F18.2
+  Sheet ID:  1anCOAld7z0guBAr-WvwUQ3EeSEgjU9bSrEsNTHGKBIk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) F20
+  Sheet ID:  1BO5M-rMcShJJmsoyg2E9nokUxmBiTul1Hpi_Ya8doeI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) F22.2
+  Sheet ID:  1kVYZsIpCbmz9AMe_CsaL46I0LHtjcgdcECA3pr1aKc0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) J16
+  Sheet ID:  1fxp3nbNY7XBLNzRtYjoBERxW3cvjMdlRW4WMN0_Y4FY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) J30.2
+  Sheet ID:  1yqK6vKS3DHjR7CwHTkx4W1gwPZhtZne1VjwWz9H1g_k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) J9
+  Sheet ID:  1OFoAaMCVS9t7s7rescmYgYI98g8OR5GYNIJzWGnWUUA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) M13.2
+  Sheet ID:  1sfvzhUUdlm686DCzRfg3Q4uyTBtKl6bpBsN1TesXKFg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom (GBL) M4.2
+  Sheet ID:  1S_IazQvxSbOvny7Lel-Sit-9kKuxby31rkwReQInhPU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United Kingdom W (BBW) F28
+  Sheet ID:  1SxJrRz0MimMsINmPlsdGA2q9oSC8W3pcJ40GzcAnx1Y
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) 26
+  Sheet ID:  1luKP2_Pz94O24H9mvi12WsK9xV8nUau4OAHA6ke0M9c
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F01
+  Sheet ID:  1XCAApmEcyLqFzZzdQeGHMv_gzRpwWy_TfWbn2EsrBFQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F10
+  Sheet ID:  1yJuiqG3dSaufkUniPsrVx6-Omj9e194Yjj9XqYKIIr8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F11
+  Sheet ID:  1iDpn16ZQN1oY0fJnewDKFgE-mVwMKz-9G4nwf3u6Lcw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F12
+  Sheet ID:  19BRs_OaIACid-80JXaInzJbk_hv76utJR0m_8CSRxz4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F20
+  Sheet ID:  1OkrRh7METxO_XMuGOtOL2LHHLE5eg0Brs3Evy40QQAo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F21
+  Sheet ID:  1udP6YMZSS97sjIM9bMdxGFsCQ6iY2pYPtgvlATANxyQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F22
+  Sheet ID:  1E8sQXN44Q2aZsTS5WabNtkeCi-76WWkbjep2g9Eqtq4
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F23
+  Sheet ID:  1GPJeO9NTHTt-5ar9abs96t9vcSdnJKLtaFYZI3wz5Es
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F24
+  Sheet ID:  1eLCDsAtg6f9WGRKr0Jl8n-H_a9G1EZZvtFXIZa8bHBU
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F25
+  Sheet ID:  1k5yspJoVyh9FLkvmFd3s-rY75vjtlrNA_hKuFLBnPOc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F26
+  Sheet ID:  1K8T4UBhrm-JHlmoTBV1EcJ_nB2SKjKjBXnJdP3i6ZTg
+  Registry:  1LQZMHiXGamQGK2nXmFISdf3MiMRr3Y159WzClx0UqS7wpimEwlmvzR2X
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F27
+  Sheet ID:  1OQRQe3koiLibe4dW37bb28bt5FjbXn3Ws9Lwvptpd9Y
+  Registry:  1DE4v29RDDNLYMsRXoJMCi6SCV4MQ-QR5IEDQWi66SebcMq_4NLY-Nhon
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) F28
+  Sheet ID:  1XUe9AdeUYoAflybpvZKrdSm1-EGEMAGvHnJuaYsdw8Q
+  Registry:  1B8dcZXQX_ARocHEJQTIkdrPian39PhJsiP4fmjTmXvpaNxnhUAR5fae9
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J10
+  Sheet ID:  1pG8O4Fh77FFM0wV4BJY-8WnW0R-umzdexzdDPnlCth8
+  Registry:  1d7DEM5x8VxYG1x_AqgNVAxbUQKYhBYQef9-Wbt346DJ-DhpLnEWMzN2M
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J13
+  Sheet ID:  10IMn71D3w4FmhTLQPqHugbsgO9WvPUOAd9hgF5q2XPM
+  Registry:  1JLV9u3wCysO7YaG_0YkTeFp88-eOPUA5HqkG0l972g4D-oNrSl05s060
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J14
+  Sheet ID:  11_6dIoDLnStNxEdnKSBVPZBukWx8ioPzw1dRSB20TIY
+  Registry:  19RYaZewr1WSYSTSWe3IR1OSkA71G4eWoqMv29kur4Sk8e1sS0GLTM4dB
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J15
+  Sheet ID:  1MAhnMe5erTFVtvz8KBWsoUAfsxGk24lM_pMRPBYHYuc
+  Registry:  1j8T3zurPceebwqHoXaDVKgcgM3QCl2OIW9ApZOlNT_DxVyGjaDgawZAq
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J16
+  Sheet ID:  1EHt0YH_piSyOMVTE3m74AAWbw8wSDpaNBh35PW_6S6Q
+  Registry:  10Mry5iNyL40Clltw9zTzqnXxs4YPCOBxKpZXaN3MmP8--AY6gd7xApK9
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J17
+  Sheet ID:  1eIq5AqR5v-GJDoK-x52km8tVlbUkMNgeUqiVbtSPhAQ
+  Registry:  1A7zD6L-ahlMLajPhgvKoDtBGoL6Q3CLmEz6jcwDbaaw86eZXJz3OnG6x
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J18
+  Sheet ID:  1siWCO6P7vQf-XB_uXkkbLwmCE4dyl2HrZ_Dq2djZgLo
+  Registry:  11WntNBqUEy-bu6TBJrwljW76tI6hbYjY3XjhRbXx2QvqwVMjqDOtV7Je
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J19
+  Sheet ID:  1nfCFkrGi3qXwZvw1pNe66vImvBbYmAiYLwGOodwlBTs
+  Registry:  1GEzIc3-AOPo0FGDYtAm1EfnN049fJq882WSJxFYXU-WrZLrje8ltrubE
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J20
+  Sheet ID:  13oY6_JZk_5-QTisodtQoQTcL4uEn9uBa4cEQHkGSIBY
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J21
+  Sheet ID:  1Zmn3euDspngxQ8JhWm-7YExGM5HDQUON4gPlHe333G0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J22
+  Sheet ID:  1rca1JXfhVmzRjFIlAOR4x8JINaOsjJXRGW7SgVWyacQ
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J23
+  Sheet ID:  1a2KDFKwdrYLVKlmLATWaGP4ihNdBxKzJITccoepEfJ8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J24
+  Sheet ID:  1yts4qdjLBtgJ6IuoaBY7RseuY7_BJrzcAn8q9X5r1sM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J25
+  Sheet ID:  1Ta9J_Ufg0bmR9XtNm14Ul8KivSHdBZBfIWWZ6-TzgLs
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J27
+  Sheet ID:  1Cpf1wgrtuCTilF3PO9uUlfa1HBPvoAdyi6qggrqKr7k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J28
+  Sheet ID:  1K4xDax6p2sTVwnrRnRfrbO5NTYbUoxJGBx3Ilzn68BI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J29
+  Sheet ID:  1pkMTj_9soRQHO0CttC1CMkko-oguBcb0GAYUZ2oe5sI
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) J30
+  Sheet ID:  1MrW_seQrjvHNdW06shFlBJg--DP5f32bd-rM_ik78Dg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M1
+  Sheet ID:  1XD1l53Zi00HAhLdIOrBfsItJoVMcxn-1GTpkcNzQahw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M10.2
+  Sheet ID:  10ttvmfZRIhfcfL7Yss8SfTl6I-3mxNXreBV2XMMx68s
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M12.2
+  Sheet ID:  1zdnn258DqnVBh7k2xvLeSMcX5T8kLVQ-tdUq_B_jwoM
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M13.2
+  Sheet ID:  1Ak6JeAYQ_0auJyskuB0smFejzVoqiYBYzvRwdMaj2Ds
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M2.1
+  Sheet ID:  1QD0M3FHSDy4AmvaooLhI6FK0kiJBVGUHfonH4WDK-xk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M2.2
+  Sheet ID:  1FmXymn8Jgc3kdmzvtmeHt_B9pgBKyxLaaHlhp9LcOQk
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M3.2
+  Sheet ID:  13hWGkNsfhw26Vk4dn6GGIxPzn3z5Os0JZ9jIoD0Xd1U
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M4.2
+  Sheet ID:  1CxtXzxpmD_PKQtNu9zY-ur6kiE2osQ-eBfAH0vVT6wo
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] United States (NBA) M7.2
+  Sheet ID:  1e_lIVYWq8dhWUI45P-MDGWosh8iuMnwPQtu4-3tZzx0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga (BLU) F11
+  Sheet ID:  1EUZaAsg341gr57XsgNuGHRp8_zt4U-puTTpxDo_LoVA
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga (BLU) F17
+  Sheet ID:  1M7V_kGcabR3sBUsihuesFbjT_fiKB3osNuo3_s5xyLc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga (BLU) F19
+  Sheet ID:  1Zy4NeWLeinYv9dm-VTW6KXwYT0TXYPmTzFesGp1aJuc
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga (BLU) F20
+  Sheet ID:  1_U5qbKiQZvcgaeHcfkI6xJOxd45V21i55zrLckQaKQg
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga (BLU) F21
+  Sheet ID:  1r66-FVK6kMDz1lT0RURZjrIj60L4bO6S842OHfyQ3q8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) F10
+  Sheet ID:  102PS5dMAHCOiK28X7GyLnCu8HMx-3XYa66h2uwNYUo8
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) J13
+  Sheet ID:  1XtlKnJSpHYZFH59ppsmhhTJmJ0o2tzJJ3cNAkYKGA3Q
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) J16
+  Sheet ID:  1BzWj0h7YzgG2zd9AzEoH0xGuK6OVBLvHsWiqIxh9Ciw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) J21
+  Sheet ID:  1KrsiGNhD2HdELG1ajpVM5JzvV_2jNOl5Mmn4f2urB6k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) J27
+  Sheet ID:  1PGDXpWkuTHDCaejiSigJh_CLdFhp9rxwbH0TjoHieiE
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) J28
+  Sheet ID:  18RyGow186liuO0819gUzj_QolZ0CFapzPFkmkeRfC6k
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) J30
+  Sheet ID:  16dPwZHUeIO8bnvv00eToXn7fhQQWYsi8DQs8UrIxD2c
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) M13.2
+  Sheet ID:  1jaXypNDCBsueXxx_l6wKzFdOWnsVGBxcUasELJTZTBw
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Uruguay Liga Uruguaya (BLU) M14.2
+  Sheet ID:  1HPVF3t5q5Ct9u8xagSmWPW8RPA_R9FxTWt2NVqr_M1I
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] WABA League (WAB) J28
+  Sheet ID:  1BCUMB41K4LhYy8O1m7aQxMn-VJ0XYMos3_gA0_XyMk0
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] None ?
+  Sheet ID:  37d70fb8-6c08-4eff-977d-5f8453fa252d
+  Registry:  None
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J12
+  Sheet ID:  1u1oSm1V3dQ4ML3GV4zblBUus6GU6WsMe5Te4P0DLPhA
+  Registry:  1Jdj7uq27-IlAKPlFWyX0qTrSU8pcVWpZYr0sCwfpWnrEzLu9VP_rh1VV
+  Drive:     
+
+[NO_SCRIPT] Argentina (LAA) J13
+  Sheet ID:  13oFN_X9gm0v_vkLhdFl4h5TC4EIYAWceU1kkMRZTfkM
+  Registry:  1RfNsrJ2EksFG9hFaRtI0rRE1ZgE7rsAADXcmA2-LE4_GJIYToHo_DG78
+  Drive:     
+

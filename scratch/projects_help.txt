@@ -1,0 +1,78 @@
+Help on Resource in module googleapiclient.discovery object:
+
+class Resource(builtins.object)
+ |  Resource(
+ |      http,
+ |      baseUrl,
+ |      model,
+ |      requestBuilder,
+ |      developerKey,
+ |      resourceDesc,
+ |      rootDesc,
+ |      schema,
+ |      universe_domain='googleapis.com'
+ |  )
+ |
+ |  A class for interacting with a resource.
+ |
+ |  Methods defined here:
+ |
+ |  __enter__(self)
+ |
+ |  __exit__(self, exc_type, exc, exc_tb)
+ |
+ |  __getstate__(self)
+ |      Trim the state down to something that can be pickled.
+ |
+ |      Uses the fact that the instance variable _dynamic_attrs holds attrs that
+ |      will be wiped and restored on pickle serialization.
+ |
+ |  __init__(
+ |      self,
+ |      http,
+ |      baseUrl,
+ |      model,
+ |      requestBuilder,
+ |      developerKey,
+ |      resourceDesc,
+ |      rootDesc,
+ |      schema,
+ |      universe_domain='googleapis.com'
+ |  )
+ |      Build a Resource from the API description.
+ |
+ |      Args:
+ |        http: httplib2.Http, Object to make http requests with.
+ |        baseUrl: string, base URL for the API. All requests are relative to this
+ |            URI.
+ |        model: googleapiclient.Model, converts to and from the wire format.
+ |        requestBuilder: class or callable that instantiates an
+ |            googleapiclient.HttpRequest object.
+ |        developerKey: string, key obtained from
+ |            https://code.google.com/apis/console
+ |        resourceDesc: object, section of deserialized discovery document that
+ |            describes a resource. Note that the top level discovery document
+ |            is considered a resource.
+ |        rootDesc: object, the entire deserialized discovery document.
+ |        schema: object, mapping of schema names to schema descriptions.
+ |        universe_domain: string, the universe for the API. The default universe
+ |        is "googleapis.com".
+ |
+ |  __setstate__(self, state)
+ |      Reconstitute the state of the object from being pickled.
+ |
+ |      Uses the fact that the instance variable _dynamic_attrs holds attrs that
+ |      will be wiped and restored on pickle serialization.
+ |
+ |  close(self)
+ |      Close httplib2 connections.
+ |
+ |  ----------------------------------------------------------------------
+ |  Data descriptors defined here:
+ |
+ |  __dict__
+ |      dictionary for instance variables
+ |
+ |  __weakref__
+ |      list of weak references to the object
+
