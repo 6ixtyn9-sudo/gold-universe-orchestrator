@@ -71,8 +71,10 @@ def load_gs_files() -> list[dict]:
             "exceptionLogging": "STACKDRIVER",
             "runtimeVersion": "V8",
             "oauthScopes": [
-                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/script.projects",
+                "https://www.googleapis.com/auth/script.deployments",
                 "https://www.googleapis.com/auth/drive",
+                "https://www.googleapis.com/auth/spreadsheets",
                 "https://www.googleapis.com/auth/script.external_request"
             ]
         })

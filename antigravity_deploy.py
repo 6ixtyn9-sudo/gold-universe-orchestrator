@@ -71,6 +71,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/script.deployments",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/script.external_request"
 ]
 SATELLITE_GS_SOURCES = REPO_ROOT / "Ma_Golide_Satellites" / "docs"
 BRIDGE_GS_SOURCES = REPO_ROOT / "bridge"
@@ -207,7 +208,7 @@ def get_satellite_list() -> List[Dict[str, Any]]:
     return []
 
 
-def sync_one_with_files(sat: Dict[str, Any], files: List[Dict[str, Any]], dry_run: bool = False) -> Dict[str, Any]:
+def sync_one_with_files(sat: Dict[str, Any], files: List[Dict[str, Any]], dry_run: bool = False, credentials=None) -> Dict[str, Any]:
     """Deploy provided .gs files to a single satellite"""
     sat_id = sat.get("id")
     spreadsheet_id = sat.get("sheet_id") or sat.get("id")
@@ -231,7 +232,7 @@ def sync_one_with_files(sat: Dict[str, Any], files: List[Dict[str, Any]], dry_ru
     except ImportError as e:
         return {"ok": False, "error": f"Missing orchestrator module: {e}"}
 
-    client = ScriptApiClient()
+    client = ScriptApiClient(credentials=credentials)
 
     if not script_id:
         script_id = client.find_bound_script(spreadsheet_id)
@@ -437,6 +438,24 @@ def main():
         print(f"{Colors.MAGENTA}{Colors.BOLD}🌉 BRIDGE MODE: Deploying lightweight Supabase bridge only.{Colors.RESET}")
         print(f"{Colors.MAGENTA}Heavy satellite logic will NOT be deployed.{Colors.RESET}\n")
         args.fleet_only = True  # Automatically skip bootstrap/safeLaunch in bridge mode
+        
+    def load_credential_pool():
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
+        creds_list = []
+        for i in range(20):
+            token_file = CREDS_DIR / f"token_{i}.json"
+            if not token_file.exists():
+                continue
+            try:
+                creds = Credentials.from_authorized_user_file(str(token_file), scopes=SCOPES)
+                if creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                    token_file.write_text(creds.to_json())
+                creds_list.append((i, creds))
+            except Exception as e:
+                pass
+        return creds_list
 
     load_dotenv()
     
@@ -489,12 +508,17 @@ def main():
         
         if args.bridge_only:
             # Use bridge deployment path
+            creds_pool = load_credential_pool()
+            
             if args.parallel:
                 with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                    futures = {
-                        executor.submit(sync_one_with_files, sat, gs_files, dry_run=args.dry_run): sat
-                        for sat in satellites
-                    }
+                    futures = {}
+                    for i, sat in enumerate(satellites):
+                        creds = None
+                        if creds_pool:
+                            creds = creds_pool[i % len(creds_pool)][1]
+                        futures[executor.submit(sync_one_with_files, sat, gs_files, dry_run=args.dry_run, credentials=creds)] = sat
+
                     for i, future in enumerate(as_completed(futures), 1):
                         sat = futures[future]
                         try:
@@ -509,10 +533,11 @@ def main():
                             print(f"   [{i}/{len(satellites)}] {sat.get('league', 'Unknown')}: {Colors.RED}❌ Exception: {e}{Colors.RESET}")
                             results["failed"].append(sat)
             else:
+                creds = creds_pool[0][1] if creds_pool else None
                 for i, sat in enumerate(satellites, 1):
                     league = sat.get("league", "Unknown")
                     print(f"   [{i}/{len(satellites)}] Deploying bridge to {league}...", end=" ")
-                    res = sync_one_with_files(sat, gs_files, dry_run=args.dry_run)
+                    res = sync_one_with_files(sat, gs_files, dry_run=args.dry_run, credentials=creds)
                     if res.get('ok'):
                         print(f"{Colors.GREEN}✅{Colors.RESET}")
                         results["deployed"].append(sat)

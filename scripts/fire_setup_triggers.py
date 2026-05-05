@@ -29,13 +29,21 @@ CREDS_DIR = REPO_ROOT / "creds"
 MAX_WORKERS = 10
 DELAY = 1.0
 
+SCOPES = [
+    "https://www.googleapis.com/auth/script.projects",
+    "https://www.googleapis.com/auth/script.deployments",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/script.external_request"
+]
+
 def load_credentials() -> list:
     creds_list = []
     for i in range(20):
         token_file = CREDS_DIR / f"token_{i}.json"
         if not token_file.exists(): continue
         try:
-            creds = Credentials.from_authorized_user_file(str(token_file))
+            creds = Credentials.from_authorized_user_file(str(token_file), scopes=SCOPES)
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())
                 token_file.write_text(creds.to_json())

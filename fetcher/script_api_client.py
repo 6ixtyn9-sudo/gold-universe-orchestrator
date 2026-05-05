@@ -15,6 +15,7 @@ class ScriptApiClient:
             "https://www.googleapis.com/auth/script.deployments",
             "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/script.external_request"
         ]
         if credentials is None:
             credentials = get_service_account_credentials(scopes)
