@@ -112,11 +112,11 @@ Create .env:
 env
 
 SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
+SUPABASE_SERVICE_KEY=your_supabase_key
 GOOGLE_SERVICE_ACCOUNT_JSON={...}
 3. GitHub Secrets (for CI/CD)
 SUPABASE_URL
-SUPABASE_KEY
+SUPABASE_SERVICE_KEY
 GOOGLE_SERVICE_ACCOUNT_JSON
 4. Submodule Setup
 Bash

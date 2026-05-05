@@ -34,7 +34,7 @@ sys.path.insert(0, str(REPO_ROOT))
 # Try to import orchestrator modules
 try:
     from syncer.script_syncer import load_gs_sources, sync_one, batch_sync
-    from registry.supabase_registry import list_satellites, update_satellite
+    from registry.supabase_registry import list_satellites
     ORCHESTRATOR_AVAILABLE = True
 except ImportError as e:
     ORCHESTRATOR_AVAILABLE = False
@@ -193,7 +193,8 @@ def get_satellite_list() -> List[Dict[str, Any]]:
         import json
         try:
             with open(registry_file) as f:
-                sats = json.load(f)
+                data = json.load(f)
+                sats = data.get("satellites", data if isinstance(data, list) else [])
                 logger.info(f"Loaded {len(sats)} satellites from registry.json")
                 return sats
         except Exception as e:

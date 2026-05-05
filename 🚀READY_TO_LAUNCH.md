@@ -50,7 +50,7 @@ Go to GitHub → Settings → Secrets and variables → Actions:
 
 Secret	Value
 SUPABASE_URL	Your Supabase project URL
-SUPABASE_KEY	Your Supabase service role key
+SUPABASE_SERVICE_KEY	Your Supabase service role key
 GOOGLE_SERVICE_ACCOUNT_JSON	Full JSON of Google service account
 Step 3: Run First Deployment
 Option A: GitHub Actions (Recommended)

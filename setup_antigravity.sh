@@ -55,7 +55,7 @@ if [ ! -f ".env" ]; then
     cat > .env.example << 'EOF'
 # Supabase configuration
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-service-role-key
+SUPABASE_SERVICE_KEY=your-service-role-key
 
 # Google Service Account (JSON string)
 GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}

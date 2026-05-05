@@ -41,7 +41,7 @@ After Committing
 Verify the workflow appears: Go to GitHub → Actions → Antigravity
 Set up secrets: Settings → Secrets and variables → Actions
 Add SUPABASE_URL
-Add SUPABASE_KEY
+Add SUPABASE_SERVICE_KEY
 Add GOOGLE_SERVICE_ACCOUNT_JSON
 Run a test deployment: Actions → Antigravity → Run workflow → dry_run: true
 Triggering Deployments
