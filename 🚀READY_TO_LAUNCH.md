@@ -9,9 +9,11 @@ setup_antigravity.sh	✅ Ready	One-command environment setup
 ANTIGRAVITY_README.md	✅ Ready	Complete documentation
 .github/workflows/antigravity.yml	✅ Ready	CI/CD automation
 COMMIT_GUIDE.md	✅ Ready	How to commit to GitHub
-📡 Satellite Code Sources (in Ma_Golide_Satellites/docs/)
-✅ Sheet_Setup.gs — Initialize sheets
-✅ Data_Parser.gs — Parse sports data
+📡 Satellite Code Sources
+✅ bridge/SupabaseBridge.gs — Thin bridge
+✅ bridge/appsscript.json — Minimal scopes
+
+(Legacy heavy compute files remain in Ma_Golide_Satellites/docs/ for reference)
 ✅ Forecaster.gs — Generate predictions
 ✅ Game_Processor.gs — Process games
 ✅ Signal_Processor.gs — Extract signals
@@ -58,13 +60,12 @@ Option A: GitHub Actions (Recommended)
 text
 
 Actions → Antigravity → Run workflow → dry_run: true
-Option B: Local
+Option B: Local (Golden Path Bridge)
 
-Bash
-
+```bash
 ./setup_antigravity.sh
-python antigravity_deploy.py --dry-run
-python antigravity_deploy.py --parallel
+python antigravity_deploy.py --bridge-only --parallel
+```
 🎯 After Satellites Are Sync'd
 Once antigravity confirms all satellites have the latest .gs code:
 
@@ -135,7 +136,10 @@ text
 ⚡ Quick Commands Reference
 Bash
 
-# Full deployment
+# Bridge deployment (Golden Path)
+python antigravity_deploy.py --bridge-only --parallel
+
+# Full legacy deployment
 python antigravity_deploy.py --parallel
 
 # Dry run

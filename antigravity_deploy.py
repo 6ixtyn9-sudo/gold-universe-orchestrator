@@ -73,6 +73,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
 ]
 SATELLITE_GS_SOURCES = REPO_ROOT / "Ma_Golide_Satellites" / "docs"
+BRIDGE_GS_SOURCES = REPO_ROOT / "bridge"
 
 
 class Colors:
@@ -103,7 +104,7 @@ def banner():
     """)
 
 
-def check_prerequisites() -> Tuple[bool, List[str]]:
+def check_prerequisites(bridge_only: bool = False) -> Tuple[bool, List[str]]:
     """Check if all prerequisites are met"""
     issues = []
     
@@ -122,14 +123,15 @@ def check_prerequisites() -> Tuple[bool, List[str]]:
             logger.info(f"Found {len(token_files)} credential token(s)")
     
     # Check for satellite sources
-    if not SATELLITE_GS_SOURCES.exists():
-        issues.append(f"Satellite .gs sources not found: {SATELLITE_GS_SOURCES}")
+    sources_dir = BRIDGE_GS_SOURCES if bridge_only else SATELLITE_GS_SOURCES
+    if not sources_dir.exists():
+        issues.append(f"Source directory not found: {sources_dir}")
     else:
-        gs_files = list(SATELLITE_GS_SOURCES.glob("*.gs"))
+        gs_files = list(sources_dir.glob("*.gs"))
         if not gs_files:
-            issues.append(f"No .gs files found in {SATELLITE_GS_SOURCES}")
+            issues.append(f"No .gs files found in {sources_dir}")
         else:
-            logger.info(f"Found {len(gs_files)} .gs source file(s)")
+            logger.info(f"Found {len(gs_files)} .gs source file(s) in {sources_dir.name}")
     
     # Check for submodules
     submodule_dirs = [
@@ -144,15 +146,16 @@ def check_prerequisites() -> Tuple[bool, List[str]]:
     return len(issues) == 0, issues
 
 
-def load_gs_files_direct() -> Optional[List[Dict[str, Any]]]:
-    """Load .gs files directly from the satellites repo"""
-    if not SATELLITE_GS_SOURCES.exists():
+def load_gs_files_direct(bridge_only: bool = False) -> Optional[List[Dict[str, Any]]]:
+    """Load .gs files directly from the repo"""
+    sources_dir = BRIDGE_GS_SOURCES if bridge_only else SATELLITE_GS_SOURCES
+    if not sources_dir.exists():
         return None
     
     files = []
     
     # Add manifest
-    manifest_path = SATELLITE_GS_SOURCES / "appsscript.json"
+    manifest_path = sources_dir / "appsscript.json"
     if manifest_path.exists():
         files.append({
             "name": "appsscript",
@@ -167,7 +170,7 @@ def load_gs_files_direct() -> Optional[List[Dict[str, Any]]]:
         })
     
     # Add .gs files
-    for p in sorted(SATELLITE_GS_SOURCES.glob("*.gs")):
+    for p in sorted(sources_dir.glob("*.gs")):
         files.append({
             "name": p.stem,
             "type": "SERVER_JS",
@@ -372,13 +375,19 @@ def main():
     parser.add_argument("--fleet-only", action="store_true", help="Only sync .gs code")
     parser.add_argument("--bootstrap", action="store_true", help="Only bootstrap and fire")
     parser.add_argument("--parallel", action="store_true", help="Use parallel deployment")
+    parser.add_argument("--bridge-only", action="store_true", help="Deploy lightweight Supabase bridge only")
     args = parser.parse_args()
     
     banner()
+    
+    if args.bridge_only:
+        print(f"{Colors.MAGENTA}{Colors.BOLD}🌉 BRIDGE MODE: Deploying lightweight Supabase bridge only.{Colors.RESET}")
+        print(f"{Colors.MAGENTA}Heavy satellite logic will NOT be deployed.{Colors.RESET}\n")
+
     load_dotenv()
     
     # Check prerequisites
-    ok, issues = check_prerequisites()
+    ok, issues = check_prerequisites(bridge_only=args.bridge_only)
     if not ok:
         print(f"\n{Colors.RED}{Colors.BOLD}❌ PREREQUISITE CHECKS FAILED:{Colors.RESET}")
         for issue in issues:
@@ -397,7 +406,7 @@ def main():
     print(f"{Colors.GOLD}📡 Found {len(satellites)} satellite(s) in registry{Colors.RESET}\n")
     
     # Load .gs sources
-    gs_files = load_gs_files_direct()
+    gs_files = load_gs_files_direct(bridge_only=args.bridge_only)
     if not gs_files:
         print(f"{Colors.RED}Failed to load .gs source files{Colors.RESET}")
         sys.exit(1)
@@ -477,7 +486,7 @@ def main():
 {Colors.GREEN}Code Deployed:{Colors.RESET}     {len(results['deployed'])} satellites
 {Colors.RED}Deploy Failed:{Colors.RESET}     {len(results['failed'])} satellites
 
-{Colors.GOLD}The satellites are now synchronized with the latest .gs code.{Colors.RESET}
+{Colors.GOLD}The satellites are now synchronized.{Colors.RESET}
 {Colors.MAGENTA}You may now proceed to work on the Assayer and the Mother.{Colors.RESET}
     """)
     

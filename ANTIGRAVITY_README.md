@@ -14,12 +14,12 @@ text
 │  │  🛰️ Satellites  │  │   🔬 Assayer    │  │  👑 Mothership  │  │
 │  │  (Google Sheets)│──│  (Purity Engine)│──│  (Acca Builder) │  │
 │  │                 │  │                 │  │                 │  │
-│  │ • League data   │  │ • ASSAYER_EDGES │  │ • Reads purity  │  │
-│  │ • Predictions   │  │ • ASSAYER_LEAGUE│  │ • Builds accas  │  │
-│  │ • Results       │  │   _PURITY       │  │ • Portfolios    │  │
+│  │ • User UX       │  │ • Python/Edge   │  │ • Python/Edge   │  │
+│  │ • Thin Bridge   │  │ • ASSAYER_EDGES │  │ • Portfolios    │  │
+│  │ • POSTs sync    │  │ • LEAGUE_PURITY │  │ • Bet Slips     │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 │           ▲                                                    │
-│           │ Antigravity deploys .gs code here                  │
+│           │ Antigravity deploys bridge/SupabaseBridge.gs       │
 └───────────┼────────────────────────────────────────────────────┘
             │
     ┌───────┴───────┐
@@ -70,9 +70,22 @@ gold-universe-orchestrator/
 └── .github/workflows/
     └── antigravity.yml            # GitHub Actions CI/CD
 🚀 Usage
-Local Deployment
-Bash
+🌟 Golden Path (Bridge Mode)
+Deploy lightweight Supabase bridge to Google Sheets (recommended):
 
+```bash
+python antigravity_deploy.py --bridge-only --parallel
+```
+
+Google Sheets = UX
+Supabase = source of truth
+Apps Script = thin bridge
+Python/Edge Functions = Assayer/Mothership engine
+
+🐢 Legacy/Heavy Mode
+Deploy full satellite compute logic to sheets (not recommended for new sheets due to quota limits):
+
+```bash
 # Full deployment (sync code + bootstrap API + fire safeLaunch)
 python antigravity_deploy.py --parallel
 
@@ -84,6 +97,7 @@ python antigravity_deploy.py --fleet-only
 
 # Only bootstrap API and fire safeLaunch
 python antigravity_deploy.py --bootstrap --parallel
+```
 GitHub Actions (Recommended)
 Go to Actions → Antigravity → Run workflow:
 
