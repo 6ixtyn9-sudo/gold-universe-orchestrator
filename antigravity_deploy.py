@@ -226,7 +226,7 @@ def sync_one_with_files(sat: Dict[str, Any], files: List[Dict[str, Any]], dry_ru
         return {"ok": False, "error": "No sheet_id/id"}
 
     try:
-        from syncer.script_api_client import ScriptApiClient
+        from fetcher.script_api_client import ScriptApiClient
         from registry.supabase_registry import update_satellite_script_id
     except ImportError as e:
         return {"ok": False, "error": f"Missing orchestrator module: {e}"}
@@ -436,6 +436,7 @@ def main():
     if args.bridge_only:
         print(f"{Colors.MAGENTA}{Colors.BOLD}🌉 BRIDGE MODE: Deploying lightweight Supabase bridge only.{Colors.RESET}")
         print(f"{Colors.MAGENTA}Heavy satellite logic will NOT be deployed.{Colors.RESET}\n")
+        args.fleet_only = True  # Automatically skip bootstrap/safeLaunch in bridge mode
 
     load_dotenv()
     
