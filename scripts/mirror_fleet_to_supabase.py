@@ -66,30 +66,42 @@ def pick_sa(sheet_id: str, services: list) -> tuple:
     idx = int(hashlib.md5(sheet_id.encode()).hexdigest(), 16) % len(services)
     return services[idx]
 
-def get_tab_names(service, sheet_id: str) -> list[str]:
-    try:
-        resp = service.spreadsheets().get(spreadsheetId=sheet_id, fields="sheets.properties.title").execute()
-        return [s["properties"]["title"] for s in resp.get("sheets", [])]
-    except Exception as e:
-        log.warning(f"    get_tab_names failed: {e}")
-        return []
+def get_tab_names(service, sheet_id: str, retries=2) -> list[str]:
+    for attempt in range(retries + 1):
+        try:
+            resp = service.spreadsheets().get(spreadsheetId=sheet_id, fields="sheets.properties.title").execute()
+            return [s["properties"]["title"] for s in resp.get("sheets", [])]
+        except Exception as e:
+            if attempt < retries:
+                log.warning(f"    get_tab_names attempt {attempt+1} failed: {e}. Retrying...")
+                time.sleep(1)
+            else:
+                log.error(f"    get_tab_names failed after {retries+1} attempts: {e}")
+                return []
+    return []
 
-def batch_get_all_tabs(service, sheet_id: str, tab_names: list[str]) -> dict:
+def batch_get_all_tabs(service, sheet_id: str, tab_names: list[str], retries=2) -> dict:
     results = {}
     if not tab_names: return results
     for i in range(0, len(tab_names), MAX_RANGES_PER_CALL):
         chunk = tab_names[i:i + MAX_RANGES_PER_CALL]
         ranges = [f"'{name}'" for name in chunk]
-        try:
-            resp = service.spreadsheets().values().batchGet(
-                spreadsheetId=sheet_id, ranges=ranges, valueRenderOption="FORMATTED_VALUE"
-            ).execute()
-            for vr in resp.get("valueRanges", []):
-                tab_name = vr.get("range", "").split("!")[0].strip("'")
-                results[tab_name] = vr.get("values", [])
-            time.sleep(CALL_DELAY)
-        except Exception as e:
-            log.warning(f"    batchGet error: {e}")
+        for attempt in range(retries + 1):
+            try:
+                resp = service.spreadsheets().values().batchGet(
+                    spreadsheetId=sheet_id, ranges=ranges, valueRenderOption="FORMATTED_VALUE"
+                ).execute()
+                for vr in resp.get("valueRanges", []):
+                    tab_name = vr.get("range", "").split("!")[0].strip("'")
+                    results[tab_name] = vr.get("values", [])
+                time.sleep(CALL_DELAY)
+                break # success
+            except Exception as e:
+                if attempt < retries:
+                    log.warning(f"    batchGet attempt {attempt+1} failed: {e}. Retrying...")
+                    time.sleep(1)
+                else:
+                    log.error(f"    batchGet failed after {retries+1} attempts: {e}")
     return results
 
 def upsert_tab_snapshots(sb: Client, sheet_id: str, sat_id, tab_data: dict, dry_run: bool):
@@ -111,28 +123,33 @@ def upsert_tab_snapshots(sb: Client, sheet_id: str, sat_id, tab_data: dict, dry_
         })
     if dry_run: return len(rows)
     try:
-        sb.table("satellite_tab_snapshots").upsert(rows, on_conflict="sheet_id,tab_name").execute()
+        # Batch upsert in chunks of 50 to avoid large payload errors
+        chunk_size = 50
+        for i in range(0, len(rows), chunk_size):
+            chunk = rows[i:i + chunk_size]
+            sb.table("satellite_tab_snapshots").upsert(chunk, on_conflict="sheet_id,tab_name").execute()
         return len(rows)
     except Exception as e:
         log.error(f"    DB upsert error: {e}")
         return 0
 
-def insert_sync_event(sb: Client, sheet_id: str, sat_id, label: str, tab_names: list, row_counts: dict, dry_run: bool):
+def insert_sync_event(sb: Client, sheet_id: str, sat_id, label: str, tab_names: list, row_counts: dict, status: str, error_msg: str, dry_run: bool):
     if dry_run: return
     row = {
         "sheet_id": sheet_id,
         "satellite_id": sat_id,
         "spreadsheet_name": label,
-        "status": "ok",
+        "status": status,
         "tabs_received": tab_names,
         "row_counts": row_counts,
+        "error_message": error_msg,
     }
     try:
         sb.table("satellite_sync_events").insert(row).execute()
     except Exception as e:
         log.warning(f"    sync_event insert failed: {e}")
 
-def run_mirror(limit: int = None, dry_run: bool = False):
+def run_mirror(limit: int = None, dry_run: bool = False, sheet_ids: list[str] = None):
     log.info(f"🚀 Starting Fleet Mirror ({'DRY RUN' if dry_run else 'LIVE'})")
     services = load_sa_services()
     if not services:
@@ -142,7 +159,11 @@ def run_mirror(limit: int = None, dry_run: bool = False):
     sb: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     
     # Fetch satellites from Supabase
-    resp = sb.table("satellites").select("id, sheet_id, name").execute()
+    query = sb.table("satellites").select("id, sheet_id, name")
+    if sheet_ids:
+        query = query.in_("sheet_id", sheet_ids)
+    
+    resp = query.execute()
     satellites = resp.data
     if limit: satellites = satellites[:limit]
     
@@ -156,16 +177,23 @@ def run_mirror(limit: int = None, dry_run: bool = False):
         email, service = pick_sa(sheet_id, services)
         log.info(f"[{i}/{len(satellites)}] {label} ({sheet_id[:8]}...) via {email.split('@')[0]}")
         
-        tab_names = get_tab_names(service, sheet_id)
-        if not tab_names: continue
+        try:
+            tab_names = get_tab_names(service, sheet_id)
+            if not tab_names:
+                insert_sync_event(sb, sheet_id, sat_id, label, [], {}, "error", "No tabs found or API error", dry_run)
+                continue
+            
+            tab_data = batch_get_all_tabs(service, sheet_id, tab_names)
+            row_counts = {t: max(0, len(v)-1) for t, v in tab_data.items() if v}
+            
+            tabs_written = upsert_tab_snapshots(sb, sheet_id, sat_id, tab_data, dry_run)
+            insert_sync_event(sb, sheet_id, sat_id, label, list(tab_data.keys()), row_counts, "ok", None, dry_run)
+            
+            log.info(f"    ✅ Mirrored {tabs_written} tabs.")
+        except Exception as e:
+            log.error(f"    Unexpected error for {label}: {e}")
+            insert_sync_event(sb, sheet_id, sat_id, label, [], {}, "error", str(e), dry_run)
         
-        tab_data = batch_get_all_tabs(service, sheet_id, tab_names)
-        row_counts = {t: max(0, len(v)-1) for t, v in tab_data.items() if v}
-        
-        tabs_written = upsert_tab_snapshots(sb, sheet_id, sat_id, tab_data, dry_run)
-        insert_sync_event(sb, sheet_id, sat_id, label, list(tab_data.keys()), row_counts, dry_run)
-        
-        log.info(f"    ✅ Mirrored {tabs_written} tabs.")
         time.sleep(BATCH_DELAY)
 
 if __name__ == "__main__":
