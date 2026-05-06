@@ -34,3 +34,6 @@ credentials_*.json
 creds/
 deploy_progress.json
 personal_token.json
+client_secret_*.json
+fleet_purity_report.json
+*.log
