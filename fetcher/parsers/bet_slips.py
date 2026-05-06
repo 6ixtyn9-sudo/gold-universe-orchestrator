@@ -38,6 +38,9 @@ _ALIASES: Dict[str, List[str]] = {
     "selection_side": ["selection_side"],
     "selection_team": ["selection_team"],
     "selection_line": ["selection_line", "line"],
+    "source_module":  ["source_module", "module", "src", "source module"],
+    "config_stamp":   ["config_stamp", "stamp", "config_stamp_id", "config stamp"],
+    "market_line":    ["market_line", "ml", "market line"],
 }
 
 _SEP_RE    = re.compile(r"^[-=━✦•\s]+$")
@@ -85,7 +88,8 @@ def parse_bet_slips(raw_values: List[List[Any]]) -> List[Dict[str, Any]]:
         pick, type, market, quarter,
         odds, confidence, ev, tier,
         outcome (\"win\" | \"loss\" | None), outcome_raw,
-        selection_side, selection_team, selection_line
+        selection_side, selection_team, selection_line,
+        source_module, config_stamp_id, market_line
     """
     if not raw_values or len(raw_values) < 2:
         return []
@@ -157,6 +161,9 @@ def parse_bet_slips(raw_values: List[List[Any]]) -> List[Dict[str, Any]]:
             "selection_side": _get(row, hm, "selection_side"),
             "selection_team": _get(row, hm, "selection_team"),
             "selection_line": _get(row, hm, "selection_line", "line"),
+            "source_module":   _get(row, hm, "source_module", "module", "src"),
+            "config_stamp":    _get(row, hm, "config_stamp", "stamp", "config_stamp_id"),
+            "market_line":     _get(row, hm, "market_line", "ml"),
         })
 
     return out
