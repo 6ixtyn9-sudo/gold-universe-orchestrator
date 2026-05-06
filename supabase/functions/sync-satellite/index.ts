@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
-// Antigravity Bridge Version 1.1 - Verified Tue May  5 21:17:11 SAST 2026
-
+// Antigravity Bridge Version 1.2 - Final Record<string,number> fix
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +15,7 @@ serve(async (req) => {
 
   try {
     const bridgeToken = Deno.env.get('BRIDGE_TOKEN');
-    
+
     if (!bridgeToken) {
       return new Response(JSON.stringify({ error: 'BRIDGE_TOKEN is not configured' }), {
         status: 500,
@@ -42,7 +41,7 @@ serve(async (req) => {
       });
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client (URL + service role key are auto-provided by Supabase)
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
@@ -66,18 +65,18 @@ serve(async (req) => {
     if (satError && satError.code !== 'PGRST116') {
       console.error('Error finding satellite:', satError);
     }
-    
+
     const satellite_id = satData ? satData.id : null;
 
     // Process tabs
     const tabs_received: string[] = [];
     const row_counts: Record<string, number> = {};
-    
+
     for (const [tabName, values] of Object.entries(tabs)) {
       if (values && Array.isArray(values) && values.length > 0) {
         tabs_received.push(tabName);
         row_counts[tabName] = values.length;
-        
+
         // Insert snapshot
         const { error: snapError } = await supabase
           .from('satellite_tab_snapshots')
@@ -90,7 +89,7 @@ serve(async (req) => {
             col_count: Array.isArray(values[0]) ? values[0].length : 0,
             bridge_version
           });
-          
+
         if (snapError) {
           console.error(`Error inserting snapshot for ${tabName}:`, snapError);
         }
