@@ -37,3 +37,5 @@ personal_token.json
 client_secret_*.json
 fleet_purity_report.json
 *.log
+.git_corrupted/
+supabase/.temp/
