@@ -18,7 +18,7 @@ from brain.forecaster import (
     calculate_magolide_score, get_forebet_favored_probability
 )
 from brain.utils import to_num
-from brain.signal_processor import predict_ft_over_under
+from brain.signal_processor import predict_ft_over_under, predict_quarter_over_under
 
 log = logging.getLogger("brain.game_processor")
 
@@ -246,5 +246,7 @@ def compute_magolide_predictions(
         
         # O/U Predictions
         game["computed_ft_ou"] = predict_ft_over_under(game, {}, config_tier1)
-        
+        for q in range(1, 5):
+            game[f"computed_sniper_ou_q{q}"] = predict_quarter_over_under(game, q, config_tier1)
+            
     return games

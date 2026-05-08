@@ -463,3 +463,45 @@ def predict_ft_over_under(game: Dict[str, Any], stats: Dict[str, Any], config: D
         "push": scored.get("push", 0),
         "lineSource": line_source
     }
+
+def predict_quarter_over_under(game: Dict[str, Any], quarter: int, config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Predicts O/U for a specific quarter using t2ou_score_over_under_pick.
+    """
+    ou_val = game.get(f"ou_q{quarter}")
+    if not ou_val:
+        return None
+        
+    line = float('nan')
+    if isinstance(ou_val, dict):
+        line = to_num(ou_val.get("line"), float('nan'))
+        
+    if not math.isfinite(line):
+        line = to_num(game.get(f"q{quarter}_total"), float('nan'))
+        
+    if not math.isfinite(line):
+        return None
+        
+    # Since we lack teamStats, we fallback to line = mu
+    mu = line
+    sigma = max(line * 0.15, 6.0)
+    samples = 100
+    
+    model = {
+        "mu": mu,
+        "sigma": sigma,
+        "samples": samples,
+        "source": "Q_FALLBACK"
+    }
+    
+    scored = t2ou_score_over_under_pick(model, line, config, None, {"quarter": f"Q{quarter}"})
+    if not scored:
+        print(f"DEBUG Q{quarter}: scorer_null")
+        return {"skip": True, "reason": "scorer_null"}
+        
+    if not scored.get("play"):
+        print(f"DEBUG Q{quarter}: {scored.get('reason', 'not_play')}")
+        return {"skip": True, "reason": scored.get("reason", "not_play")}
+        
+    print(f"DEBUG Q{quarter}: {scored}")
+    return scored

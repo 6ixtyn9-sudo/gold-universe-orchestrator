@@ -93,6 +93,25 @@ def _build_ou_struct(
     Handles both string values ('Over 33.5 ★ (80%)') and pre-parsed dicts.
     Returns None if no usable signal found.
     """
+    computed = game.get(f"computed_sniper_ou_q{quarter}")
+    if computed and not computed.get("skip"):
+        hq_min = to_num(config.get("hqMinConfidence"), 55)
+        # Build clean pick string: "Q2 Over 33.5"
+        direction_cap = str(computed.get("direction")).capitalize()
+        line_val = computed.get("line")
+        line_str = f" {line_val:.1f}" if line_val is not None else ""
+        pick = f"Q{quarter} {direction_cap}{line_str}"
+        return {
+            "pick": pick,
+            "direction": str(computed.get("direction")).upper(),
+            "confidence": computed.get("confidence"),
+            "ev": computed.get("ev"),
+            "edge": computed.get("edge"),
+            "line": line_val,
+            "star": computed.get("confidence", 0) >= hq_min,
+        }
+
+    # Fallback to legacy
     ou_key = f"ou_q{quarter}"
     ou_val = game.get(ou_key)
     if not ou_val:
