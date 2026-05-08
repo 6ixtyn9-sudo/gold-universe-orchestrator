@@ -70,12 +70,14 @@ def load_gs_files() -> list[dict]:
             "timeZone": "UTC",
             "exceptionLogging": "STACKDRIVER",
             "runtimeVersion": "V8",
+            "executionApi": {"access": "MYSELF"},
             "oauthScopes": [
                 "https://www.googleapis.com/auth/script.projects",
                 "https://www.googleapis.com/auth/script.deployments",
                 "https://www.googleapis.com/auth/drive",
                 "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/script.external_request"
+                "https://www.googleapis.com/auth/script.external_request",
+                "https://www.googleapis.com/auth/script.scriptapp"
             ]
         })
     }]
@@ -300,6 +302,8 @@ def main():
                         help=f"Seconds between satellites per thread (default: {DELAY_BETWEEN})")
     parser.add_argument("--workers",   type=int,   default=MAX_WORKERS,
                         help=f"Max parallel threads (default: {MAX_WORKERS})")
+    parser.add_argument("--targets", type=Path, default=None,
+                        help="Path to JSON file with list of sheet_ids to target")
     args = parser.parse_args()
 
     print(f"\n{'═'*60}")
@@ -332,9 +336,16 @@ Quick start (for 1 credential you already have):
 
     # ── Load and split satellites ─────────────────────────────────────────
     all_sats  = list_satellites()
+    
+    if args.targets and args.targets.exists():
+        import json
+        targets_list = json.loads(args.targets.read_text())
+        all_sats = [s for s in all_sats if (s.get("sheet_id") or s.get("id")) in targets_list]
+        print(f"Filtered to {len(all_sats)} targets from {args.targets.name}")
+        
     pending   = [s for s in all_sats if not s.get("script_id")]
     done      = [s for s in all_sats if s.get("script_id")]
-    chunks    = split_satellites(pending, n_slots)
+    chunks    = split_satellites(pending, n_slots) if pending else []
 
     # Estimate time
     max_chunk    = max(len(c) for c in chunks) if chunks else 0
@@ -351,9 +362,11 @@ Quick start (for 1 credential you already have):
         print(f"  MODE:              DRY RUN")
     print(f"{'═'*60}\n")
 
-    if not pending:
-        print("✅ All satellites already deployed!")
+    if not pending and not done:
+        print("✅ No satellites to process.")
         return
+    if not pending:
+        print("✅ All satellites already deployed — pushing manifest update to existing scripts...")
 
     # ── Show batch assignment ─────────────────────────────────────────────
     for i, (slot_idx, _, token_file) in enumerate(creds_list[:n_slots]):

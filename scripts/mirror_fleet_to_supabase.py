@@ -200,5 +200,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--targets", type=str, help="Comma separated sheet IDs")
     args = parser.parse_args()
-    run_mirror(limit=args.limit, dry_run=args.dry_run)
+    
+    sheet_ids = args.targets.split(",") if args.targets else None
+    run_mirror(limit=args.limit, dry_run=args.dry_run, sheet_ids=sheet_ids)

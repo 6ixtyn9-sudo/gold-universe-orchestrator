@@ -3,6 +3,8 @@ import sys
 import time
 import logging
 import threading
+import argparse
+import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -16,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from registry.supabase_registry import list_satellites
+from registry.satellite_registry import list_satellites
 
 load_dotenv()
 
@@ -48,7 +50,7 @@ def load_credentials():
             continue
 
         try:
-            creds = Credentials.from_authorized_user_file(str(token_file), scopes=SCOPES)
+            creds = Credentials.from_authorized_user_file(str(token_file))
 
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())
@@ -60,6 +62,56 @@ def load_credentials():
 
     return creds_list
 
+
+def build_token_map(creds_list):
+    """Ask Google Drive: for each token, which spreadsheets do I own?
+    Returns sheet_id -> (slot_idx, creds). Used as a fast fallback."""
+    sheet_to_idx = {}
+    for idx, creds in creds_list:
+        try:
+            drive_svc = build('drive', 'v3', credentials=creds, cache_discovery=False)
+            results = drive_svc.files().list(
+                q="mimeType='application/vnd.google-apps.spreadsheet' and 'me' in owners",
+                pageSize=1000,
+                fields="files(id)"
+            ).execute()
+            files = results.get('files', [])
+            for f in files:
+                sheet_to_idx[f['id']] = (idx, creds)
+        except Exception as e:
+            logger.warning(f"Error mapping token {idx}: {e}")
+    return sheet_to_idx
+
+
+def load_script_token_map(creds_list):
+    """Load the pre-built script_id -> token_file map from script_to_token_map.json.
+    This is the ground-truth map: built by probing deployments.list per script,
+    which reveals the *GCP project owner* (not just the Drive file owner)."""
+    map_path = REPO_ROOT / "script_to_token_map.json"
+    if not map_path.exists():
+        logger.warning("script_to_token_map.json not found — falling back to Drive ownership map.")
+        return None
+
+    raw = json.loads(map_path.read_text())
+    raw_map = raw.get("map", {})
+
+    # Build a lookup: token_file path -> (idx, creds)
+    token_file_to_creds = {}
+    for idx, creds in creds_list:
+        token_path = str(CREDS_DIR / f"token_{idx}.json")
+        token_file_to_creds[token_path] = (idx, creds)
+
+    script_to_slot = {}
+    for script_id, token_file in raw_map.items():
+        key = str(REPO_ROOT / token_file) if not token_file.startswith("/") else token_file
+        # Normalise: strip leading repo path if stored as relative
+        for candidate, slot in token_file_to_creds.items():
+            if candidate.endswith(Path(token_file).name):
+                script_to_slot[script_id] = slot
+                break
+
+    logger.info(f"Loaded script->token map: {len(script_to_slot)} entries")
+    return script_to_slot
 
 def label_for_sat(sat):
     return (
@@ -127,7 +179,8 @@ def fire_one(script_svc, sat):
         if status == 404 or "requested entity was not found" in msg_l:
             try:
                 deployment_id = create_api_deployment(script_svc, script_id)
-                logger.info(f"Created deployment {deployment_id} for {label}")
+                logger.info(f"Created deployment {deployment_id} for {label}, waiting 5s for propagation...")
+                time.sleep(5)
                 res = run_safe_launch(script_svc, script_id)
             except Exception as inner:
                 return {
@@ -204,6 +257,11 @@ def worker(slot_idx, creds, satellites, delay):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Bootstrap API Executable and run safeLaunch.")
+    parser.add_argument("--targets", type=Path, default=None,
+                        help="Path to JSON file with list of sheet_ids to target")
+    args = parser.parse_args()
+
     print("\n🚀 MA GOLIDE — API BOOTSTRAP + FIRE")
     print("════════════════════════════════════════════════")
 
@@ -213,19 +271,54 @@ def main():
         return
 
     all_sats = list_satellites()
+    
+    if args.targets and args.targets.exists():
+        targets_list = json.loads(args.targets.read_text())
+        all_sats = [s for s in all_sats if (s.get("sheet_id") or s.get("id")) in targets_list]
+        print(f"Filtered to {len(all_sats)} targets from {args.targets.name}")
+        
     registered = [s for s in all_sats if s.get("script_id")]
 
     print(f" Registered satellites with script_id: {len(registered)}")
     print(f" Credential slots loaded: {len(creds_list)}")
     print("════════════════════════════════════════════════\n")
 
+    print("Loading script->token map from script_to_token_map.json...")
+    script_to_slot = load_script_token_map(creds_list)
+
+    if script_to_slot is None:
+        print("Falling back to Drive-ownership map (15 API calls)...")
+        sheet_to_idx = build_token_map(creds_list)
+        # Re-key by script_id using registered satellites
+        script_to_slot = {}
+        for sat in registered:
+            sid = sat.get("sheet_id") or sat.get("id")
+            if sid in sheet_to_idx:
+                script_id = sat.get("script_id")
+                if script_id:
+                    script_to_slot[script_id] = sheet_to_idx[sid]
+
+    print(f"Mapped {len(script_to_slot)} scripts to tokens.\n")
+
     if not registered:
         print("No registered satellites to process.")
         return
 
-    n_slots = min(len(creds_list), MAX_WORKERS, len(registered))
-    chunk_size = (len(registered) + n_slots - 1) // n_slots
-    chunks = [registered[i:i + chunk_size] for i in range(0, len(registered), chunk_size)]
+    slots_to_sats = {}
+    unmapped = []
+
+    for sat in registered:
+        script_id = sat.get("script_id")
+        if script_id and script_id in script_to_slot:
+            idx, creds = script_to_slot[script_id]
+            if idx not in slots_to_sats:
+                slots_to_sats[idx] = {"creds": creds, "sats": []}
+            slots_to_sats[idx]["sats"].append(sat)
+        else:
+            unmapped.append(sat)
+
+    if unmapped:
+        print(f"WARNING: {len(unmapped)} satellites could not be mapped to any token (no script_id or not in map).")
 
     totals = {
         "fired": 0,
@@ -235,11 +328,10 @@ def main():
         "no_script_id": 0,
     }
 
-    with ThreadPoolExecutor(max_workers=n_slots) as executor:
-        futures = [
-            executor.submit(worker, idx, creds, chunks[i], DELAY)
-            for i, (idx, creds) in enumerate(creds_list[:n_slots])
-        ]
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = []
+        for idx, data in slots_to_sats.items():
+            futures.append(executor.submit(worker, idx, data["creds"], data["sats"], DELAY))
 
         for f in as_completed(futures):
             r = f.result()
