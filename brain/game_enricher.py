@@ -153,7 +153,19 @@ def _build_ou_struct(
 
 def _build_ftou_struct(game: Dict[str, Any], config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Build ft_ou struct from raw game data."""
-    # Look for explicit FT OU prediction key or use full-game total signal
+    computed = game.get("computed_ft_ou")
+    if computed and not computed.get("skip"):
+        return {
+            "pick": computed.get("pick"),
+            "direction": str(computed.get("direction")).upper(),
+            "confidence": computed.get("confidence"),
+            "ev": computed.get("ev"),
+            "edge": computed.get("edge"),
+            "line": computed.get("line"),
+            "star": computed.get("tier") == "STRONG" or computed.get("tierDisplay") == "★",
+        }
+
+    # Fallback to legacy
     ft_ou_pred = game.get("ft_ou_pred") or game.get("ou_ft")
     if not ft_ou_pred:
         return None
