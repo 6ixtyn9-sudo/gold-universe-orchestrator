@@ -22,7 +22,8 @@ from supabase import create_client, Client
 
 from brain.data_parser import (
     parse_upcoming_clean, parse_results_clean,
-    parse_config_tier2, load_accumulator_config, parse_standings
+    parse_config_tier2, load_accumulator_config, parse_standings,
+    load_tier1_config
 )
 from brain.config_ledger import build_config_snapshot, upsert_config_to_supabase
 from brain.contract_enforcer import build_bet_slips
@@ -109,7 +110,8 @@ def process_satellite(sb: Client, satellite_id: str, writer: Optional[SheetWrite
     acc_config = load_accumulator_config(config_kv)
     
     standings = parse_standings(standings_raw)
-    config_tier1 = parse_config_tier2(config_tier1_raw) # Key-value parser works for Tier1 too
+    config_tier1_kv = parse_config_tier2(config_tier1_raw) # Key-value parser works for Tier1 too
+    config_tier1 = load_tier1_config(config_tier1_kv)
 
     # 4. Config Stamping
     leagues = list(set([g.get("league") for g in games if g.get("league")]))

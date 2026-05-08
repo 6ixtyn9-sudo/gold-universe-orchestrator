@@ -285,9 +285,12 @@ def enrich_games(
     for game in games:
         home = game.get("home", "")
         away = game.get("away", "")
-        pred = game.get("prediction")
-        conf = parse_conf_pct(game.get("confidence"))
-        ev = to_num(game.get("ev"), None)
+        pred = game.get("computed_prediction")
+        if not pred or pred == "RISKY":
+            pred = game.get("prediction")
+        
+        conf = parse_conf_pct(game.get("computed_confidence")) or parse_conf_pct(game.get("confidence"))
+        ev = to_num(game.get("ev"), None) # EV is not computed by Tier1
         home_odds = to_num(game.get("home_odds"), None)
         away_odds = to_num(game.get("away_odds"), None)
 

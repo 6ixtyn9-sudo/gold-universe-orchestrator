@@ -22,7 +22,7 @@ from supabase import create_client, Client
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from brain.data_parser import parse_upcoming_clean, parse_results_clean, parse_config_tier2, load_accumulator_config, parse_standings
+from brain.data_parser import parse_upcoming_clean, parse_results_clean, parse_config_tier2, load_accumulator_config, parse_standings, load_tier1_config
 from brain.contract_enforcer import build_bet_slips
 from brain.game_processor import compute_magolide_predictions
 from brain.game_enricher import enrich_games
@@ -50,7 +50,8 @@ def main():
     results = parse_results_clean(tabs.get("ResultsClean", tabs.get("Results_Clean", [])))
     config_kv = parse_config_tier2(tabs.get("Config_Tier2", []))
     standings = parse_standings(tabs.get("Standings", tabs.get("Clean", [])))
-    config_tier1 = parse_config_tier2(tabs.get("Config_Tier1", []))
+    config_tier1_kv = parse_config_tier2(tabs.get("Config_Tier1", []))
+    config_tier1 = load_tier1_config(config_tier1_kv)
     
     acc_config = load_accumulator_config(config_kv)
 

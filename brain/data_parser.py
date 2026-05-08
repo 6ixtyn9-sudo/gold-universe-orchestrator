@@ -369,6 +369,64 @@ def parse_config_tier2(raw_values: List[List[Any]]) -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# Config_Tier1 Loader (Port of loadTier1Config)
+# ─────────────────────────────────────────────────────────────────────────
+
+def load_tier1_config(config_tier1: Dict[str, Any]) -> Dict[str, Any]:
+    """Port of loadTier1Config from Data_Parser.gs with robust defaults."""
+    defaults = {
+        'version': 'v1.0.0',
+        'rank': 0.0,
+        'form': 2.5,
+        'h2h': 1.5,
+        'forebet': 3.0,
+        'variance': 1.0,
+        'pctWeight': 3.0,
+        'netRtgWeight': 2.0,
+        'homeCourtWeight': 1.0,
+        'momentumWeight': 1.0,
+        'streakWeight': 1.0,
+        'homeAdv': 5.0,
+        'threshold': 25.0,
+        'confMin': 50.0,
+        'confMax': 95.0,
+        'minSamples': 3,
+        'confidenceScale': 30.0,
+        'bayesianBlending': False,
+        'showAllTiers': False,
+        'useLegacySigmoid': False,
+        'tierStrongMinScore': 65.0,
+        'tierMediumMinScore': 50.0,
+        'tierWeakMinScore': 35.0,
+        'enableFirstHalf': True,
+        'enableRobbers': True,
+        'enableFTOU': True,
+        'enableEnhancedHighestQ': True
+    }
+    
+    # Merge passed config onto defaults
+    mapped = {}
+    for k, v in config_tier1.items():
+        k_low = k.replace("_", "").lower()
+        mapped[k_low] = v
+        
+    result = {}
+    for k, default_val in defaults.items():
+        k_low = k.replace("_", "").lower()
+        val = mapped.get(k_low)
+        if val is not None:
+            if isinstance(default_val, bool):
+                val = str(val).lower() in ('true', 'yes', '1', 'on')
+            else:
+                val = to_num(val, default_val)
+            result[k] = val
+        else:
+            result[k] = default_val
+            
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Accumulator Config Loader (Port of loadAccumulatorConfig)
 # ─────────────────────────────────────────────────────────────────────────
 
