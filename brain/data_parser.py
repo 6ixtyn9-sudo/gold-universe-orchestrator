@@ -427,3 +427,173 @@ def _find_header_row(
             return scan
 
     return -1
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Standings Parser
+# ─────────────────────────────────────────────────────────────────────────
+
+def parse_standings(raw_values: List[List[Any]]) -> Dict[str, Dict[str, Any]]:
+    """
+    Parse Standings sheet into a dictionary mapping normalized team names to their metrics.
+    """
+    standings = {}
+    if not raw_values or len(raw_values) < 2:
+        return standings
+
+    current_col_map = None
+
+    def _is_section_label(row: List[Any]) -> bool:
+        if not row: return False
+        val = normalize_header(row[0])
+        labels = {
+            'west', 'east', 'western', 'eastern',
+            'westernconference', 'easternconference',
+            'atlantic', 'central', 'southeast', 'northwest', 'pacific', 'southwest',
+            'conference', 'division'
+        }
+        return val in labels
+
+    def _is_header_row(row: List[Any]) -> bool:
+        has_team = False
+        has_stat = False
+        for c in row:
+            h = normalize_header(c)
+            if h in ('team', 'teamname'): has_team = True
+            if h in ('w', 'wins', 'gp', 'games', 'pct'): has_stat = True
+        return has_team and has_stat
+
+    def _build_col_map(row: List[Any]) -> Dict[str, int]:
+        cmap = {}
+        aliases = {
+            'rank':   ['position', 'pos', 'rank', 'rk', '#'],
+            'team':   ['teamname', 'team', 'name', 'club'],
+            'gp':     ['gp', 'games', 'gamesplayed', 'g', 'mp'],
+            'wins':   ['w', 'wins', 'win'],
+            'losses': ['l', 'losses', 'loss'],
+            'pf':     ['pf', 'pts', 'pointsfor', 'ppg', 'ptsfor'],
+            'pa':     ['pa', 'ptsagainst', 'pointsagainst', 'papg', 'opp'],
+            'pct':    ['pct', 'winpct', 'wpct', 'percentage'],
+            'streak': ['streak', 'strk', 'str'],
+            'l10':    ['l10', 'last10', 'lasttenl10'],
+            'home':   ['home', 'homerec', 'homerecord'],
+            'away':   ['away', 'road', 'awayrec', 'roadrec', 'awayrecord']
+        }
+        for i, c in enumerate(row):
+            h = normalize_header(c)
+            if not h: continue
+            for field, field_aliases in aliases.items():
+                if h in field_aliases:
+                    cmap[field] = i
+                    break
+        return cmap
+
+    def _parse_win_loss(val: Any) -> float:
+        if not val: return 0.5
+        match = re.search(r'(\d+)\s*[-–]\s*(\d+)', str(val).strip())
+        if not match: return 0.5
+        w = int(match.group(1))
+        l = int(match.group(2))
+        return w / (w + l) if (w + l) > 0 else 0.5
+
+    def _parse_streak(val: Any) -> int:
+        if not val: return 0
+        s = str(val).strip().upper()
+        match = re.match(r'^(W|WON|L|LOST)\s*(\d+)$', s)
+        if match:
+            count = int(match.group(2))
+            return count if match.group(1).startswith('W') else -count
+        return 0
+
+    for r, row in enumerate(raw_values):
+        if not row or not any(str(c).strip() for c in row):
+            continue
+
+        if _is_section_label(row):
+            continue
+
+        if _is_header_row(row):
+            current_col_map = _build_col_map(row)
+            continue
+
+        if not current_col_map or 'team' not in current_col_map:
+            continue
+
+        try:
+            team_raw = row[current_col_map['team']]
+        except IndexError:
+            continue
+            
+        if not team_raw or str(team_raw).strip() == '':
+            continue
+            
+        team_name = str(team_raw).strip()
+        tl = team_name.lower()
+        if tl in ('team', 'team name', 'teamname'):
+            continue
+
+        def _get_val(field: str, default: Any = None) -> Any:
+            idx = current_col_map.get(field)
+            if idx is not None and idx < len(row):
+                return row[idx]
+            return default
+
+        gp = to_num(_get_val('gp'), 0.0)
+        wins = to_num(_get_val('wins'), 0.0)
+        losses = to_num(_get_val('losses'), 0.0)
+        pf = to_num(_get_val('pf'), 0.0)
+        pa = to_num(_get_val('pa'), 0.0)
+        rank = to_num(_get_val('rank'), 15.0)
+
+        pct = 0.5
+        raw_pct_val = _get_val('pct')
+        if raw_pct_val not in ('', None):
+            raw_pct = to_num(raw_pct_val, -1.0)
+            if 0 <= raw_pct <= 1:
+                pct = raw_pct
+            elif 1 < raw_pct <= 100:
+                pct = raw_pct / 100.0
+        
+        if pct == 0.5 and (wins > 0 or losses > 0):
+            if wins + losses > 0:
+                pct = wins / (wins + losses)
+
+        net_rtg = 0.0
+        if gp > 0 and (pf > 0 or pa > 0):
+            net_rtg = (pf - pa) / gp
+
+        streak = _parse_streak(_get_val('streak'))
+
+        l10_pct = pct
+        l10_val = _get_val('l10')
+        if l10_val:
+            l10_pct = _parse_win_loss(l10_val)
+
+        home_pct = pct
+        home_val = _get_val('home')
+        if home_val:
+            home_pct = _parse_win_loss(home_val)
+
+        away_pct = pct
+        away_val = _get_val('away')
+        if away_val:
+            away_pct = _parse_win_loss(away_val)
+
+        standings[team_name.lower().replace("'", "").replace(".", "").replace("-", " ").strip()] = {
+            'teamName': team_name,
+            'rank': rank,
+            'pct': pct,
+            'netRtg': net_rtg,
+            'wl': f"{int(wins)}-{int(losses)}",
+            'wins': wins,
+            'losses': losses,
+            'homePct': home_pct,
+            'awayPct': away_pct,
+            'l10Pct': l10_pct,
+            'streak': streak,
+            'gp': gp,
+            'pf': pf,
+            'pa': pa
+        }
+
+    return standings

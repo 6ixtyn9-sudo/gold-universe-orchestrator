@@ -22,10 +22,11 @@ from supabase import create_client, Client
 
 from brain.data_parser import (
     parse_upcoming_clean, parse_results_clean,
-    parse_config_tier2, load_accumulator_config,
+    parse_config_tier2, load_accumulator_config, parse_standings
 )
 from brain.config_ledger import build_config_snapshot, upsert_config_to_supabase
 from brain.contract_enforcer import build_bet_slips
+from brain.game_processor import compute_magolide_predictions
 from brain.game_enricher import enrich_games
 from brain.accuracy_report import grade_bet_slips
 from brain.sheet_writer import SheetWriter
@@ -99,19 +100,25 @@ def process_satellite(sb: Client, satellite_id: str, writer: Optional[SheetWrite
     upcoming_raw = tabs.get("UpcomingClean", tabs.get("Upcoming_Clean", []))
     results_raw = tabs.get("ResultsClean", tabs.get("Results_Clean", []))
     config_raw = tabs.get("Config_Tier2", [])
+    standings_raw = tabs.get("Standings", tabs.get("Clean", []))
+    config_tier1_raw = tabs.get("Config_Tier1", [])
 
     games = parse_upcoming_clean(upcoming_raw)
     results = parse_results_clean(results_raw)
     config_kv = parse_config_tier2(config_raw)
     acc_config = load_accumulator_config(config_kv)
+    
+    standings = parse_standings(standings_raw)
+    config_tier1 = parse_config_tier2(config_tier1_raw) # Key-value parser works for Tier1 too
 
     # 4. Config Stamping
     leagues = list(set([g.get("league") for g in games if g.get("league")]))
     cfg_snapshot = build_config_snapshot(config_kv, acc_config, active_leagues=leagues)
     stamp_id = upsert_config_to_supabase(sb, cfg_snapshot)
 
-    # 5. Build Bet Slips (Phase 1: enrich raw predictions first)
-    enriched_games = enrich_games(games, acc_config)
+    # 5. Compute Predictions & Build Bet Slips (Phase 2: Active computation)
+    computed_games = compute_magolide_predictions(games, standings, results, config_tier1)
+    enriched_games = enrich_games(computed_games, acc_config)
     bet_slips_2d = build_bet_slips(enriched_games, acc_config, stamp_id)
 
     # 6. Grade Accuracy

@@ -22,8 +22,9 @@ from supabase import create_client, Client
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from brain.data_parser import parse_upcoming_clean, parse_results_clean, parse_config_tier2, load_accumulator_config
+from brain.data_parser import parse_upcoming_clean, parse_results_clean, parse_config_tier2, load_accumulator_config, parse_standings
 from brain.contract_enforcer import build_bet_slips
+from brain.game_processor import compute_magolide_predictions
 from brain.game_enricher import enrich_games
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -46,11 +47,18 @@ def main():
 
     # 2. Run Python Brain
     upcoming = parse_upcoming_clean(tabs.get("UpcomingClean", tabs.get("Upcoming_Clean", [])))
+    results = parse_results_clean(tabs.get("ResultsClean", tabs.get("Results_Clean", [])))
     config_kv = parse_config_tier2(tabs.get("Config_Tier2", []))
+    standings = parse_standings(tabs.get("Standings", tabs.get("Clean", [])))
+    config_tier1 = parse_config_tier2(tabs.get("Config_Tier1", []))
+    
     acc_config = load_accumulator_config(config_kv)
 
-    # Phase 1 Enrichment: map raw predictions into banker/robber/sniper structs
-    enriched_games = enrich_games(upcoming, acc_config)
+    # Phase 2: Active computation of predictions
+    computed_games = compute_magolide_predictions(upcoming, standings, results, config_tier1)
+
+    # Phase 1 Enrichment: map computed predictions into banker/robber/sniper structs
+    enriched_games = enrich_games(computed_games, acc_config)
     
     python_bet_slips = build_bet_slips(enriched_games, acc_config, "AUDIT-STAMP")
 
