@@ -44,7 +44,19 @@ class ScriptCredentialPool:
                     "last_used": 0
                 })
             except Exception as e:
-                logger.error(f"Failed to load credentials from {path}: {e}")
+                if not self.interactive_oauth and "interactive_oauth is false" in str(e).lower():
+                    logger.warning(f"Credential {path} NOT AUTHED. Marking as DISABLED_NOT_AUTHED.")
+                    self.pool.append({
+                        "path": path,
+                        "email": "unknown",
+                        "status": "DISABLED_NOT_AUTHED",
+                        "cooldown_until": 0,
+                        "reason": "Missing token",
+                        "client": None,
+                        "last_used": 0
+                    })
+                else:
+                    logger.error(f"Failed to load credentials from {path}: {e}")
                 
         if not self.pool:
             raise Exception("No valid credentials loaded into pool.")
@@ -62,6 +74,14 @@ class ScriptCredentialPool:
 
         ready_items = [i for i in range(len(self.pool)) if self.pool[i]["status"] == "READY"]
         if not ready_items:
+            cooldown_items = [item for item in self.pool if item["status"] == "COOLDOWN_UNTIL"]
+            if cooldown_items:
+                soonest = min(cooldown_items, key=lambda x: x["cooldown_until"])
+                wait_sec = int(soonest["cooldown_until"] - now)
+                if wait_sec > 0:
+                    logger.error(f"\\nPool exhausted (all cooldown). Next credential ready in {wait_sec} seconds (at {time.strftime('%H:%M:%S', time.localtime(soonest['cooldown_until']))}).")
+                    import sys
+                    sys.exit(429)
             return None
             
         if self.strategy == "least_recently_used":

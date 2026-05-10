@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 repo_root = Path(os.path.dirname(os.path.dirname(__file__)))
@@ -227,6 +227,7 @@ def main():
     parser.add_argument("--all", action="store_true", help="Process all satellites")
     parser.add_argument("--start-index", type=int, default=0, help="Start index for processing")
     parser.add_argument("--max-errors", type=int, default=5, help="Abort after N systemic errors")
+    parser.add_argument("--max-runtime-minutes", type=int, default=0, help="Stop gracefully after N minutes")
     parser.add_argument("--dry-run", action="store_true", default=True, help="Dry run mode (default: True)")
     parser.add_argument("--force", action="store_true", help="Force writes (turns off dry-run)")
     parser.add_argument("--fix-triggers", action="store_true", default=True, help="Nuke triggers on non-canonical duplicates")
@@ -343,7 +344,13 @@ def main():
     }
 
     try:
+        import time
+        start_time = time.time()
         for sat in targets:
+            if args.max_runtime_minutes > 0 and (time.time() - start_time) / 60.0 > args.max_runtime_minutes:
+                logger.info(f"\\nGracefully stopping after {args.max_runtime_minutes} minutes.")
+                break
+                
             if stats["systemic_errors"] >= args.max_errors:
                 logger.error("Max systemic errors reached. Aborting.")
                 break
@@ -404,7 +411,7 @@ def main():
                             logger.error(f"Failed to create script for {sat_id}: {e}")
                             stats["failed_create"] += 1
                             stats["systemic_errors"] += 1
-                            checkpoint[sat_id] = {"status": "FAILED_CREATE", "timestamp": datetime.utcnow().isoformat(), "principal": pool.get_current_principal_name()}
+                            checkpoint[sat_id] = {"status": "FAILED_CREATE", "timestamp": datetime.now(timezone.utc).isoformat(), "principal": pool.get_current_principal_name()}
                             save_checkpoint(args.checkpoint_file, checkpoint)
                             continue
                 else:
@@ -465,7 +472,7 @@ def main():
                             stats["verified"] += 1
                             is_verified = True
                             cp_status = "VERIFIED"
-                            update_satellite(sat_id, deployed_fingerprint=local_fingerprint, deployed_at=datetime.utcnow().isoformat() + "Z")
+                            update_satellite(sat_id, deployed_fingerprint=local_fingerprint, deployed_at=datetime.now(timezone.utc).isoformat() + "Z")
                         else:
                             logger.error(f"VERIFY_FAILED: Remote fingerprint {final_fp} != expected {local_fingerprint}")
                             stats["failed_update"] += 1
@@ -483,7 +490,7 @@ def main():
                     "sheet_id": sheet_id,
                     "canonical_script_id": canonical_id,
                     "status": cp_status,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "principal": pool.get_current_principal_name()
                 }
                 save_checkpoint(args.checkpoint_file, checkpoint)

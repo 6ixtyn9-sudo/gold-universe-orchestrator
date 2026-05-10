@@ -31,7 +31,12 @@ credentials.json
 service_account.json
 *.json.bak
 credentials_*.json
+credentials_writer_*.json
 creds/
+artifacts/token-cache/
+artifacts/reconcile_checkpoint.json
+artifacts/*.log
+artifacts/*.patch
 deploy_progress.json
 personal_token.json
 client_secret_*.json

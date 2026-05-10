@@ -77,7 +77,7 @@ class ScriptApiClient:
                 if retry:
                     self.rate_limited_retries += 1
                     if attempt == max_retries - 1:
-                        raise Exception(f"Max retries exceeded for request. Last error: {e}")
+                        raise e
                     
                     delay = (base_delay ** attempt) + random.uniform(0, 1)
                     logger.warning(f"Rate limited or server error ({e}). Sleeping {delay:.2f}s (attempt {attempt+1}/{max_retries})")
