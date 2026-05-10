@@ -147,8 +147,63 @@ def get_credentials(slot_idx):
                 logger.debug(f"credentials_{slot_idx}.json is not a service account (likely client secret).")
         except Exception as e:
             logger.warning(f"Failed to load credentials_{slot_idx}.json: {e}")
-        
+            
     raise RuntimeError(f"No valid credentials found for slot {slot_idx}")
 
+def get_credentials_from_file(path, token_cache_dir=None, interactive_oauth=False, scopes=None):
+    import os, json, hashlib
+    from pathlib import Path
+    from google.oauth2 import service_account
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
 
+    if scopes is None:
+        scopes = SCOPES
 
+    path_obj = Path(path)
+    if not path_obj.exists():
+        raise FileNotFoundError(f"Credential file not found: {path}")
+
+    with open(path_obj, "r") as f:
+        info = json.load(f)
+
+    # Service Account
+    if info.get("type") == "service_account":
+        return service_account.Credentials.from_service_account_info(info, scopes=scopes)
+
+    # OAuth Client
+    if "installed" in info or "web" in info:
+        client_id = info.get("installed", {}).get("client_id") or info.get("web", {}).get("client_id", "unknown")
+        # Token isolation
+        if token_cache_dir:
+            Path(token_cache_dir).mkdir(parents=True, exist_ok=True)
+            token_file = Path(token_cache_dir) / f"token_{hashlib.md5(client_id.encode()).hexdigest()[:8]}.json"
+        else:
+            token_file = path_obj.parent / f"token_{hashlib.md5(client_id.encode()).hexdigest()[:8]}.json"
+
+        creds = None
+        if token_file.exists():
+            creds = Credentials.from_authorized_user_file(str(token_file), scopes)
+
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                try:
+                    from google.auth.transport.requests import Request
+                    creds.refresh(Request())
+                except Exception as e:
+                    logger.warning(f"Failed to refresh token: {e}")
+                    creds = None
+
+            if not creds and interactive_oauth:
+                flow = InstalledAppFlow.from_client_secrets_file(str(path_obj), scopes)
+                creds = flow.run_local_server(port=0)
+                
+                with open(token_file, 'w') as token_out:
+                    token_out.write(creds.to_json())
+
+        if creds:
+            return creds
+        else:
+            raise RuntimeError(f"OAuth credentials required but interactive_oauth is false for {path}")
+
+    raise ValueError(f"Unknown credential format in {path}")

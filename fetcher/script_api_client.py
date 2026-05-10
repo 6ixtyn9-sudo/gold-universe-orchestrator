@@ -67,8 +67,8 @@ class ScriptApiClient:
                     break
             return all_files
         except Exception as e:
-            logger.warning(f"Drive search for bound scripts failed: {e}")
-            return []
+            logger.error(f"Drive search for bound scripts failed: {e}")
+            raise
 
     def delete_project(self, script_id: str):
         """Delete a script project via Drive API."""

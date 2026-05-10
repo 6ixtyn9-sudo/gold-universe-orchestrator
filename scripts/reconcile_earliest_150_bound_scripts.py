@@ -13,23 +13,25 @@ sys.path.insert(0, str(repo_root))
 from registry.satellite_registry import list_satellites, update_satellite
 from fetcher.script_api_client import ScriptApiClient
 from syncer.script_syncer import load_gs_sources
+from auth.google_auth import get_credentials_from_file, SCOPES
+
+# For auto-pick
+try:
+    from scripts.audit_google_keys import discover_keys, test_key
+except ImportError:
+    pass
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 def evaluate_canonical(bound_scripts, registry_script_id, client, expected_names):
-    """
-    Returns canonical_script_id
-    """
     if not bound_scripts:
         return None
 
-    # 1. Prefer registry if it exists in the list
     for s in bound_scripts:
         if s["id"] == registry_script_id:
             return s["id"]
 
-    # 2. Prefer the one with the highest match of expected module filenames
     best_match_id = None
     best_match_score = -1
     
@@ -47,7 +49,6 @@ def evaluate_canonical(bound_scripts, registry_script_id, client, expected_names
     if best_match_id and best_match_score > 0:
         return best_match_id
 
-    # 3. Prefer oldest-created one
     try:
         oldest = sorted(bound_scripts, key=lambda x: x.get("createdTime", "9999"))[0]
         return oldest["id"]
@@ -55,24 +56,18 @@ def evaluate_canonical(bound_scripts, registry_script_id, client, expected_names
         return bound_scripts[0]["id"]
 
 def nuke_triggers(client, script_id, is_dry_run):
-    """
-    Safely deploy nukeAllTriggers, run it, and restore project.
-    Must guarantee project state isn't permanently modified by this operation.
-    """
     if not client.can_run_function(script_id):
-        logger.warning(f"Cannot execute Apps Script functions on {script_id}; trigger cleanup skipped.")
+        logger.warning(f"Execution API unavailable; cannot nuke triggers on {script_id}. Use --delete-duplicates to eliminate risk.")
         return False
 
     if is_dry_run:
-        logger.info(f"[Dry-run] Would backup, safely nuke triggers, and restore on duplicate {script_id}")
+        logger.info(f"[Dry-run] Would safely nuke triggers on duplicate {script_id}")
         return True
         
     try:
-        # Backup
         original_content = client.get_project_content(script_id)
         original_names = {f["name"] for f in original_content}
         
-        # Inject fix_triggers.gs
         gs_sources, _ = load_gs_sources()
         fix_triggers_source = next((f for f in gs_sources if f["name"] == "fix_triggers"), None)
         if not fix_triggers_source:
@@ -80,14 +75,12 @@ def nuke_triggers(client, script_id, is_dry_run):
             return False
             
         new_content = list(original_content)
-        # Avoid injecting duplicate name
         if not any(f["name"] == "fix_triggers" for f in new_content):
             new_content.append(fix_triggers_source)
             
         logger.info(f"Appending fix_triggers.gs to {script_id} for cleanup...")
         client.update_project_content(script_id, new_content)
         
-        # Try to run it
         res = client.run_function(script_id, "nukeAllTriggers")
         success = res.get("ok", False)
         if success:
@@ -95,11 +88,9 @@ def nuke_triggers(client, script_id, is_dry_run):
         else:
             logger.warning(f"Failed to run nukeAllTriggers on {script_id}: {res.get('error')}")
             
-        # Restore exactly
         logger.info(f"Restoring {script_id} to original state...")
         client.update_project_content(script_id, original_content)
         
-        # Verify restore
         restored_content = client.get_project_content(script_id)
         restored_names = {f["name"] for f in restored_content}
         if restored_names != original_names:
@@ -117,7 +108,6 @@ def verify_canonical(client, canonical_id, expected_names):
         final_content = client.get_project_content(canonical_id)
         final_names = {f["name"] for f in final_content}
         
-        # Need to ensure at least all expected names are present + appsscript
         if expected_names.issubset(final_names) and "appsscript" in final_names:
             extra = final_names - expected_names - {"appsscript"}
             if extra:
@@ -134,6 +124,42 @@ def verify_canonical(client, canonical_id, expected_names):
         logger.error(f"VERIFY_FAILED: Error fetching content: {e}")
         return False
 
+def get_auth_credentials(args):
+    if args.credentials:
+        try:
+            return get_credentials_from_file(args.credentials, args.token_cache_dir, False, SCOPES)
+        except Exception as e:
+            logger.error(f"Failed to load provided credentials: {e}")
+            sys.exit(1)
+            
+    if args.auto_pick_key:
+        candidates = discover_keys(args.keys_dir)
+        if not candidates:
+            logger.error("No credentials found for auto-pick.")
+            sys.exit(1)
+            
+        logger.info(f"Auto-picking from {len(candidates)} candidates...")
+        # Get one sample sheet just to test read
+        reg_path = repo_root / "registry/registry.json"
+        registry_samples = []
+        if reg_path.exists():
+            with open(reg_path) as f:
+                data = json.load(f)
+                sats = data.get("satellites", [])
+                if sats: registry_samples.append(sats[0].get("sheet_id") or sats[0].get("id"))
+                
+        for path in candidates:
+            res = test_key(path, registry_samples, False, args.token_cache_dir)
+            if res and res["overall_status"] in ["READ_OK", "READ_WRITE_OK"]:
+                logger.info(f"Auto-picked working credential: {path.name}")
+                return get_credentials_from_file(path, args.token_cache_dir, False, SCOPES)
+                
+        logger.error("Auto-pick failed: No working credentials found.")
+        sys.exit(1)
+        
+    logger.error("No credentials provided. Use --credentials <path> or --auto-pick-key.")
+    sys.exit(1)
+
 def main():
     parser = argparse.ArgumentParser(description="Reconcile earliest bound scripts")
     parser.add_argument("--limit", type=int, default=150, help="Number of earliest satellites to process")
@@ -143,6 +169,10 @@ def main():
     parser.add_argument("--no-fix-triggers", dest="fix_triggers", action="store_false")
     parser.add_argument("--delete-duplicates", action="store_true", default=False, help="Delete duplicates if explicitly requested")
     parser.add_argument("--sort-by", choices=["added_at", "drive_created_time"], default="added_at", help="Sort order for 'earliest'")
+    parser.add_argument("--credentials", type=str, help="Explicit path to JSON credentials")
+    parser.add_argument("--keys-dir", type=str, help="Directory to auto-discover keys from")
+    parser.add_argument("--auto-pick-key", action="store_true", help="Auto pick first working key")
+    parser.add_argument("--token-cache-dir", type=str, default="artifacts/token-cache", help="Directory for token caches")
     args = parser.parse_args()
 
     is_dry_run = args.dry_run and not args.force
@@ -155,9 +185,9 @@ def main():
     logger.info(f"Sort Mode: {args.sort_by}")
     logger.info("=" * 60)
 
-    client = ScriptApiClient()
+    creds = get_auth_credentials(args)
+    client = ScriptApiClient(credentials=creds)
     
-    # Dynamically derive expected modules
     gs_sources, err = load_gs_sources()
     if err:
         logger.error(f"Failed to load local .gs sources: {err}")
@@ -190,9 +220,8 @@ def main():
 
     for sat in targets:
         sat_id = sat.get("id")
-        
-        # Registry normalization
         sheet_id = sat.get("sheet_id")
+        
         if not sheet_id:
             logger.warning(f"Satellite {sat_id} missing sheet_id! Falling back to id.")
             sheet_id = sat_id
@@ -205,7 +234,17 @@ def main():
         logger.info(f"\n--- Processing Satellite {sat_id} (Sheet: {sheet_id}) ---")
         stats["processed"] += 1
         
-        bound_scripts = client.find_all_bound_scripts(sheet_id)
+        # FAIL FAST on auth error
+        try:
+            bound_scripts = client.find_all_bound_scripts(sheet_id)
+        except Exception as e:
+            if "deleted_client" in str(e).lower() or "unauthorized" in str(e).lower() or "permission" in str(e).lower():
+                logger.error(f"CRITICAL AUTH FAILURE: Unable to search Drive. Key is broken or lacks access. Error: {e}")
+                sys.exit(1)
+            else:
+                logger.error(f"Failed to list bound scripts: {e}")
+                continue
+
         if not bound_scripts:
             logger.warning(f"No bound scripts found for {sat_id}.")
             continue
@@ -226,7 +265,6 @@ def main():
             else:
                 logger.info(f"[Dry-run] Would update registry script_id to {canonical_id}")
                 
-        # Handle duplicates
         duplicates = [s for s in bound_scripts if s["id"] != canonical_id]
         if duplicates:
             stats["had_duplicates"] += 1
@@ -235,7 +273,6 @@ def main():
             for d in duplicates:
                 d_id = d["id"]
                 
-                # Always backup duplicates
                 if is_dry_run:
                     logger.info(f"[Dry-run] Would backup duplicate {d_id}")
                 else:
@@ -262,14 +299,16 @@ def main():
                     else:
                         logger.warning(f"Duplicate {d_id} left untouched. It may still have triggers.")
 
-        # Sync code only to the canonical project
         if not is_dry_run:
             logger.info(f"Syncing correct modules to canonical project {canonical_id}")
-            client.update_project_content(canonical_id, gs_sources)
-            stats["canonical_fixed"] += 1
-            
-            # Verify
-            if not verify_canonical(client, canonical_id, expected_module_names):
+            try:
+                client.update_project_content(canonical_id, gs_sources)
+                stats["canonical_fixed"] += 1
+                
+                if not verify_canonical(client, canonical_id, expected_module_names):
+                    stats["verification_failures"] += 1
+            except Exception as e:
+                logger.error(f"Failed to sync canonical project {canonical_id}: {e}")
                 stats["verification_failures"] += 1
         else:
             logger.info(f"[Dry-run] Would sync modules to {canonical_id} and verify.")
