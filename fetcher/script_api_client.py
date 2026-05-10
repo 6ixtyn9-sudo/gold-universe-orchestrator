@@ -28,7 +28,12 @@ class ScriptApiClient:
         # Method 1: Search Drive for files with the spreadsheet as parent
         query = f"'{spreadsheet_id}' in parents and mimeType = 'application/vnd.google-apps.script'"
         try:
-            results = self.drive_service.files().list(q=query, fields="files(id, name)").execute()
+            results = self.drive_service.files().list(
+                q=query, 
+                fields="files(id, name)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
             files = results.get("files", [])
             if files:
                 logger.info(f"Found bound script via Drive API: {files[0]['name']} ({files[0]['id']})")
@@ -40,6 +45,57 @@ class ScriptApiClient:
         # Not reliable.
         
         return None
+
+    def find_all_bound_scripts(self, spreadsheet_id: str) -> List[Dict[str, str]]:
+        """Find all script projects bound to the spreadsheet."""
+        query = f"'{spreadsheet_id}' in parents and mimeType = 'application/vnd.google-apps.script'"
+        all_files = []
+        page_token = None
+        try:
+            while True:
+                results = self.drive_service.files().list(
+                    q=query, 
+                    fields="nextPageToken, files(id, name, createdTime)",
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True
+                ).execute()
+                files = results.get("files", [])
+                all_files.extend(files)
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
+            return all_files
+        except Exception as e:
+            logger.warning(f"Drive search for bound scripts failed: {e}")
+            return []
+
+    def delete_project(self, script_id: str):
+        """Delete a script project via Drive API."""
+        try:
+            self.drive_service.files().delete(fileId=script_id, supportsAllDrives=True).execute()
+            logger.info(f"Deleted script project {script_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete script project {script_id}: {e}")
+            return False
+
+    def can_run_function(self, script_id: str) -> bool:
+        """
+        Check if we have the capability to execute Apps Script functions via API.
+        Attempts a benign call (e.g. to a non-existent function) and checks if the error 
+        is about permissions/disabled API vs just a missing function.
+        """
+        try:
+            body = {"function": "benignCapabilityCheckDoNotRun", "parameters": []}
+            self.script_service.scripts().run(scriptId=script_id, body=body).execute()
+            return True
+        except Exception as e:
+            err_str = str(e).lower()
+            if "api has not been used" in err_str or "oauth client was deleted" in err_str or "permission denied" in err_str:
+                return False
+            # If it just says function not found, execution is fundamentally enabled!
+            return True
 
     def create_bound_script(self, spreadsheet_id: str, title: str) -> str:
         """Create a new script project bound to the spreadsheet."""
