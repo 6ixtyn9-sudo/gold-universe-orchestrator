@@ -96,7 +96,7 @@ def test_key(path, registry_samples, interactive_oauth, token_cache_dir):
 
         for sheet_id in registry_samples:
             try:
-                f = drive_service.files().get(fileId=sheet_id, fields="id,name,mimeType,owners,emailAddress,parents", supportsAllDrives=True).execute()
+                f = drive_service.files().get(fileId=sheet_id, fields="id,name,mimeType,owners(emailAddress),parents", supportsAllDrives=True).execute()
                 result["sample_access_pass"] += 1
                 
                 # Test 3: bound script discovery
@@ -112,12 +112,14 @@ def test_key(path, registry_samples, interactive_oauth, token_cache_dir):
                             result["overall_status"] = "BROKEN_DELETED_CLIENT"
                             result["error_snippet"] = "deleted_client on list"
                             return result
+                        result["error_snippet"] = f"list failed: {str(e).splitlines()[0][:100]}"
             except Exception as e:
                 result["sample_access_fail"] += 1
                 if "deleted_client" in str(e).lower():
                     result["overall_status"] = "BROKEN_DELETED_CLIENT"
                     result["error_snippet"] = "deleted_client on get"
                     return result
+                result["error_snippet"] = f"get failed: {str(e).splitlines()[0][:100]}"
 
         if result["about_get"] == "PASS" and result["sample_access_pass"] > 0 and result["bound_script_discovery"] == "PASS":
             # For now just READ_OK since we don't do a real write test
