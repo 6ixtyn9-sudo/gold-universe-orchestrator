@@ -127,7 +127,7 @@ def verify_canonical(client, canonical_id, expected_names):
 def get_auth_credentials(args):
     if args.credentials:
         try:
-            return get_credentials_from_file(args.credentials, args.token_cache_dir, False, SCOPES)
+            return get_credentials_from_file(args.credentials, args.token_cache_dir, args.interactive_oauth, SCOPES)
         except Exception as e:
             logger.error(f"Failed to load provided credentials: {e}")
             sys.exit(1)
@@ -149,10 +149,10 @@ def get_auth_credentials(args):
                 if sats: registry_samples.append(sats[0].get("sheet_id") or sats[0].get("id"))
                 
         for path in candidates:
-            res = test_key(path, registry_samples, False, args.token_cache_dir)
+            res = test_key(path, registry_samples, args.interactive_oauth, args.token_cache_dir)
             if res and res["overall_status"] in ["READ_OK", "READ_WRITE_OK"]:
                 logger.info(f"Auto-picked working credential: {path.name}")
-                return get_credentials_from_file(path, args.token_cache_dir, False, SCOPES)
+                return get_credentials_from_file(path, args.token_cache_dir, args.interactive_oauth, SCOPES)
                 
         logger.error("Auto-pick failed: No working credentials found.")
         sys.exit(1)
@@ -173,6 +173,7 @@ def main():
     parser.add_argument("--keys-dir", type=str, help="Directory to auto-discover keys from")
     parser.add_argument("--auto-pick-key", action="store_true", help="Auto pick first working key")
     parser.add_argument("--token-cache-dir", type=str, default="artifacts/token-cache", help="Directory for token caches")
+    parser.add_argument("--interactive-oauth", action="store_true", help="Allow interactive browser OAuth login")
     args = parser.parse_args()
 
     is_dry_run = args.dry_run and not args.force
