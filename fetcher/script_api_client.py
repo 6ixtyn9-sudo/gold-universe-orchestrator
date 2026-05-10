@@ -162,3 +162,33 @@ class ScriptApiClient:
         except Exception as e:
             logger.error(f"API call to run function {function_name} on {script_id} failed: {e}")
             return {"ok": False, "error": str(e)}
+
+    def can_script_create_project(self) -> Dict[str, Any]:
+        """
+        Preflight test for Script API write capability.
+        Returns a dict: {"ok": bool, "error_reason": str, "raw_message": str}
+        """
+        body = {"title": "preflight-dummy-test-do-not-keep"}
+        try:
+            # We attempt to create an unbound project. Unbound projects require script.projects scope.
+            # If the user hasn't enabled Apps Script API or is a service account without domain-wide
+            # delegation, this will fail with a 403.
+            project = self.script_service.projects().create(body=body).execute()
+            # If it succeeds, clean it up immediately if possible. However, the Apps Script API 
+            # does not expose a delete method for projects. We just have to leave it or use Drive API.
+            try:
+                self.drive_service.files().delete(fileId=project["scriptId"], supportsAllDrives=True).execute()
+            except Exception:
+                pass
+            return {"ok": True, "error_reason": "", "raw_message": ""}
+        except Exception as e:
+            msg = str(e)
+            reason = "UNKNOWN_ERROR"
+            if "has not enabled the Apps Script API" in msg:
+                reason = "USERSETTING_DISABLED"
+            elif "OAuth client was deleted" in msg.lower():
+                reason = "DELETED_CLIENT"
+            elif "403" in msg:
+                reason = "INSUFFICIENT_PERMISSIONS_OR_DISABLED"
+            return {"ok": False, "error_reason": reason, "raw_message": msg}
+

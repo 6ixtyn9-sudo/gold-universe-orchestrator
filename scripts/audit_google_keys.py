@@ -11,6 +11,7 @@ repo_root = Path(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, str(repo_root))
 
 from auth.google_auth import get_credentials_from_file, SCOPES
+from fetcher.script_api_client import ScriptApiClient
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -23,12 +24,10 @@ def discover_keys(keys_dir=None):
         return []
     
     candidates = []
-    # Search common dirs
     for d_name in ["keys", "secrets", "credentials", ".credentials", "creds", "."]:
         d = repo_root / d_name
         if d.exists() and d.is_dir():
             for f in d.glob("*.json"):
-                # Avoid common non-credential files
                 name = f.name.lower()
                 if "registry" in name or "package" in name or "audit" in name or "straggler" in name:
                     continue
@@ -47,7 +46,7 @@ def get_key_type(path):
         pass
     return "unknown", "unknown"
 
-def test_key(path, registry_samples, interactive_oauth, token_cache_dir):
+def test_key(path, registry_samples, interactive_oauth, token_cache_dir, interactive_context):
     ktype, principal = get_key_type(path)
     if ktype == "unknown":
         return None
@@ -61,23 +60,37 @@ def test_key(path, registry_samples, interactive_oauth, token_cache_dir):
         "sample_access_pass": 0,
         "sample_access_fail": 0,
         "bound_script_discovery": "FAIL",
+        "script_api_preflight": "FAIL",
         "overall_status": "BROKEN",
         "error_snippet": ""
     }
 
     try:
-        creds = get_credentials_from_file(path, token_cache_dir, interactive_oauth, SCOPES)
-    except Exception as e:
-        result["error_snippet"] = str(e).splitlines()[0][:100]
-        if "deleted_client" in str(e).lower():
-            result["overall_status"] = "BROKEN_DELETED_CLIENT"
-            logger.error(f"OAuth client deleted: {path.name} no longer exists in GCP; replace credentials and delete token cache.")
-        return result
+        interactive_allowed = interactive_oauth
+        if interactive_allowed and ktype == "oauth_client":
+            allowlist = interactive_context.get("allowlist", [])
+            if allowlist and path.name not in allowlist:
+                interactive_allowed = False
+            elif interactive_context["count"] >= interactive_context["max"]:
+                interactive_allowed = False
 
-    try:
-        drive_service = build("drive", "v3", credentials=creds, cache_discovery=False)
-        
-        # Test 1: about.get
+        try:
+            creds = get_credentials_from_file(path, token_cache_dir, interactive_allowed, SCOPES)
+            if interactive_allowed and ktype == "oauth_client":
+                interactive_context["count"] += 1
+        except Exception as e:
+            msg = str(e)
+            result["error_snippet"] = msg.splitlines()[0][:100]
+            if "deleted_client" in msg.lower():
+                result["overall_status"] = "BROKEN_DELETED_CLIENT"
+                logger.error(f"OAuth client deleted: {path.name}")
+            elif "interactive_oauth is false" in msg:
+                result["overall_status"] = "NOT_TESTED_NO_TOKEN"
+            return result
+
+        client = ScriptApiClient(credentials=creds)
+        drive_service = client.drive_service
+
         try:
             about = drive_service.about().get(fields="user(emailAddress),storageQuota").execute()
             if "user" in about and "emailAddress" in about["user"]:
@@ -87,25 +100,19 @@ def test_key(path, registry_samples, interactive_oauth, token_cache_dir):
             result["error_snippet"] = str(e).splitlines()[0][:100]
             if "deleted_client" in str(e).lower():
                 result["overall_status"] = "BROKEN_DELETED_CLIENT"
-                logger.error(f"OAuth client deleted: {path.name} no longer exists in GCP; replace credentials and delete token cache.")
-                return result
+            return result
 
-        # Test 2: sample sheets
         bound_script_tested = False
-        bound_script_pass = False
-
         for sheet_id in registry_samples:
             try:
                 f = drive_service.files().get(fileId=sheet_id, fields="id,name,mimeType,owners(emailAddress),parents", supportsAllDrives=True).execute()
                 result["sample_access_pass"] += 1
                 
-                # Test 3: bound script discovery
                 if not bound_script_tested:
                     bound_script_tested = True
                     try:
                         query = f"'{sheet_id}' in parents and mimeType = 'application/vnd.google-apps.script'"
                         res = drive_service.files().list(q=query, fields="files(id, name)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
-                        bound_script_pass = True
                         result["bound_script_discovery"] = "PASS"
                     except Exception as e:
                         if "deleted_client" in str(e).lower():
@@ -121,10 +128,23 @@ def test_key(path, registry_samples, interactive_oauth, token_cache_dir):
                     return result
                 result["error_snippet"] = f"get failed: {str(e).splitlines()[0][:100]}"
 
-        if result["about_get"] == "PASS" and result["sample_access_pass"] > 0 and result["bound_script_discovery"] == "PASS":
-            # For now just READ_OK since we don't do a real write test
-            result["overall_status"] = "READ_OK"
-            
+        # Preflight test Script API
+        preflight = client.can_script_create_project()
+        if preflight["ok"]:
+            result["script_api_preflight"] = "PASS"
+        else:
+            result["error_snippet"] = f"Preflight fail: {preflight['error_reason']}"
+
+        drive_ok = result["about_get"] == "PASS" and result["sample_access_pass"] > 0 and result["bound_script_discovery"] == "PASS"
+        script_ok = result["script_api_preflight"] == "PASS"
+
+        if drive_ok and script_ok:
+            result["overall_status"] = "DRIVE_OK_SCRIPT_OK"
+        elif drive_ok and not script_ok:
+            result["overall_status"] = "DRIVE_OK_SCRIPT_NO"
+        elif not drive_ok:
+            result["overall_status"] = "DRIVE_NO"
+
     except Exception as e:
         result["error_snippet"] = str(e).splitlines()[0][:100]
 
@@ -136,6 +156,8 @@ def main():
     parser.add_argument("--registry", type=str, default="registry/registry.json")
     parser.add_argument("--sample-size", type=int, default=5)
     parser.add_argument("--interactive-oauth", action="store_true")
+    parser.add_argument("--interactive-oauth-max", type=int, default=1)
+    parser.add_argument("--interactive-allowlist", type=str, help="Comma separated filenames")
     parser.add_argument("--report-out", type=str, default="artifacts/key-audit-report.json")
     parser.add_argument("--token-cache-dir", type=str, default="artifacts/token-cache")
     args = parser.parse_args()
@@ -159,20 +181,26 @@ def main():
     if not registry_samples:
         logger.warning("No samples found in registry, continuing with empty samples.")
 
+    interactive_context = {
+        "max": args.interactive_oauth_max,
+        "count": 0,
+        "allowlist": [x.strip() for x in args.interactive_allowlist.split(",")] if args.interactive_allowlist else []
+    }
+
     reports = []
     for path in candidates:
         logger.info(f"Testing {path.name}...")
-        res = test_key(path, registry_samples, args.interactive_oauth, args.token_cache_dir)
+        res = test_key(path, registry_samples, args.interactive_oauth, args.token_cache_dir, interactive_context)
         if res:
             reports.append(res)
             
-    # Print table
     print("\n--- Key Audit Summary ---")
-    print(f"{'Filename':<25} | {'Type':<15} | {'Principal':<35} | {'About':<5} | {'Samples':<7} | {'BoundDisc':<9} | {'Status':<25} | {'Error'}")
-    print("-" * 140)
+    fmt = "{:<22} | {:<15} | {:<30} | {:<5} | {:<7} | {:<9} | {:<10} | {:<20} | {}"
+    print(fmt.format("Filename", "Type", "Principal", "About", "Samples", "BoundDisc", "ScriptPre", "Status", "Error"))
+    print("-" * 150)
     for r in reports:
         samples_str = f"{r['sample_access_pass']}/{r['sample_access_pass']+r['sample_access_fail']}"
-        print(f"{r['filename']:<25} | {r['type']:<15} | {r['principal'][:35]:<35} | {r['about_get']:<5} | {samples_str:<7} | {r['bound_script_discovery']:<9} | {r['overall_status']:<25} | {r['error_snippet']}")
+        print(fmt.format(r['filename'][:22], r['type'], r['principal'][:30], r['about_get'], samples_str, r['bound_script_discovery'], r['script_api_preflight'], r['overall_status'], r['error_snippet']))
 
     out_path = Path(args.report_out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
