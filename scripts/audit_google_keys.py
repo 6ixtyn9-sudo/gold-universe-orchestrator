@@ -46,7 +46,7 @@ def get_key_type(path):
         pass
     return "unknown", "unknown"
 
-def test_key(path, registry_samples, interactive_oauth, token_cache_dir, interactive_context):
+def test_key(path, registry_samples, script_ids, interactive_oauth, token_cache_dir, interactive_context, preflight_mode):
     ktype, principal = get_key_type(path)
     if ktype == "unknown":
         return None
@@ -98,7 +98,7 @@ def test_key(path, registry_samples, interactive_oauth, token_cache_dir, interac
             result["about_get"] = "PASS"
         except Exception as e:
             result["error_snippet"] = str(e).splitlines()[0][:100]
-            if "deleted_client" in str(e).lower():
+            if "deleted_client" in str(e).lower() or "invalid_grant" in str(e).lower():
                 result["overall_status"] = "BROKEN_DELETED_CLIENT"
             return result
 
@@ -129,21 +129,45 @@ def test_key(path, registry_samples, interactive_oauth, token_cache_dir, interac
                 result["error_snippet"] = f"get failed: {str(e).splitlines()[0][:100]}"
 
         # Preflight test Script API
-        preflight = client.can_script_create_project()
-        if preflight["ok"]:
+        if preflight_mode == "off":
             result["script_api_preflight"] = "PASS"
-        else:
-            result["error_snippet"] = f"Preflight fail: {preflight['error_reason']}"
+        elif preflight_mode == "read":
+            target_id = None
+            for sid in script_ids:
+                if sid:
+                    target_id = sid
+                    break
+            if target_id:
+                preflight = client.can_script_read_project(target_id)
+                if preflight["ok"]:
+                    result["script_api_preflight"] = "PASS"
+                else:
+                    result["script_api_preflight"] = preflight["error_reason"]
+                    result["error_snippet"] = f"Preflight read fail: {preflight['error_reason']}"
+            else:
+                result["script_api_preflight"] = "PASS"
+        elif preflight_mode == "create":
+            preflight = client.can_script_create_project()
+            if preflight["ok"]:
+                result["script_api_preflight"] = "PASS"
+            else:
+                result["script_api_preflight"] = preflight["error_reason"]
+                result["error_snippet"] = f"Preflight create fail: {preflight['error_reason']}"
 
         drive_ok = result["about_get"] == "PASS" and result["sample_access_pass"] > 0 and result["bound_script_discovery"] == "PASS"
-        script_ok = result["script_api_preflight"] == "PASS"
+        script_pf = result["script_api_preflight"]
 
-        if drive_ok and script_ok:
-            result["overall_status"] = "DRIVE_OK_SCRIPT_OK"
-        elif drive_ok and not script_ok:
-            result["overall_status"] = "DRIVE_OK_SCRIPT_NO"
-        elif not drive_ok:
+        if not drive_ok:
             result["overall_status"] = "DRIVE_NO"
+        else:
+            if script_pf == "PASS":
+                result["overall_status"] = "DRIVE_OK_SCRIPT_OK"
+            elif script_pf == "QUOTA_EXHAUSTED":
+                result["overall_status"] = "QUOTA_EXHAUSTED"
+            elif script_pf in ["USERSETTING_DISABLED", "INSUFFICIENT_PERMISSIONS_OR_DISABLED", "INSUFFICIENT_PERMISSIONS"]:
+                result["overall_status"] = "DRIVE_OK_SCRIPT_NO"
+            else:
+                result["overall_status"] = "DRIVE_OK_SCRIPT_FAIL"
 
     except Exception as e:
         result["error_snippet"] = str(e).splitlines()[0][:100]
@@ -160,6 +184,7 @@ def main():
     parser.add_argument("--interactive-allowlist", type=str, help="Comma separated filenames")
     parser.add_argument("--report-out", type=str, default="artifacts/key-audit-report.json")
     parser.add_argument("--token-cache-dir", type=str, default="artifacts/token-cache")
+    parser.add_argument("--script-preflight", choices=["read", "create", "off"], default="read")
     args = parser.parse_args()
 
     candidates = discover_keys(args.keys_dir)
@@ -170,6 +195,7 @@ def main():
     logger.info(f"Found {len(candidates)} credential candidates.")
 
     registry_samples = []
+    script_ids = []
     reg_path = repo_root / args.registry
     if reg_path.exists():
         with open(reg_path) as f:
@@ -177,6 +203,7 @@ def main():
             sats = data.get("satellites", [])
             for sat in sats[:args.sample_size]:
                 registry_samples.append(sat.get("sheet_id") or sat.get("id"))
+                script_ids.append(sat.get("script_id"))
     
     if not registry_samples:
         logger.warning("No samples found in registry, continuing with empty samples.")
@@ -190,17 +217,17 @@ def main():
     reports = []
     for path in candidates:
         logger.info(f"Testing {path.name}...")
-        res = test_key(path, registry_samples, args.interactive_oauth, args.token_cache_dir, interactive_context)
+        res = test_key(path, registry_samples, script_ids, args.interactive_oauth, args.token_cache_dir, interactive_context, args.script_preflight)
         if res:
             reports.append(res)
             
     print("\n--- Key Audit Summary ---")
-    fmt = "{:<22} | {:<15} | {:<30} | {:<5} | {:<7} | {:<9} | {:<10} | {:<20} | {}"
+    fmt = "{:<22} | {:<15} | {:<30} | {:<5} | {:<7} | {:<9} | {:<16} | {:<20} | {}"
     print(fmt.format("Filename", "Type", "Principal", "About", "Samples", "BoundDisc", "ScriptPre", "Status", "Error"))
     print("-" * 150)
     for r in reports:
         samples_str = f"{r['sample_access_pass']}/{r['sample_access_pass']+r['sample_access_fail']}"
-        print(fmt.format(r['filename'][:22], r['type'], r['principal'][:30], r['about_get'], samples_str, r['bound_script_discovery'], r['script_api_preflight'], r['overall_status'], r['error_snippet']))
+        print(fmt.format(r['filename'][:22], r['type'], r['principal'][:30], r['about_get'], samples_str, r['bound_script_discovery'], r['script_api_preflight'][:16], r['overall_status'], r['error_snippet']))
 
     out_path = Path(args.report_out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

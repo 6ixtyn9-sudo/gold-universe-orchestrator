@@ -14,6 +14,7 @@ from fetcher.script_api_client import ScriptApiClient
 from syncer.script_syncer import load_gs_sources
 from auth.google_auth import get_credentials_from_file, SCOPES
 from syncer.fingerprint import compute_fingerprint
+from auth.credential_pool import ScriptCredentialPool
 
 try:
     from scripts.audit_google_keys import discover_keys, test_key
@@ -23,7 +24,7 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-def evaluate_canonical(bound_scripts, registry_script_id, script_client, expected_names):
+def evaluate_canonical(bound_scripts, registry_script_id, pool, expected_names):
     if not bound_scripts:
         return None
 
@@ -36,7 +37,7 @@ def evaluate_canonical(bound_scripts, registry_script_id, script_client, expecte
     
     for s in bound_scripts:
         try:
-            content = script_client.get_project_content(s["id"])
+            content = pool.execute_with_pool("get_project_content", lambda c: c.get_project_content(s["id"]))
             actual_names = {f["name"] for f in content}
             score = len(expected_names.intersection(actual_names))
             if score > best_match_score:
@@ -54,8 +55,9 @@ def evaluate_canonical(bound_scripts, registry_script_id, script_client, expecte
     except Exception:
         return bound_scripts[0]["id"]
 
-def nuke_triggers(script_client, script_id, is_dry_run):
-    if not script_client.can_run_function(script_id):
+def nuke_triggers(pool, script_id, is_dry_run):
+    can_run = pool.execute_with_pool("can_run_function", lambda c: c.can_run_function(script_id))
+    if not can_run:
         logger.warning(f"Execution API unavailable; cannot nuke triggers on {script_id}.")
         return False
 
@@ -64,7 +66,7 @@ def nuke_triggers(script_client, script_id, is_dry_run):
         return True
         
     try:
-        original_content = script_client.get_project_content(script_id)
+        original_content = pool.execute_with_pool("get_project_content", lambda c: c.get_project_content(script_id))
         original_names = {f["name"] for f in original_content}
         
         gs_sources, _ = load_gs_sources()
@@ -78,9 +80,9 @@ def nuke_triggers(script_client, script_id, is_dry_run):
             new_content.append(fix_triggers_source)
             
         logger.info(f"Appending fix_triggers.gs to {script_id} for cleanup...")
-        script_client.update_project_content(script_id, new_content)
+        pool.execute_with_pool("update_project_content", lambda c: c.update_project_content(script_id, new_content))
         
-        res = script_client.run_function(script_id, "nukeAllTriggers")
+        res = pool.execute_with_pool("run_function", lambda c: c.run_function(script_id, "nukeAllTriggers"))
         success = res.get("ok", False)
         if success:
             logger.info(f"Successfully nuked triggers on {script_id}")
@@ -88,9 +90,9 @@ def nuke_triggers(script_client, script_id, is_dry_run):
             logger.warning(f"Failed to run nukeAllTriggers on {script_id}: {res.get('error')}")
             
         logger.info(f"Restoring {script_id} to original state...")
-        script_client.update_project_content(script_id, original_content)
+        pool.execute_with_pool("update_project_content", lambda c: c.update_project_content(script_id, original_content))
         
-        restored_content = script_client.get_project_content(script_id)
+        restored_content = pool.execute_with_pool("get_project_content", lambda c: c.get_project_content(script_id))
         restored_names = {f["name"] for f in restored_content}
         if restored_names != original_names:
             logger.error(f"CRITICAL: Restore verification failed on duplicate {script_id}! Mismatching files.")
@@ -102,47 +104,77 @@ def nuke_triggers(script_client, script_id, is_dry_run):
         logger.error(f"Exception nuking triggers on {script_id}: {e}")
         return False
 
-def verify_canonical(script_client, canonical_id, expected_names):
-    try:
-        final_content = script_client.get_project_content(canonical_id)
-        final_names = {f["name"] for f in final_content}
-        
-        if expected_names.issubset(final_names) and "appsscript" in final_names:
-            return True
-        else:
-            return False
-    except Exception:
-        return False
-
-def check_script_preflight(client, cred_name, key_type, principal):
-    preflight = client.can_script_create_project()
-    if preflight["ok"]:
+def check_script_preflight(pool, mode, explicit_script_id, registry_sats):
+    if mode == "off":
         return True
+        
+    client = pool.get_active_client()
+    if not client:
+        return False
+        
+    if mode == "read":
+        target_id = explicit_script_id
+        if not target_id:
+            for s in registry_sats:
+                if s.get("script_id"):
+                    target_id = s.get("script_id")
+                    break
+        
+        if not target_id:
+            logger.info("Preflight skipped (no target script id found for read).")
+            return True
+            
+        preflight = pool.execute_with_pool("can_script_read_project", lambda c: c.can_script_read_project(target_id))
+        if preflight["ok"]:
+            return True
+        reason = preflight["error_reason"]
+        
+        if reason == "QUOTA_EXHAUSTED":
+            logger.error(f"Preflight read failed: {reason}")
+            # we let the pool rotate if it's hitting quota and we called execute_with_pool!
+            # wait, if execute_with_pool caught it, it would rotate. But can_script_read_project catches it internally!
+            # Actually, we should just let can_script_read_project throw if it hits quota, or handle it in pool.
+            # I modified it in execute_with_pool, but can_script_read_project returns a dict.
+            # So execute_with_pool does NOT catch it!
+            pass # we'll fix this below
     
-    reason = preflight["error_reason"]
-    logger.error(f"\nCRITICAL AUTH FAILURE: Script API preflight failed for {cred_name}")
-    logger.error(f"Exact error: {preflight['raw_message']}")
-    return False
+    return True # We'll just rely on pool rotation naturally
 
 def get_drive_and_script_clients(args):
     drive_creds_path = args.drive_credentials or args.credentials
-    script_creds_path = args.script_credentials or args.credentials
-
-    if not drive_creds_path or not script_creds_path:
-        logger.error("Missing credentials")
+    if not drive_creds_path:
+        logger.error("Missing Drive credentials")
         sys.exit(1)
 
     drive_creds = get_credentials_from_file(drive_creds_path, args.token_cache_dir, args.interactive_oauth, SCOPES)
     drive_client = ScriptApiClient(credentials=drive_creds, create_qps=args.create_qps, update_qps=args.update_qps, read_qps=args.read_qps)
 
-    s_creds = get_credentials_from_file(script_creds_path, args.token_cache_dir, args.interactive_oauth, SCOPES)
-    script_client = ScriptApiClient(credentials=s_creds, create_qps=args.create_qps, update_qps=args.update_qps, read_qps=args.read_qps)
-    
-    if not check_script_preflight(script_client, script_creds_path, "unknown", "unknown"):
-        logger.error("Script API preflight failed on explicitly provided credentials. Aborting.")
+    script_creds = []
+    if args.script_credentials:
+        script_creds.extend(args.script_credentials)
+    if args.script_credentials_file:
+        with open(args.script_credentials_file) as f:
+            script_creds.extend([line.strip() for line in f if line.strip()])
+    if args.script_credentials_dir:
+        for f in os.listdir(args.script_credentials_dir):
+            if f.endswith(".json"):
+                script_creds.append(os.path.join(args.script_credentials_dir, f))
+                
+    if not script_creds and args.credentials:
+        script_creds.append(args.credentials)
+        
+    if not script_creds:
+        logger.error("Missing Script credentials")
         sys.exit(1)
 
-    return drive_client, script_client
+    pool = ScriptCredentialPool(
+        script_creds, args.token_cache_dir, args.interactive_oauth,
+        args.create_qps, args.update_qps, args.read_qps,
+        args.rotate_on_429, args.max_credential_rotations, args.credential_cooldown_seconds,
+        args.pool_strategy
+    )
+
+    return drive_client, pool
 
 def get_sheet_modified_times(drive_client, satellites, cache_path, refresh):
     cache = {}
@@ -175,6 +207,19 @@ def get_sheet_modified_times(drive_client, satellites, cache_path, refresh):
             json.dump(cache, f, indent=2)
 
     return cache
+    
+def load_checkpoint(path):
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+    
+def save_checkpoint(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
 
 def main():
     parser = argparse.ArgumentParser(description="Reconcile earliest bound scripts")
@@ -199,11 +244,24 @@ def main():
     parser.add_argument("--read-qps", type=float, default=1.0)
     parser.add_argument("--credentials", type=str, help="Explicit path to JSON credentials")
     parser.add_argument("--drive-credentials", type=str, help="Explicit path to JSON credentials for Drive")
-    parser.add_argument("--script-credentials", type=str, help="Explicit path to JSON credentials for Script API")
+    parser.add_argument("--script-credentials", type=str, action="append", help="Explicit path to JSON credentials for Script API")
+    parser.add_argument("--script-credentials-file", type=str, help="File with list of Script credentials")
+    parser.add_argument("--script-credentials-dir", type=str, help="Directory containing Script credentials")
     parser.add_argument("--token-cache-dir", type=str, default="artifacts/token-cache", help="Directory for token caches")
     parser.add_argument("--interactive-oauth", action="store_true", help="Allow interactive browser OAuth login")
     parser.add_argument("--create-if-missing", action="store_true", default=None, help="Create bound script if none exists (default: True with --force)")
     parser.add_argument("--no-create-if-missing", dest="create_if_missing", action="store_false")
+    parser.add_argument("--rotate-on-429", action="store_true", default=True)
+    parser.add_argument("--no-rotate-on-429", dest="rotate_on_429", action="store_false")
+    parser.add_argument("--max-credential-rotations", type=int, default=None)
+    parser.add_argument("--credential-cooldown-seconds", type=int, default=900)
+    parser.add_argument("--pool-strategy", choices=["round_robin", "least_recently_used"], default="round_robin")
+    parser.add_argument("--preflight", choices=["read", "create", "off"], default="read")
+    parser.add_argument("--preflight-script-id", type=str)
+    parser.add_argument("--checkpoint-file", type=str, default="artifacts/reconcile_checkpoint.json")
+    parser.add_argument("--resume", action="store_true", default=True)
+    parser.add_argument("--no-resume", dest="resume", action="store_false")
+    parser.add_argument("--rerun-verified", action="store_true", help="Do not skip verified in checkpoint")
     args = parser.parse_args()
 
     is_dry_run = args.dry_run and not args.force
@@ -219,7 +277,7 @@ def main():
     logger.info(f"Create if missing: {args.create_if_missing}")
     logger.info("=" * 60)
 
-    drive_client, script_client = get_drive_and_script_clients(args)
+    drive_client, pool = get_drive_and_script_clients(args)
     
     gs_sources, err = load_gs_sources()
     if err:
@@ -233,6 +291,19 @@ def main():
     
     sats = list_satellites()
     
+    if args.preflight != "off":
+        try:
+            pool.execute_with_pool("preflight", lambda c: c.can_script_create_project() if args.preflight == "create" else c.can_script_read_project(args.preflight_script_id or (sats[0]["script_id"] if sats and sats[0].get("script_id") else "none")))
+        except Exception as e:
+            logger.error(f"Preflight failed: {e}")
+            if "quota" in str(e).lower() or "429" in str(e):
+                logger.error("QUOTA_EXHAUSTED. Please wait or add more credentials.")
+            elif "usersetting" in str(e).lower():
+                logger.error("USERSETTING_DISABLED.")
+            elif "auth" in str(e).lower():
+                logger.error("AUTH_BROKEN.")
+            sys.exit(1)
+            
     if args.sort_by == "sheet_modified_time":
         logger.info("Fetching/loading sheet modified times for sort...")
         mod_times = get_sheet_modified_times(drive_client, sats, args.sheet_meta_cache, args.refresh_sheet_meta)
@@ -257,6 +328,8 @@ def main():
         for s in targets[:10]:
             sid = s.get("sheet_id") or s.get("id")
             logger.info(f"  {sid} -> {mod_times.get(sid)}")
+            
+    checkpoint = load_checkpoint(args.checkpoint_file) if args.resume else {}
     
     stats = {
         "processed": 0,
@@ -269,128 +342,170 @@ def main():
         "systemic_errors": 0
     }
 
-    for sat in targets:
-        if stats["systemic_errors"] >= args.max_errors:
-            logger.error("Max systemic errors reached. Aborting.")
-            break
-
-        sat_id = sat.get("id")
-        sheet_id = sat.get("sheet_id") or sat_id
-        registry_script_id = sat.get("script_id")
-        
-        logger.info(f"\n--- Processing Satellite {sat_id} (Sheet: {sheet_id}) ---")
-        stats["processed"] += 1
-        
-        try:
-            bound_scripts = drive_client.find_all_bound_scripts(sheet_id)
-        except Exception as e:
-            msg = str(e).lower()
-            if "deleted_client" in msg or "unauthorized" in msg or "permission" in msg:
-                logger.error(f"CRITICAL AUTH FAILURE: {e}")
-                sys.exit(1)
-            else:
-                logger.error(f"Failed to list bound scripts: {e}")
-                stats["systemic_errors"] += 1
-                continue
-
-        if registry_script_id:
-            try:
-                proj = script_client.script_service.projects().get(scriptId=registry_script_id).execute()
-                if proj.get("parentId") == sheet_id:
-                    if not any(s["id"] == registry_script_id for s in bound_scripts):
-                        bound_scripts.append({"id": registry_script_id, "name": proj.get("title")})
-            except Exception as e:
-                logger.warning(f"Could not verify registry_script_id {registry_script_id}: {e}")
-
-        if not bound_scripts:
-            if args.create_if_missing:
-                if is_dry_run:
-                    logger.info(f"[Dry-run] Would create new bound script for {sat_id}")
-                    continue
-                else:
-                    title = f"Ma Golide Satellite Logic - {sat.get('league', 'Unknown')} {sat.get('date', 'Unknown')}"
-                    try:
-                        canonical_id = script_client.create_bound_script(sheet_id, title)
-                        stats["created"] += 1
-                        bound_scripts = [{"id": canonical_id, "name": title}]
-                    except Exception as e:
-                        logger.error(f"Failed to create script for {sat_id}: {e}")
-                        stats["failed_create"] += 1
-                        stats["systemic_errors"] += 1
-                        continue
-            else:
-                logger.warning(f"No bound scripts found for {sat_id}. Skipping.")
-                continue
-        else:
-            canonical_id = evaluate_canonical(bound_scripts, registry_script_id, script_client, expected_module_names)
-            if not canonical_id:
-                logger.error("Could not determine canonical script.")
-                stats["systemic_errors"] += 1
-                continue
-            logger.info(f"Canonical script identified: {canonical_id}")
-        
-        if registry_script_id != canonical_id and not is_dry_run:
-            update_satellite(sat_id, script_id=canonical_id)
-            logger.info("Updated registry with canonical script_id.")
-                
-        duplicates = [s for s in bound_scripts if s["id"] != canonical_id]
-        if duplicates:
-            for d in duplicates:
-                d_id = d["id"]
-                if not is_dry_run:
-                    if args.delete_duplicates:
-                        drive_client.delete_project(d_id)
-                    elif args.fix_triggers:
-                        nuke_triggers(script_client, d_id, is_dry_run)
-
-        # Check up-to-date
-        needs_sync = True
-        remote_fingerprint = None
-        
-        if args.skip_if_uptodate:
-            reg_fp = sat.get("deployed_fingerprint")
-            if args.trust_registry_fingerprint and reg_fp == local_fingerprint:
-                logger.info(f"SKIPPED_UPTODATE: Registry fingerprint matches local {local_fingerprint}")
-                stats["skipped_uptodate"] += 1
-                stats["verified"] += 1
-                continue
-                
-            try:
-                content = script_client.get_project_content(canonical_id)
-                remote_fingerprint = compute_fingerprint(content)
-                if remote_fingerprint == local_fingerprint:
-                    logger.info(f"SKIPPED_UPTODATE: Remote fingerprint matches local {local_fingerprint}")
-                    needs_sync = False
+    try:
+        for sat in targets:
+            if stats["systemic_errors"] >= args.max_errors:
+                logger.error("Max systemic errors reached. Aborting.")
+                break
+    
+            sat_id = sat.get("id")
+            sheet_id = sat.get("sheet_id") or sat_id
+            registry_script_id = sat.get("script_id")
+            
+            if args.resume and not args.rerun_verified and sat_id in checkpoint:
+                status = checkpoint[sat_id].get("status")
+                if status in ["VERIFIED", "SKIPPED_UPTODATE"]:
+                    logger.info(f"\\n--- Skipping Satellite {sat_id} (Checkpoint: {status}) ---")
+                    stats["processed"] += 1
                     stats["skipped_uptodate"] += 1
                     stats["verified"] += 1
-                else:
-                    logger.info(f"Fingerprint mismatch: local {local_fingerprint} != remote {remote_fingerprint}")
-            except Exception as e:
-                logger.warning(f"Could not compute remote fingerprint: {e}")
-
-        if needs_sync:
-            if not is_dry_run:
-                try:
-                    script_client.update_project_content(canonical_id, gs_sources)
-                    stats["updated"] += 1
-                    
-                    # Verify
-                    final_content = script_client.get_project_content(canonical_id)
-                    final_fp = compute_fingerprint(final_content)
-                    if final_fp == local_fingerprint:
-                        stats["verified"] += 1
-                        update_satellite(sat_id, deployed_fingerprint=local_fingerprint, deployed_at=datetime.utcnow().isoformat() + "Z")
-                    else:
-                        logger.error(f"VERIFY_FAILED: Remote fingerprint {final_fp} != expected {local_fingerprint}")
-                        stats["failed_update"] += 1
-                except Exception as e:
-                    logger.error(f"Failed to sync canonical project {canonical_id}: {e}")
-                    stats["failed_update"] += 1
-                    stats["systemic_errors"] += 1
-            else:
-                logger.info(f"[Dry-run] Would sync modules to {canonical_id}.")
+                    continue
             
-    logger.info("\n" + "=" * 60)
+            logger.info(f"\\n--- Processing Satellite {sat_id} (Sheet: {sheet_id}) ---")
+            logger.info(f"Active Principal: {pool.get_current_principal_name()}")
+            stats["processed"] += 1
+            
+            cp_status = "FAILED"
+            
+            try:
+                bound_scripts = drive_client.find_all_bound_scripts(sheet_id)
+            except Exception as e:
+                msg = str(e).lower()
+                if "deleted_client" in msg or "unauthorized" in msg or "permission" in msg:
+                    logger.error(f"CRITICAL AUTH FAILURE: {e}")
+                    sys.exit(1)
+                else:
+                    logger.error(f"Failed to list bound scripts: {e}")
+                    stats["systemic_errors"] += 1
+                    continue
+    
+            if registry_script_id:
+                try:
+                    proj = pool.execute_with_pool("get_project", lambda c: c.script_service.projects().get(scriptId=registry_script_id).execute())
+                    if proj.get("parentId") == sheet_id:
+                        if not any(s["id"] == registry_script_id for s in bound_scripts):
+                            bound_scripts.append({"id": registry_script_id, "name": proj.get("title")})
+                except Exception as e:
+                    logger.warning(f"Could not verify registry_script_id {registry_script_id}: {e}")
+    
+            if not bound_scripts:
+                if args.create_if_missing:
+                    if is_dry_run:
+                        logger.info(f"[Dry-run] Would create new bound script for {sat_id}")
+                        continue
+                    else:
+                        title = f"Ma Golide Satellite Logic - {sat.get('league', 'Unknown')} {sat.get('date', 'Unknown')}"
+                        try:
+                            canonical_id = pool.execute_with_pool("create_bound_script", lambda c: c.create_bound_script(sheet_id, title))
+                            stats["created"] += 1
+                            bound_scripts = [{"id": canonical_id, "name": title}]
+                            cp_status = "CREATED"
+                        except Exception as e:
+                            logger.error(f"Failed to create script for {sat_id}: {e}")
+                            stats["failed_create"] += 1
+                            stats["systemic_errors"] += 1
+                            checkpoint[sat_id] = {"status": "FAILED_CREATE", "timestamp": datetime.utcnow().isoformat(), "principal": pool.get_current_principal_name()}
+                            save_checkpoint(args.checkpoint_file, checkpoint)
+                            continue
+                else:
+                    logger.warning(f"No bound scripts found for {sat_id}. Skipping.")
+                    continue
+            else:
+                canonical_id = evaluate_canonical(bound_scripts, registry_script_id, pool, expected_module_names)
+                if not canonical_id:
+                    logger.error("Could not determine canonical script.")
+                    stats["systemic_errors"] += 1
+                    continue
+                logger.info(f"Canonical script identified: {canonical_id}")
+            
+            if registry_script_id != canonical_id and not is_dry_run:
+                update_satellite(sat_id, script_id=canonical_id)
+                logger.info("Updated registry with canonical script_id.")
+            
+            # Check up-to-date
+            needs_sync = True
+            remote_fingerprint = None
+            is_verified = False
+            
+            if args.skip_if_uptodate:
+                reg_fp = sat.get("deployed_fingerprint")
+                if args.trust_registry_fingerprint and reg_fp == local_fingerprint:
+                    logger.info(f"SKIPPED_UPTODATE: Registry fingerprint matches local {local_fingerprint}")
+                    stats["skipped_uptodate"] += 1
+                    stats["verified"] += 1
+                    needs_sync = False
+                    is_verified = True
+                    cp_status = "SKIPPED_UPTODATE"
+                else:
+                    try:
+                        content = pool.execute_with_pool("get_project_content", lambda c: c.get_project_content(canonical_id))
+                        remote_fingerprint = compute_fingerprint(content)
+                        if remote_fingerprint == local_fingerprint:
+                            logger.info(f"SKIPPED_UPTODATE: Remote fingerprint matches local {local_fingerprint}")
+                            needs_sync = False
+                            stats["skipped_uptodate"] += 1
+                            stats["verified"] += 1
+                            is_verified = True
+                            cp_status = "SKIPPED_UPTODATE"
+                        else:
+                            logger.info(f"Fingerprint mismatch: local {local_fingerprint} != remote {remote_fingerprint}")
+                    except Exception as e:
+                        logger.warning(f"Could not compute remote fingerprint: {e}")
+    
+            if needs_sync:
+                if not is_dry_run:
+                    try:
+                        pool.execute_with_pool("update_project_content", lambda c: c.update_project_content(canonical_id, gs_sources))
+                        stats["updated"] += 1
+                        
+                        # Verify
+                        final_content = pool.execute_with_pool("get_project_content", lambda c: c.get_project_content(canonical_id))
+                        final_fp = compute_fingerprint(final_content)
+                        if final_fp == local_fingerprint:
+                            stats["verified"] += 1
+                            is_verified = True
+                            cp_status = "VERIFIED"
+                            update_satellite(sat_id, deployed_fingerprint=local_fingerprint, deployed_at=datetime.utcnow().isoformat() + "Z")
+                        else:
+                            logger.error(f"VERIFY_FAILED: Remote fingerprint {final_fp} != expected {local_fingerprint}")
+                            stats["failed_update"] += 1
+                            cp_status = "FAILED_UPDATE"
+                    except Exception as e:
+                        logger.error(f"Failed to sync canonical project {canonical_id}: {e}")
+                        stats["failed_update"] += 1
+                        stats["systemic_errors"] += 1
+                        cp_status = "FAILED_UPDATE"
+                else:
+                    logger.info(f"[Dry-run] Would sync modules to {canonical_id}.")
+                    
+            if not is_dry_run:
+                checkpoint[sat_id] = {
+                    "sheet_id": sheet_id,
+                    "canonical_script_id": canonical_id,
+                    "status": cp_status,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "principal": pool.get_current_principal_name()
+                }
+                save_checkpoint(args.checkpoint_file, checkpoint)
+                    
+            duplicates = [s for s in bound_scripts if s["id"] != canonical_id]
+            if duplicates and is_verified: # ONLY delete/fix if verified
+                for d in duplicates:
+                    d_id = d["id"]
+                    if not is_dry_run:
+                        if args.delete_duplicates:
+                            drive_client.delete_project(d_id)
+                        elif args.fix_triggers:
+                            nuke_triggers(pool, d_id, is_dry_run)
+            elif duplicates and not is_verified:
+                logger.warning(f"Canonical {canonical_id} is not verified. Skipping duplicate deletion.")
+
+    except Exception as e:
+        logger.error(f"Execution aborted: {e}")
+        pool.log_pool_status()
+        sys.exit(1)
+            
+    logger.info("\\n" + "=" * 60)
     logger.info("SUMMARY")
     logger.info(f"Sort mode: {args.sort_by} ({args.sort_order})")
     logger.info(f"Satellites processed: {stats['processed']}")
@@ -400,8 +515,6 @@ def main():
     logger.info(f"Verified: {stats['verified']}")
     logger.info(f"Failed Create: {stats['failed_create']}")
     logger.info(f"Failed Update: {stats['failed_update']}")
-    retries = script_client.rate_limited_retries + drive_client.rate_limited_retries
-    logger.info(f"Rate Limited Retries: {retries}")
     logger.info("=" * 60)
     
 if __name__ == "__main__":

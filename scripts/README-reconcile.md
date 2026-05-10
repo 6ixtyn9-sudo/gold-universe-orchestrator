@@ -62,5 +62,40 @@ python3 scripts/reconcile_earliest_150_bound_scripts.py --keys-dir <DIR> --auto-
   python3 scripts/reconcile_earliest_150_bound_scripts.py --auto-pick-key --limit 150 --force --delete-duplicates
   ```
 
+## 3. Script Writer Pool (Quota Spreading)
+
+When running on the entire fleet, creating or updating Apps Script projects will inevitably hit `429 Quota Exhausted` limits on `script.googleapis.com`. This quota is primarily tied to the **user principal** (the Google account authorizing the OAuth token), not just the client ID.
+
+To "max out" processing across the fleet, the reconciler supports a **Script Credential Pool**:
+
+```bash
+python3 scripts/reconcile_earliest_150_bound_scripts.py \
+  --drive-credentials credentials_drive.json \
+  --script-credentials-file scripts/script_creds_pool.txt \
+  --rotate-on-429 \
+  --limit 0 --force
+```
+
+### What actually spreads quota
+Multiple OAuth **client IDs** do not help if they all authenticate as the same user. Quota spreading requires multiple **user principals** (different Google accounts) that have permission to create/update scripts on the spreadsheets.
+
+### How to set up a new writer user
+To add a new Google account to the pool:
+1. Share the Drive folder `Ma_Golide_Satellites` to that new Google account as **Editor**. *(Warning: "Anyone with link can edit" is very permissive; restrict if possible by inviting explicitly).*
+2. Log in once via `--interactive-oauth` using that new account so the token gets cached:
+   ```bash
+   python3 scripts/reconcile_earliest_150_bound_scripts.py --script-credentials new_creds.json --interactive-oauth --limit 1 --dry-run
+   ```
+3. Visit and **enable Apps Script API** in user settings for that account: `https://script.google.com/home/usersettings`
+4. Verify the credential passes preflight tests:
+   ```bash
+   python3 scripts/audit_google_keys.py --keys-dir <dir> --script-preflight create
+   ```
+   (You should see `DRIVE_OK_SCRIPT_OK`)
+
+If a credential hits a 429, the pool will automatically place it in cooldown (default 900s) and rotate to the next ready credential.
+
+---
+
 ## Execution API Requirement Warning
 If you choose NOT to delete duplicates and rely solely on trigger nuking (`--fix-triggers`), the tool MUST be able to execute `nukeAllTriggers` via the API. If the OAuth client lacks permission, is deleted, or lacks `scripts.run` capability, trigger cleanup will safely abort. If you see "Execution API unavailable; cannot nuke triggers", you should use the `--delete-duplicates` flag instead to ensure duplicates do not run unexpectedly.

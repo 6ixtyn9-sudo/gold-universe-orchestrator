@@ -176,9 +176,9 @@ def get_credentials_from_file(path, token_cache_dir=None, interactive_oauth=Fals
         # Token isolation
         if token_cache_dir:
             Path(token_cache_dir).mkdir(parents=True, exist_ok=True)
-            token_file = Path(token_cache_dir) / f"token_{hashlib.md5(client_id.encode()).hexdigest()[:8]}.json"
+            token_file = Path(token_cache_dir) / f"token_{path_obj.name}"
         else:
-            token_file = path_obj.parent / f"token_{hashlib.md5(client_id.encode()).hexdigest()[:8]}.json"
+            token_file = path_obj.parent / f"token_{path_obj.name}"
 
         creds = None
         if token_file.exists():

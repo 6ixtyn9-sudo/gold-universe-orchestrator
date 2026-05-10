@@ -64,8 +64,17 @@ class ScriptApiClient:
             try:
                 return request.execute()
             except Exception as e:
-                err_str = str(e)
-                if "429" in err_str or "500" in err_str or "503" in err_str:
+                import googleapiclient.errors
+                retry = False
+                if isinstance(e, googleapiclient.errors.HttpError):
+                    if e.resp.status in (429, 500, 503):
+                        retry = True
+                else:
+                    err_str = str(e).lower()
+                    if "429" in err_str or "500" in err_str or "503" in err_str or "quota" in err_str:
+                        retry = True
+
+                if retry:
                     self.rate_limited_retries += 1
                     if attempt == max_retries - 1:
                         raise Exception(f"Max retries exceeded for request. Last error: {e}")
@@ -206,9 +215,6 @@ class ScriptApiClient:
         """
         body = {"title": "preflight-dummy-test-do-not-keep"}
         try:
-            # We attempt to create an unbound project. Unbound projects require script.projects scope.
-            # If the user hasn't enabled Apps Script API or is a service account without domain-wide
-            # delegation, this will fail with a 403.
             req = self.script_service.projects().create(body=body)
             project = self._execute_with_retry(req, self.create_qps)
             try:
@@ -218,13 +224,51 @@ class ScriptApiClient:
                 pass
             return {"ok": True, "error_reason": "", "raw_message": ""}
         except Exception as e:
+            import googleapiclient.errors
             msg = str(e)
             reason = "UNKNOWN_ERROR"
-            if "has not enabled the Apps Script API" in msg:
-                reason = "USERSETTING_DISABLED"
-            elif "OAuth client was deleted" in msg.lower():
-                reason = "DELETED_CLIENT"
-            elif "403" in msg:
-                reason = "INSUFFICIENT_PERMISSIONS_OR_DISABLED"
+            if isinstance(e, googleapiclient.errors.HttpError):
+                status = e.resp.status
+                if status == 429:
+                    reason = "QUOTA_EXHAUSTED"
+                elif status in (401, 403, 404):
+                    if "has not enabled the Apps Script API" in msg:
+                        reason = "USERSETTING_DISABLED"
+                    elif "OAuth client was deleted" in msg.lower() or status == 401:
+                        reason = "AUTH_BROKEN"
+                    else:
+                        reason = "INSUFFICIENT_PERMISSIONS_OR_DISABLED"
+            else:
+                if "oauth client was deleted" in msg.lower() or "invalid_grant" in msg.lower():
+                    reason = "AUTH_BROKEN"
+            return {"ok": False, "error_reason": reason, "raw_message": msg}
+
+    def can_script_read_project(self, script_id: str) -> Dict[str, Any]:
+        """
+        Preflight test for Script API read capability.
+        Returns a dict: {"ok": bool, "error_reason": str, "raw_message": str}
+        """
+        try:
+            req = self.script_service.projects().get(scriptId=script_id)
+            self._execute_with_retry(req, self.read_qps)
+            return {"ok": True, "error_reason": "", "raw_message": ""}
+        except Exception as e:
+            import googleapiclient.errors
+            msg = str(e)
+            reason = "UNKNOWN_ERROR"
+            if isinstance(e, googleapiclient.errors.HttpError):
+                status = e.resp.status
+                if status == 429:
+                    reason = "QUOTA_EXHAUSTED"
+                elif status in (401, 403, 404):
+                    if "has not enabled the Apps Script API" in msg:
+                        reason = "USERSETTING_DISABLED"
+                    elif "OAuth client was deleted" in msg.lower() or status == 401:
+                        reason = "AUTH_BROKEN"
+                    else:
+                        reason = "INSUFFICIENT_PERMISSIONS_OR_DISABLED"
+            else:
+                if "oauth client was deleted" in msg.lower() or "invalid_grant" in msg.lower():
+                    reason = "AUTH_BROKEN"
             return {"ok": False, "error_reason": reason, "raw_message": msg}
 
