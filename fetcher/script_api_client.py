@@ -9,7 +9,11 @@ from auth.google_auth import get_service_account_credentials
 logger = logging.getLogger(__name__)
 
 class ScriptApiClient:
-    def __init__(self, credentials=None):
+    def __init__(self, credentials=None, create_qps=0.2, update_qps=0.5, read_qps=1.0):
+        self.create_qps = create_qps
+        self.update_qps = update_qps
+        self.read_qps = read_qps
+        self.rate_limited_retries = 0
         scopes = [
             "https://www.googleapis.com/auth/script.projects",
             "https://www.googleapis.com/auth/script.deployments",
@@ -46,6 +50,32 @@ class ScriptApiClient:
         
         return None
 
+    def _execute_with_retry(self, request, qps_limit=1.0):
+        """Execute a Google API request with exponential backoff on 429/500/503 and QPS pacing."""
+        import random
+        max_retries = 5
+        base_delay = 2
+        
+        # Enforce basic pacing based on QPS
+        if qps_limit > 0:
+            time.sleep(1.0 / qps_limit)
+            
+        for attempt in range(max_retries):
+            try:
+                return request.execute()
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "500" in err_str or "503" in err_str:
+                    self.rate_limited_retries += 1
+                    if attempt == max_retries - 1:
+                        raise Exception(f"Max retries exceeded for request. Last error: {e}")
+                    
+                    delay = (base_delay ** attempt) + random.uniform(0, 1)
+                    logger.warning(f"Rate limited or server error ({e}). Sleeping {delay:.2f}s (attempt {attempt+1}/{max_retries})")
+                    time.sleep(delay)
+                else:
+                    raise
+
     def find_all_bound_scripts(self, spreadsheet_id: str) -> List[Dict[str, str]]:
         """Find all script projects bound to the spreadsheet."""
         query = f"'{spreadsheet_id}' in parents and mimeType = 'application/vnd.google-apps.script'"
@@ -53,25 +83,19 @@ class ScriptApiClient:
         page_token = None
         try:
             while True:
-                try:
-                    results = self.drive_service.files().list(
-                        q=query, 
-                        fields="nextPageToken, files(id, name, createdTime)",
-                        pageToken=page_token,
-                        supportsAllDrives=True,
-                        includeItemsFromAllDrives=True
-                    ).execute()
-                    files = results.get("files", [])
-                    all_files.extend(files)
-                    page_token = results.get("nextPageToken")
-                    if not page_token:
-                        break
-                except Exception as e:
-                    if "429" in str(e):
-                        logger.warning("429 Rate limit hit in drive list. Sleeping 5s...")
-                        time.sleep(5)
-                        continue
-                    raise
+                request = self.drive_service.files().list(
+                    q=query, 
+                    fields="nextPageToken, files(id, name, createdTime)",
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True
+                )
+                results = self._execute_with_retry(request, self.read_qps)
+                files = results.get("files", [])
+                all_files.extend(files)
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
             return all_files
         except Exception as e:
             logger.error(f"Drive search for bound scripts failed: {e}")
@@ -80,7 +104,8 @@ class ScriptApiClient:
     def delete_project(self, script_id: str):
         """Delete a script project via Drive API."""
         try:
-            self.drive_service.files().delete(fileId=script_id, supportsAllDrives=True).execute()
+            req = self.drive_service.files().delete(fileId=script_id, supportsAllDrives=True)
+            self._execute_with_retry(req, self.update_qps)
             logger.info(f"Deleted script project {script_id}")
             return True
         except Exception as e:
@@ -95,7 +120,8 @@ class ScriptApiClient:
         """
         try:
             body = {"function": "benignCapabilityCheckDoNotRun", "parameters": []}
-            self.script_service.scripts().run(scriptId=script_id, body=body).execute()
+            req = self.script_service.scripts().run(scriptId=script_id, body=body)
+            self._execute_with_retry(req, self.read_qps)
             return True
         except Exception as e:
             err_str = str(e).lower()
@@ -111,18 +137,10 @@ class ScriptApiClient:
             "parentId": spreadsheet_id
         }
         try:
-            for _ in range(3):
-                try:
-                    project = self.script_service.projects().create(body=body).execute()
-                    logger.info(f"Created new bound script: {project['title']} ({project['scriptId']})")
-                    time.sleep(1) # Be nice to quota
-                    return project["scriptId"]
-                except Exception as e:
-                    if "429" in str(e):
-                        time.sleep(5)
-                        continue
-                    raise
-            raise Exception("Max retries exceeded for create")
+            req = self.script_service.projects().create(body=body)
+            project = self._execute_with_retry(req, self.create_qps)
+            logger.info(f"Created new bound script: {project['title']} ({project['scriptId']})")
+            return project["scriptId"]
         except Exception as e:
             logger.error(f"Failed to create bound script for {spreadsheet_id}: {e}")
             raise
@@ -130,16 +148,9 @@ class ScriptApiClient:
     def get_project_content(self, script_id: str) -> List[Dict[str, Any]]:
         """Get the current files in the script project."""
         try:
-            for _ in range(3):
-                try:
-                    content = self.script_service.projects().getContent(scriptId=script_id).execute()
-                    return content.get("files", [])
-                except Exception as e:
-                    if "429" in str(e):
-                        time.sleep(5)
-                        continue
-                    raise
-            raise Exception("Max retries exceeded for getContent")
+            req = self.script_service.projects().getContent(scriptId=script_id)
+            content = self._execute_with_retry(req, self.read_qps)
+            return content.get("files", [])
         except Exception as e:
             logger.error(f"Failed to get content for script {script_id}: {e}")
             raise
@@ -157,18 +168,9 @@ class ScriptApiClient:
 
         body = {"files": files}
         try:
-            for _ in range(3):
-                try:
-                    self.script_service.projects().updateContent(scriptId=script_id, body=body).execute()
-                    logger.info(f"Updated script project {script_id} with {len(files)} files")
-                    time.sleep(1) # Be nice to quota
-                    return
-                except Exception as e:
-                    if "429" in str(e):
-                        time.sleep(5)
-                        continue
-                    raise
-            raise Exception("Max retries exceeded for updateContent")
+            req = self.script_service.projects().updateContent(scriptId=script_id, body=body)
+            self._execute_with_retry(req, self.update_qps)
+            logger.info(f"Updated script project {script_id} with {len(files)} files")
         except Exception as e:
             logger.error(f"Failed to update script project {script_id}: {e}")
             raise
@@ -184,8 +186,8 @@ class ScriptApiClient:
             "parameters": parameters or []
         }
         try:
-            # We use projects().run for V1 API execution
-            response = self.script_service.scripts().run(scriptId=script_id, body=body).execute()
+            req = self.script_service.scripts().run(scriptId=script_id, body=body)
+            response = self._execute_with_retry(req, self.read_qps)
             
             if "error" in response:
                 error = response["error"]
@@ -207,11 +209,11 @@ class ScriptApiClient:
             # We attempt to create an unbound project. Unbound projects require script.projects scope.
             # If the user hasn't enabled Apps Script API or is a service account without domain-wide
             # delegation, this will fail with a 403.
-            project = self.script_service.projects().create(body=body).execute()
-            # If it succeeds, clean it up immediately if possible. However, the Apps Script API 
-            # does not expose a delete method for projects. We just have to leave it or use Drive API.
+            req = self.script_service.projects().create(body=body)
+            project = self._execute_with_retry(req, self.create_qps)
             try:
-                self.drive_service.files().delete(fileId=project["scriptId"], supportsAllDrives=True).execute()
+                del_req = self.drive_service.files().delete(fileId=project["scriptId"], supportsAllDrives=True)
+                self._execute_with_retry(del_req, self.update_qps)
             except Exception:
                 pass
             return {"ok": True, "error_reason": "", "raw_message": ""}

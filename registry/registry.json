@@ -854,7 +854,9 @@
         "modifiedTime": "2026-02-12T08:58:56.458Z"
       },
       "script_id": "1_7qMKOCDiA4B4wcg3CuVwtY89sp_8oU0bfkTW_5Mb0pt-04H0quh7vYF",
-      "sheet_id": "15ieZwax7nNcx5j0af1sFHKf6SIKahsMFVllj9AAjKuI"
+      "sheet_id": "15ieZwax7nNcx5j0af1sFHKf6SIKahsMFVllj9AAjKuI",
+      "deployed_fingerprint": "6b220ec0c201c8d0fc04d02a71140804de04370dc209e8d18c77f6f675585c22",
+      "deployed_at": "2026-05-10T16:54:05.193193Z"
     },
     {
       "id": "1_1fZJjQzwolEHjpz1vmKgt7SG5nTaFr6EFSN8uu50Vk",

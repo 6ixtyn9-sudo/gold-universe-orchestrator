@@ -5,7 +5,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 SCOPES = [
-    "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/script.projects",
