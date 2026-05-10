@@ -308,6 +308,16 @@ def main():
                 stats["systemic_errors"] += 1
                 continue
 
+        # Drive API might not return bound scripts. Manually add the one from registry if it exists and matches.
+        if registry_script_id:
+            try:
+                proj = script_client.script_service.projects().get(scriptId=registry_script_id).execute()
+                if proj.get("parentId") == sheet_id:
+                    if not any(s["id"] == registry_script_id for s in bound_scripts):
+                        bound_scripts.append({"id": registry_script_id, "name": proj.get("title")})
+            except Exception as e:
+                logger.warning(f"Could not verify registry_script_id {registry_script_id} via Script API: {e}")
+
         if not bound_scripts:
             if args.create_if_missing:
                 if is_dry_run:
@@ -381,20 +391,30 @@ def main():
                     else:
                         logger.warning(f"Duplicate {d_id} left untouched. It may still have triggers.")
 
-        if not is_dry_run:
-            logger.info(f"Syncing correct modules to canonical project {canonical_id}")
-            try:
-                script_client.update_project_content(canonical_id, gs_sources)
-                stats["canonical_fixed"] += 1
-                
-                if not verify_canonical(script_client, canonical_id, expected_module_names):
-                    stats["verification_failures"] += 1
-            except Exception as e:
-                logger.error(f"Failed to sync canonical project {canonical_id}: {e}")
-                stats["verification_failures"] += 1
-                stats["systemic_errors"] += 1
+        already_verified = False
+        try:
+            already_verified = verify_canonical(script_client, canonical_id, expected_module_names)
+        except Exception:
+            pass
+
+        if already_verified:
+            logger.info(f"Canonical project {canonical_id} is already VERIFIED. Skipping sync.")
+            # Still count it as fixed if we had to pick it or register it? Actually, skip counting as fixed since we did no write
         else:
-            logger.info(f"[Dry-run] Would sync modules to {canonical_id} and verify.")
+            if not is_dry_run:
+                logger.info(f"Syncing correct modules to canonical project {canonical_id}")
+                try:
+                    script_client.update_project_content(canonical_id, gs_sources)
+                    stats["canonical_fixed"] += 1
+                    
+                    if not verify_canonical(script_client, canonical_id, expected_module_names):
+                        stats["verification_failures"] += 1
+                except Exception as e:
+                    logger.error(f"Failed to sync canonical project {canonical_id}: {e}")
+                    stats["verification_failures"] += 1
+                    stats["systemic_errors"] += 1
+            else:
+                logger.info(f"[Dry-run] Would sync modules to {canonical_id} and verify.")
             
     logger.info("\n" + "=" * 60)
     logger.info("SUMMARY")

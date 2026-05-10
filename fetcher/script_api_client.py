@@ -53,18 +53,25 @@ class ScriptApiClient:
         page_token = None
         try:
             while True:
-                results = self.drive_service.files().list(
-                    q=query, 
-                    fields="nextPageToken, files(id, name, createdTime)",
-                    pageToken=page_token,
-                    supportsAllDrives=True,
-                    includeItemsFromAllDrives=True
-                ).execute()
-                files = results.get("files", [])
-                all_files.extend(files)
-                page_token = results.get("nextPageToken")
-                if not page_token:
-                    break
+                try:
+                    results = self.drive_service.files().list(
+                        q=query, 
+                        fields="nextPageToken, files(id, name, createdTime)",
+                        pageToken=page_token,
+                        supportsAllDrives=True,
+                        includeItemsFromAllDrives=True
+                    ).execute()
+                    files = results.get("files", [])
+                    all_files.extend(files)
+                    page_token = results.get("nextPageToken")
+                    if not page_token:
+                        break
+                except Exception as e:
+                    if "429" in str(e):
+                        logger.warning("429 Rate limit hit in drive list. Sleeping 5s...")
+                        time.sleep(5)
+                        continue
+                    raise
             return all_files
         except Exception as e:
             logger.error(f"Drive search for bound scripts failed: {e}")
@@ -104,9 +111,18 @@ class ScriptApiClient:
             "parentId": spreadsheet_id
         }
         try:
-            project = self.script_service.projects().create(body=body).execute()
-            logger.info(f"Created new bound script: {project['title']} ({project['scriptId']})")
-            return project["scriptId"]
+            for _ in range(3):
+                try:
+                    project = self.script_service.projects().create(body=body).execute()
+                    logger.info(f"Created new bound script: {project['title']} ({project['scriptId']})")
+                    time.sleep(1) # Be nice to quota
+                    return project["scriptId"]
+                except Exception as e:
+                    if "429" in str(e):
+                        time.sleep(5)
+                        continue
+                    raise
+            raise Exception("Max retries exceeded for create")
         except Exception as e:
             logger.error(f"Failed to create bound script for {spreadsheet_id}: {e}")
             raise
@@ -114,8 +130,16 @@ class ScriptApiClient:
     def get_project_content(self, script_id: str) -> List[Dict[str, Any]]:
         """Get the current files in the script project."""
         try:
-            content = self.script_service.projects().getContent(scriptId=script_id).execute()
-            return content.get("files", [])
+            for _ in range(3):
+                try:
+                    content = self.script_service.projects().getContent(scriptId=script_id).execute()
+                    return content.get("files", [])
+                except Exception as e:
+                    if "429" in str(e):
+                        time.sleep(5)
+                        continue
+                    raise
+            raise Exception("Max retries exceeded for getContent")
         except Exception as e:
             logger.error(f"Failed to get content for script {script_id}: {e}")
             raise
@@ -133,8 +157,18 @@ class ScriptApiClient:
 
         body = {"files": files}
         try:
-            self.script_service.projects().updateContent(scriptId=script_id, body=body).execute()
-            logger.info(f"Updated script project {script_id} with {len(files)} files")
+            for _ in range(3):
+                try:
+                    self.script_service.projects().updateContent(scriptId=script_id, body=body).execute()
+                    logger.info(f"Updated script project {script_id} with {len(files)} files")
+                    time.sleep(1) # Be nice to quota
+                    return
+                except Exception as e:
+                    if "429" in str(e):
+                        time.sleep(5)
+                        continue
+                    raise
+            raise Exception("Max retries exceeded for updateContent")
         except Exception as e:
             logger.error(f"Failed to update script project {script_id}: {e}")
             raise
