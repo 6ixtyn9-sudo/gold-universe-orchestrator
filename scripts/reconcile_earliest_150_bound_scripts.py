@@ -174,9 +174,13 @@ def main():
     parser.add_argument("--auto-pick-key", action="store_true", help="Auto pick first working key")
     parser.add_argument("--token-cache-dir", type=str, default="artifacts/token-cache", help="Directory for token caches")
     parser.add_argument("--interactive-oauth", action="store_true", help="Allow interactive browser OAuth login")
+    parser.add_argument("--create-if-missing", action="store_true", default=None, help="Create bound script if none exists (default: True with --force)")
+    parser.add_argument("--no-create-if-missing", dest="create_if_missing", action="store_false")
     args = parser.parse_args()
 
     is_dry_run = args.dry_run and not args.force
+    if args.create_if_missing is None:
+        args.create_if_missing = args.force
     
     logger.info("=" * 60)
     logger.info(f"Reconciling earliest {args.limit} bound scripts")
@@ -247,17 +251,29 @@ def main():
                 continue
 
         if not bound_scripts:
-            logger.warning(f"No bound scripts found for {sat_id}.")
-            continue
-            
-        logger.info(f"Found {len(bound_scripts)} bound script(s).")
-        
-        canonical_id = evaluate_canonical(bound_scripts, registry_script_id, client, expected_module_names)
-        if not canonical_id:
-            logger.error("Could not determine canonical script.")
-            continue
-            
-        logger.info(f"Canonical script identified: {canonical_id}")
+            if args.create_if_missing:
+                if is_dry_run:
+                    logger.info(f"[Dry-run] Would create new bound script for {sat_id} because none exists.")
+                    continue
+                else:
+                    logger.info(f"No bound scripts found. Creating new bound project for {sat_id}...")
+                    title = f"Ma Golide Satellite Logic - {sat.get('league', 'Unknown')} {sat.get('date', 'Unknown')}"
+                    try:
+                        canonical_id = client.create_bound_script(sheet_id, title)
+                        logger.info(f"Created new script: {canonical_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to create script for {sat_id}: {e}")
+                        continue
+            else:
+                logger.warning(f"No bound scripts found for {sat_id}. Skipping because create_if_missing is false.")
+                continue
+        else:
+            logger.info(f"Found {len(bound_scripts)} bound script(s).")
+            canonical_id = evaluate_canonical(bound_scripts, registry_script_id, client, expected_module_names)
+            if not canonical_id:
+                logger.error("Could not determine canonical script.")
+                continue
+            logger.info(f"Canonical script identified: {canonical_id}")
         
         if registry_script_id != canonical_id:
             if not is_dry_run:
