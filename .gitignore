@@ -35,10 +35,15 @@ credentials_writer_*.json
 creds/
 artifacts/token-cache/
 artifacts/reconcile_checkpoint.json
+!artifacts/reconcile_checkpoint_FINAL.sanitized.json
 artifacts/*.log
 artifacts/*.patch
 deploy_progress.json
 personal_token.json
+token.json
+token.json.bak
+script_to_token_map.json
+sheet_to_token_map.json
 client_secret_*.json
 fleet_purity_report.json
 *.log
