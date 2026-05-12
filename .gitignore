@@ -49,3 +49,43 @@ fleet_purity_report.json
 *.log
 .git_corrupted/
 supabase/.temp/
+
+# Playwright / browser auth profiles
+.pw-auth/
+.pw-profile/
+
+# Cleanup script outputs (sensitive Drive API responses)
+artifacts/cleanup_inventory.json
+artifacts/cleanup_plan_dry_run.json
+artifacts/cleanup_executed_*.json
+artifacts/cleanup_plan_summary.md
+artifacts/*.bak.json
+artifacts/*.bak.md
+
+# Catch-all token pattern
+**token*.json
+
+# NAME PURITY PASS coverage
+artifacts/
+credentials*.json
+client_secret*.json
+service_account.json
+.pw-auth/
+.pw-profile/
+
+# === SAFETY ADDITIONS — added post graveyard sweep ===
+# Runtime outputs — never commit
+antigravity_deploy.log
+antigravity_summary.json
+artifacts/token-cache/
+artifacts/deleted_ghost_backups/
+
+# Credentials — NEVER commit under any circumstances
+.env
+creds/
+auth/token_*.json
+service_account.json
+**/token_*.json
+**/*.pickle
+**/*_credentials.json
+**/*_service_account.json
