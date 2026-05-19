@@ -36,7 +36,7 @@ def fetch_all_bet_slips(sb: Client) -> List[Dict[str, Any]]:
     # For 501 satellites, this might be a few thousand rows.
     resp = sb.table("satellite_tab_snapshots") \
         .select("sheet_id, tab_name, values_json, satellite_id") \
-        .filter("tab_name", "in", '("Bet_Slips", "BetSlips", "bet_slips", "betslips")') \
+        .filter("tab_name", "in", '("Accuracy_Report", "Accuracy Report", "accuracy_report")') \
         .execute()
     return resp.data
 
@@ -66,6 +66,25 @@ def run_fleet_assay():
         all_rows.extend(parsed)
     
     log.info(f"🧪 Parsed {len(all_rows)} total bet slips across the fleet.")
+    
+    # DIAGNOSTIC: Print a few samples
+    if all_rows:
+        log.info("🔍 Data Sample (Row 0):")
+        log.info(json.dumps(all_rows[0], indent=2))
+        
+        # Check distribution
+        leagues = {}
+        outcomes = {"win": 0, "loss": 0, "none": 0}
+        for r in all_rows:
+            l = r.get("league") or "unknown"
+            leagues[l] = leagues.get(l, 0) + 1
+            o = r.get("outcome")
+            if o == "win": outcomes["win"] += 1
+            elif o == "loss": outcomes["loss"] += 1
+            else: outcomes["none"] += 1
+        
+        log.info(f"📈 League Distribution: {leagues}")
+        log.info(f"📈 Outcome Distribution: {outcomes}")
     
     if not all_rows:
         log.warning("⚠️ No rows parsed. Is the mirror data populated?")

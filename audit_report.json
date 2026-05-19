@@ -4,81 +4,9 @@
     "DUPLICATE_SCRIPTS": 0,
     "UNREGISTERED": 0,
     "MISMATCH": 0,
-    "NO_SCRIPT": 501
+    "NO_SCRIPT": 500
   },
   "results": [
-    {
-      "label": "Brazil (NBB) F10",
-      "sheet_id": "1DOw4qQDremLTFzD9wpztXTPeZYkF4iB1VaZV2u2XNjk",
-      "registry_script_id": "1Zh3Zux8xK4RQG02Y2u5yXS74C_ne8UizkcmJkrS7md-5qlbBqz9bTIUj",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Brazil (NBB) M10.2",
-      "sheet_id": "1nrpUQbKrV_wYn6heDhdJ1zHTcyVsACxDKscL7GOkHOU",
-      "registry_script_id": "1767yKhWw2S0TYRhR_hmO264zcObxFMxzVJtkXWJPcnl9lhLbVsxcpVjk",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Czech Republic 1. Liga (CZ2) M13.2",
-      "sheet_id": "1-bbIssWRusm6ULMO5UOvoToyf-UrNJ-5s9YNEL8J9RA",
-      "registry_script_id": "1qkGEmLDfLeoex9YxykA1kqoBhWcu6ctXRlg8SA8NE3iTgsdzOd2WGiUu",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Finland Korisliiga (KLF) J14",
-      "sheet_id": "1lB9TR-o5-Dn_dX532OFaSTgN_9dI85gRcx6JfJGB8ks",
-      "registry_script_id": "1V8nZro_LK3ORyV8YlwZLxj-yHZGRgBLpPotupDUx31c9hLtoTk__yybT",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Iceland Premier League (PLI) J15",
-      "sheet_id": "19RzqTfhFYsKnxNVwz6MsaBxi6HPQNY44n4TDGmtsd48",
-      "registry_script_id": "1QfAHLQDI73_ohNZbkeTUXdkSQFOqu-fG54BGhOcLasWLuxBVoP1DthJx",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Italy (LAI) F09",
-      "sheet_id": "1u5f9Mnwo6d3HISxfdC1SktFuXC6RJR8LS1pFDAYHkNs",
-      "registry_script_id": "1q47cPhCP-ECTevkAtd7d7LIBrx67SwytrTQgHxfXTWsRa_B7vsozSptd",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Italy Serie (IT2) J11",
-      "sheet_id": "1z0XUsQAtRHwPytvjkXZB8VFLNdv8H4zGVrjnp9PuXCg",
-      "registry_script_id": "1kl66dj-OHcnbksl2tTp9ByM0okGJgJqVhGAE6cm3Ebl6JG4YcxEYG0Nr",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Italy Serie A2 (IT2) F21",
-      "sheet_id": "1f9keUg3OCokYxjxgKTEzZ4jP0INtOk7fqmrpfkwnIZY",
-      "registry_script_id": "12Tpgvh-GczCx9ogfb7hxZkIA5g3WdHbmc1GR6jahzC2GD-MbkETGrnHM",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
     {
       "label": "Poland Energa (PLW) F25",
       "sheet_id": "15nO6P4ZDMmr2O7tWCw8JNQ78FcSOCGBiydITuqKPAoU",
@@ -191,6 +119,51 @@
       "label": "Argentina (ARW) J17",
       "sheet_id": "1Tb9IFOL4WOSmIqs3eK_OQkA-5KXqZpNG3vQypUPKjFI",
       "registry_script_id": "1sny6QgPRGjGEjjRXaNk9_9oZrAySjxyJC4dL3oVp3_H6LoAdX-snOJlp",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Argentina (ARW) J19",
+      "sheet_id": "12Rk5yc17JFrwbdH7rI3el9u9lDYZbetzFem94MjIqOU",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Argentina (LAA) F11",
+      "sheet_id": "1mXDsbg1PrX6wSzrTWI4b5yzb35R2M8pc2DRzTwXHpIw",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Argentina (LAA) J12",
+      "sheet_id": "1u1oSm1V3dQ4ML3GV4zblBUus6GU6WsMe5Te4P0DLPhA",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Argentina (LAA) J13",
+      "sheet_id": "13oFN_X9gm0v_vkLhdFl4h5TC4EIYAWceU1kkMRZTfkM",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Argentina (LAA) J14",
+      "sheet_id": "1dmow92_8pVcMYXyBFWwbzj4zF-o5fIgnkpofqyyqLaM",
+      "registry_script_id": null,
       "bound_scripts": [],
       "status": "NO_SCRIPT",
       "canonical_script_id": null,
@@ -326,42 +299,6 @@
       "label": "Argentina Liga (LAA) F22",
       "sheet_id": "1MxSZGMSvY2oYZOhjYx3Mi9NatjcNHn0kBrJdynp6t0g",
       "registry_script_id": "129fzqag0m28j0ClWBw96xSKNaEWDloIRLQDiYZ_RopdRKNK-C2XywZLd",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Brazil (NBB) F17",
-      "sheet_id": "1_1fZJjQzwolEHjpz1vmKgt7SG5nTaFr6EFSN8uu50Vk",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Argentina (LAA) J14",
-      "sheet_id": "1dmow92_8pVcMYXyBFWwbzj4zF-o5fIgnkpofqyyqLaM",
-      "registry_script_id": "1NdEwG58DlIvBUHVOPzLaJFNx7foahdhspALncDwcAtBorUQy9ClBp97E",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Argentina (ARW) J19",
-      "sheet_id": "12Rk5yc17JFrwbdH7rI3el9u9lDYZbetzFem94MjIqOU",
-      "registry_script_id": "1xCFhZyHkCjOFV9O_uuKYwsgOlPXa6bIua1wd6aJmkI9HntZ5YPreOB2y",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Argentina (LAA) F11",
-      "sheet_id": "1mXDsbg1PrX6wSzrTWI4b5yzb35R2M8pc2DRzTwXHpIw",
-      "registry_script_id": "1M87QDASOpUc9G4drH0lHVvAaOLd_KywVKPvl9ORBXgm5LUDhijp_VpO2",
       "bound_scripts": [],
       "status": "NO_SCRIPT",
       "canonical_script_id": null,
@@ -764,6 +701,15 @@
       "orphan_script_ids": []
     },
     {
+      "label": "Brazil (NBB) F17",
+      "sheet_id": "1_1fZJjQzwolEHjpz1vmKgt7SG5nTaFr6EFSN8uu50Vk",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
       "label": "Brazil (NBB) F18",
       "sheet_id": "1DJOI89wBPBdQq3_Eqq8NBk9bqtVtBPyPEtyrNu3PspQ",
       "registry_script_id": null,
@@ -935,126 +881,18 @@
       "orphan_script_ids": []
     },
     {
+      "label": "Lithuania (LT2) F19",
+      "sheet_id": "12pO9T8dTjSSdaQPJdyBXXV3Wm4iiQC-XhXe1cn6x44A",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
       "label": "Bulgaria (NLB) J24",
       "sheet_id": "1XWFYZtQsuNpu4-ndWpc8geudvVvGO_swBCMkSPlA2qc",
       "registry_script_id": "1J6Ka1x4UBD_y5WPWWPHtg-Kfpi3yLkOr-XU-atJyc7pyAYR8PWoiR3Gi",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Champions League (CHL) J21",
-      "sheet_id": "1I1werhhgJXxKN26ajBOPmXC32XSpzpPGLH94mlFymic",
-      "registry_script_id": "1FoYf3bnKwrGilrd1eBGnHCK3HUY6ZvYQWMd1nID9m7FfnQKFTyfwYfLG",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Champions League (CHL) J27",
-      "sheet_id": "10H7NGBZiGeTSjL-K5Y8V5oUF1hoaLx1MB6om2k1IOzc",
-      "registry_script_id": "1irxp_oWvJQM1_uJ5vT7sv27dK2NGvecvpPtPlkcsA0FDIYFfRue4TUuA",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Champions League (CHL) J28",
-      "sheet_id": "14AE9sXvae6Ln4jh9kD_Xb7NtzZ8X8wwsUpQICYjpZeo",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Champions League (CHL) M10.2",
-      "sheet_id": "1OwlYgeEIfAEPCjKk5pPsrIq5bowZHhOhKIeULCkiQAQ",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Champions League (CHL) M11.2",
-      "sheet_id": "1jRt8y-hO3uYDaUN3wu8sNgLfZaA-sJZzjlsk5PcrL64",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "China (CBA) M14.2",
-      "sheet_id": "1jCENTNI40XTC8uvhkpCOt10rxxTUt-RSQIdlQs3rSzo",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "China (CBA) M15.2",
-      "sheet_id": "1_IAK8iMKM2OojUPL_RfTWJqHIn09rLZGtOQhKVoZxqw",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Croatia Premijer (HRW) J24",
-      "sheet_id": "1AOIr6f6YvYBo8xpCJnr9e146uxpRAd7KpsXUJySAGnc",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Croatia Premijer Liga (PLC) J14",
-      "sheet_id": "1GnnIavLjXcL-L3V7Eb0_ExbDfQVlirxxDOjaiIBHS8c",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Croatia Premijer Liga (PLC) J9",
-      "sheet_id": "1N2RXOwRDw-LWNHX7P9n89QazUmw4gpDMv4tqxyQaQdY",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Cyprus (DAC) J16",
-      "sheet_id": "1IY9KLo3_oBxSnUyeygXnfFG-2hJ3zKs8Zu0W2LLkV40",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Cyprus Division (DAC) J11",
-      "sheet_id": "14izR_qRhTyZ_eRsjiTvlD47XCOTcOLJM2lcSFtLQ82E",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Czech Republic (CZ2) F20",
-      "sheet_id": "1w2rgxC-Pdw3m5fnuRpumWA3nlq5AsCmO5hSXUNlyDyY",
-      "registry_script_id": null,
       "bound_scripts": [],
       "status": "NO_SCRIPT",
       "canonical_script_id": null,
@@ -1871,15 +1709,6 @@
       "orphan_script_ids": []
     },
     {
-      "label": "Greece A2 (DEA) F23",
-      "sheet_id": "1BhPQdBY6-ZWBSxROgRylIe9DWPPbX9KnrBmiIn-zB4M",
-      "registry_script_id": "1FMDLS_mBtQJStjWsZN3C73XcmYPNixtr-o8pqZHUlJb3gNYdWYp1q7h7",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
       "label": "Greece Basket League (BLG) J11",
       "sheet_id": "1E172A9ObX_pZCgOzZTCb8tN7y4zRdhirajCzcHFk_bc",
       "registry_script_id": null,
@@ -2195,6 +2024,78 @@
       "orphan_script_ids": []
     },
     {
+      "label": "Brazil (NBB) F10",
+      "sheet_id": "1DOw4qQDremLTFzD9wpztXTPeZYkF4iB1VaZV2u2XNjk",
+      "registry_script_id": "1Zh3Zux8xK4RQG02Y2u5yXS74C_ne8UizkcmJkrS7md-5qlbBqz9bTIUj",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Brazil (NBB) M10.2",
+      "sheet_id": "1nrpUQbKrV_wYn6heDhdJ1zHTcyVsACxDKscL7GOkHOU",
+      "registry_script_id": "1767yKhWw2S0TYRhR_hmO264zcObxFMxzVJtkXWJPcnl9lhLbVsxcpVjk",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Czech Republic 1. Liga (CZ2) M13.2",
+      "sheet_id": "1-bbIssWRusm6ULMO5UOvoToyf-UrNJ-5s9YNEL8J9RA",
+      "registry_script_id": "1qkGEmLDfLeoex9YxykA1kqoBhWcu6ctXRlg8SA8NE3iTgsdzOd2WGiUu",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Finland Korisliiga (KLF) J14",
+      "sheet_id": "1lB9TR-o5-Dn_dX532OFaSTgN_9dI85gRcx6JfJGB8ks",
+      "registry_script_id": "1V8nZro_LK3ORyV8YlwZLxj-yHZGRgBLpPotupDUx31c9hLtoTk__yybT",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Iceland Premier League (PLI) J15",
+      "sheet_id": "19RzqTfhFYsKnxNVwz6MsaBxi6HPQNY44n4TDGmtsd48",
+      "registry_script_id": "1QfAHLQDI73_ohNZbkeTUXdkSQFOqu-fG54BGhOcLasWLuxBVoP1DthJx",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Italy (LAI) F09",
+      "sheet_id": "1u5f9Mnwo6d3HISxfdC1SktFuXC6RJR8LS1pFDAYHkNs",
+      "registry_script_id": "1q47cPhCP-ECTevkAtd7d7LIBrx67SwytrTQgHxfXTWsRa_B7vsozSptd",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Italy Serie (IT2) J11",
+      "sheet_id": "1z0XUsQAtRHwPytvjkXZB8VFLNdv8H4zGVrjnp9PuXCg",
+      "registry_script_id": "1kl66dj-OHcnbksl2tTp9ByM0okGJgJqVhGAE6cm3Ebl6JG4YcxEYG0Nr",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Italy Serie A2 (IT2) F21",
+      "sheet_id": "1f9keUg3OCokYxjxgKTEzZ4jP0INtOk7fqmrpfkwnIZY",
+      "registry_script_id": "12Tpgvh-GczCx9ogfb7hxZkIA5g3WdHbmc1GR6jahzC2GD-MbkETGrnHM",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
       "label": "Italy (IT2) J21",
       "sheet_id": "1sXhlUNi_1TE6qTE1oBJr24px0cOfTN2YMitRL92e63M",
       "registry_script_id": null,
@@ -2242,6 +2143,357 @@
     {
       "label": "Italy Serie A1 (ITW) F28",
       "sheet_id": "1Ki8-WsTwgGxs-PrhC4bRI1K4E5VQRe5n7GGbw5Gng5U",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "United States (NBA) J25",
+      "sheet_id": "1Ta9J_Ufg0bmR9XtNm14Ul8KivSHdBZBfIWWZ6-TzgLs",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "United States (NBA) J27",
+      "sheet_id": "1Cpf1wgrtuCTilF3PO9uUlfa1HBPvoAdyi6qggrqKr7k",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Champions League (CHL) J21",
+      "sheet_id": "1I1werhhgJXxKN26ajBOPmXC32XSpzpPGLH94mlFymic",
+      "registry_script_id": "1FoYf3bnKwrGilrd1eBGnHCK3HUY6ZvYQWMd1nID9m7FfnQKFTyfwYfLG",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Champions League (CHL) J27",
+      "sheet_id": "10H7NGBZiGeTSjL-K5Y8V5oUF1hoaLx1MB6om2k1IOzc",
+      "registry_script_id": "1irxp_oWvJQM1_uJ5vT7sv27dK2NGvecvpPtPlkcsA0FDIYFfRue4TUuA",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Champions League (CHL) J28",
+      "sheet_id": "14AE9sXvae6Ln4jh9kD_Xb7NtzZ8X8wwsUpQICYjpZeo",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Champions League (CHL) M10.2",
+      "sheet_id": "1OwlYgeEIfAEPCjKk5pPsrIq5bowZHhOhKIeULCkiQAQ",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Champions League (CHL) M11.2",
+      "sheet_id": "1jRt8y-hO3uYDaUN3wu8sNgLfZaA-sJZzjlsk5PcrL64",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "China (CBA) M14.2",
+      "sheet_id": "1jCENTNI40XTC8uvhkpCOt10rxxTUt-RSQIdlQs3rSzo",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "China (CBA) M15.2",
+      "sheet_id": "1_IAK8iMKM2OojUPL_RfTWJqHIn09rLZGtOQhKVoZxqw",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Croatia Premijer (HRW) J24",
+      "sheet_id": "1AOIr6f6YvYBo8xpCJnr9e146uxpRAd7KpsXUJySAGnc",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Croatia Premijer Liga (PLC) J14",
+      "sheet_id": "1GnnIavLjXcL-L3V7Eb0_ExbDfQVlirxxDOjaiIBHS8c",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Croatia Premijer Liga (PLC) J9",
+      "sheet_id": "1N2RXOwRDw-LWNHX7P9n89QazUmw4gpDMv4tqxyQaQdY",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Cyprus (DAC) J16",
+      "sheet_id": "1IY9KLo3_oBxSnUyeygXnfFG-2hJ3zKs8Zu0W2LLkV40",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Cyprus Division (DAC) J11",
+      "sheet_id": "14izR_qRhTyZ_eRsjiTvlD47XCOTcOLJM2lcSFtLQ82E",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Czech Republic (CZ2) F20",
+      "sheet_id": "1w2rgxC-Pdw3m5fnuRpumWA3nlq5AsCmO5hSXUNlyDyY",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Greece A2 (DEA) F23",
+      "sheet_id": "1BhPQdBY6-ZWBSxROgRylIe9DWPPbX9KnrBmiIn-zB4M",
+      "registry_script_id": "1FMDLS_mBtQJStjWsZN3C73XcmYPNixtr-o8pqZHUlJb3gNYdWYp1q7h7",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Korea (KRW) F23",
+      "sheet_id": "1AFi6rjcdGmWeCfBjcmL8FaHjSzqTeTSsnZdo5rn1xac",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Poland 1 Liga (PL2) J9",
+      "sheet_id": "1jyJF5Q95s_l_4ZyqMoVVSRSt8l81B_h_T28V8K8V4_c",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Poland 1 Liga (PL2) M1",
+      "sheet_id": "1jJSZmLqwEwGN9c4seFTHPHNGoD7z0eRgRdQoJVDeb_o",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Poland Energa (EBL) J23",
+      "sheet_id": "1B-E2IjNvz4AhuI1SPiUMZbFaKSddeJ7gycvgpzHctbQ",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Poland Energa (PLW) J28",
+      "sheet_id": "1XdJoezMrrbZ0d7orBom5OcTSN_cw4PPlfTN7PAMiN68",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Poland Energa (PLW) M1",
+      "sheet_id": "1Z38lvleNseSGmlzZDs8Rw_ZPJWexebAmBlVsDy9Qges",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Poland Energa Basket (PLW) JW31",
+      "sheet_id": "1wMyJtVE4sv8ALj_My_WAyCsxhKIB9cLFVoM-Z3DoA4o",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Poland Energa Basket Liga (EBL) J24",
+      "sheet_id": "1uKI75SKnbSzWVZXZpJ2lMcE-Ytm6Of9SZe0QZisrp4Y",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Portugal (LPB) J9",
+      "sheet_id": "1tn0uGYL9i1zEwIpge8oRj_vIXbuQB6x3FR7eNL8USGk",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Portugal Taca da Liga (PTC) J28",
+      "sheet_id": "16xv_eLI_-pbZlkPal41KwqPdwyFYpIMuAmMQwqIcUx0",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Sweden Superettan (SE2) F28",
+      "sheet_id": "1hpgln-HXdDA1CnLO6wuvM2I8gua1fhuNTI4isx_BAX8",
+      "registry_script_id": "1AE_lSTY85uuXbJRbDMgFLMY2yO2Cu_CGqcRq2WY9TH8NFa_d43vPVuTi",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Sweden Superettan (SE2) J10",
+      "sheet_id": "13V-lOHe4h7eLTOOxKSenG9QGnFzGVdRPTEhO-UiCoQc",
+      "registry_script_id": "11Q0DTYsPcMgf0I8s2r0m-skBufmhBzRRVOtD_KrVaEW5GLWm69Q9XcWJ",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Sweden Superettan (SE2) J11",
+      "sheet_id": "1TSfs3tEodjgmbBvp-TAmn9wqYyNHKcQyYYH2UoUXTCE",
+      "registry_script_id": "1Byk6o1Z1aDH3SO7ZBGOVP_yqXsUNK_NWta59GUYuQLZqwYLHZvOTJbAk",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Sweden Superettan (SE2) J17",
+      "sheet_id": "1QEO2ZcVAATVQAC48BOGro3DAU_heGXcoEhSTjy3gSdI",
+      "registry_script_id": "1ibUw63KAxOEtQLXwMtApSGWBNBBPmUzx1NUuE-NXHXKo1RIhaPmWwQD0",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Sweden Superettan (SE2) J31",
+      "sheet_id": "1H5cmUyGlfOXOs52AYfa5ILr_4j74AM_weyQzWxGBtjA",
+      "registry_script_id": "11aERqcp5j8luLXFGGKwjhrsK-1XWS_cbWXQ76G4DWkrP_T6BGDSAAbuv",
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Switzerland (CW1) J18",
+      "sheet_id": "14WC5_8ODtdDMAmsbbU3T1TbhDajt74B6-tkGdbmcYko",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Switzerland (SBL) J10",
+      "sheet_id": "1TXJEcJ_dD4gV5a5crHdQerCNh6siMVkXpVEsL8hpt7Y",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Switzerland (SBL) J21",
+      "sheet_id": "1eLH1tYWk4O4EGMcTjgW170AGo-aKtMeFkJkQ1lsMk6E",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Switzerland SB League (CW1) F28",
+      "sheet_id": "1oegltx_xLXr_q-2op08b5O0zPLVVNI1Sj08s5jsVJ3Q",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Taiwan (TW4) J11",
+      "sheet_id": "10-OIk5cqpGqp7pnFmCRhl3qjlYajlpDPAptScWdQzGE",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "Taiwan (TW4) J17",
+      "sheet_id": "1Kn1KxVJnBT23ED7AafFqYYTsUvNjPNfRwc9snxOl5dA",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "T\u00fcrkiye (SLT) J17",
+      "sheet_id": "1IqF4nzuHqdWigsGqJNaDG9aCJAUltaveAUk3dsa6vxg",
+      "registry_script_id": null,
+      "bound_scripts": [],
+      "status": "NO_SCRIPT",
+      "canonical_script_id": null,
+      "orphan_script_ids": []
+    },
+    {
+      "label": "T\u00fcrkiye (TLW) J16",
+      "sheet_id": "1ngCZciz22ianxXcQ1XTg4qPu6bx5oEktLfIK3CEpMYE",
       "registry_script_id": null,
       "bound_scripts": [],
       "status": "NO_SCRIPT",
@@ -2377,15 +2629,6 @@
     {
       "label": "Kazakhstan National League (NLK) M3.2",
       "sheet_id": "12C7pd0Ky_Kw6C8chrTHpS_IOMNikAcb3Kw8I0LQimVg",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Korea (KRW) F23",
-      "sheet_id": "1AFi6rjcdGmWeCfBjcmL8FaHjSzqTeTSsnZdo5rn1xac",
       "registry_script_id": null,
       "bound_scripts": [],
       "status": "NO_SCRIPT",
@@ -2557,15 +2800,6 @@
     {
       "label": "Lithuania (LT2) F14",
       "sheet_id": "1RN8dmwtBWVg-L6HRJLegJIbvRhu-BU_7iOBb8uBVlz8",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Lithuania (LT2) F19",
-      "sheet_id": "12pO9T8dTjSSdaQPJdyBXXV3Wm4iiQC-XhXe1cn6x44A",
       "registry_script_id": null,
       "bound_scripts": [],
       "status": "NO_SCRIPT",
@@ -2800,87 +3034,6 @@
     {
       "label": "Poland 1 Liga (PL2) J31",
       "sheet_id": "1irQ1yNdEnxx5HUlJ3yE68MrpwwNIu2ujgxCwXG590g4",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Poland 1 Liga (PL2) J9",
-      "sheet_id": "1jyJF5Q95s_l_4ZyqMoVVSRSt8l81B_h_T28V8K8V4_c",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Poland 1 Liga (PL2) M1",
-      "sheet_id": "1jJSZmLqwEwGN9c4seFTHPHNGoD7z0eRgRdQoJVDeb_o",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Poland Energa (EBL) J23",
-      "sheet_id": "1B-E2IjNvz4AhuI1SPiUMZbFaKSddeJ7gycvgpzHctbQ",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Poland Energa (PLW) J28",
-      "sheet_id": "1XdJoezMrrbZ0d7orBom5OcTSN_cw4PPlfTN7PAMiN68",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Poland Energa (PLW) M1",
-      "sheet_id": "1Z38lvleNseSGmlzZDs8Rw_ZPJWexebAmBlVsDy9Qges",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Poland Energa Basket (PLW) JW31",
-      "sheet_id": "1wMyJtVE4sv8ALj_My_WAyCsxhKIB9cLFVoM-Z3DoA4o",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Poland Energa Basket Liga (EBL) J24",
-      "sheet_id": "1uKI75SKnbSzWVZXZpJ2lMcE-Ytm6Of9SZe0QZisrp4Y",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Portugal (LPB) J9",
-      "sheet_id": "1tn0uGYL9i1zEwIpge8oRj_vIXbuQB6x3FR7eNL8USGk",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Portugal Taca da Liga (PTC) J28",
-      "sheet_id": "16xv_eLI_-pbZlkPal41KwqPdwyFYpIMuAmMQwqIcUx0",
       "registry_script_id": null,
       "bound_scripts": [],
       "status": "NO_SCRIPT",
@@ -3689,125 +3842,8 @@
       "orphan_script_ids": []
     },
     {
-      "label": "Sweden Superettan (SE2) F28",
-      "sheet_id": "1hpgln-HXdDA1CnLO6wuvM2I8gua1fhuNTI4isx_BAX8",
-      "registry_script_id": "1AE_lSTY85uuXbJRbDMgFLMY2yO2Cu_CGqcRq2WY9TH8NFa_d43vPVuTi",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Sweden Superettan (SE2) J10",
-      "sheet_id": "13V-lOHe4h7eLTOOxKSenG9QGnFzGVdRPTEhO-UiCoQc",
-      "registry_script_id": "11Q0DTYsPcMgf0I8s2r0m-skBufmhBzRRVOtD_KrVaEW5GLWm69Q9XcWJ",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Sweden Superettan (SE2) J11",
-      "sheet_id": "1TSfs3tEodjgmbBvp-TAmn9wqYyNHKcQyYYH2UoUXTCE",
-      "registry_script_id": "1Byk6o1Z1aDH3SO7ZBGOVP_yqXsUNK_NWta59GUYuQLZqwYLHZvOTJbAk",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Sweden Superettan (SE2) J17",
-      "sheet_id": "1QEO2ZcVAATVQAC48BOGro3DAU_heGXcoEhSTjy3gSdI",
-      "registry_script_id": "1ibUw63KAxOEtQLXwMtApSGWBNBBPmUzx1NUuE-NXHXKo1RIhaPmWwQD0",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Sweden Superettan (SE2) J31",
-      "sheet_id": "1H5cmUyGlfOXOs52AYfa5ILr_4j74AM_weyQzWxGBtjA",
-      "registry_script_id": "11aERqcp5j8luLXFGGKwjhrsK-1XWS_cbWXQ76G4DWkrP_T6BGDSAAbuv",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
       "label": "Sweden Superettan (SE2) M1",
       "sheet_id": "1RJx-2tu6jbjZWLaYLUS0j991FqT7Fskx7C_3z1OfkQ8",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Switzerland (CW1) J18",
-      "sheet_id": "14WC5_8ODtdDMAmsbbU3T1TbhDajt74B6-tkGdbmcYko",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Switzerland (SBL) J10",
-      "sheet_id": "1TXJEcJ_dD4gV5a5crHdQerCNh6siMVkXpVEsL8hpt7Y",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Switzerland (SBL) J21",
-      "sheet_id": "1eLH1tYWk4O4EGMcTjgW170AGo-aKtMeFkJkQ1lsMk6E",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Switzerland SB League (CW1) F28",
-      "sheet_id": "1oegltx_xLXr_q-2op08b5O0zPLVVNI1Sj08s5jsVJ3Q",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Taiwan (TW4) J11",
-      "sheet_id": "10-OIk5cqpGqp7pnFmCRhl3qjlYajlpDPAptScWdQzGE",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Taiwan (TW4) J17",
-      "sheet_id": "1Kn1KxVJnBT23ED7AafFqYYTsUvNjPNfRwc9snxOl5dA",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "T\u00fcrkiye (SLT) J17",
-      "sheet_id": "1IqF4nzuHqdWigsGqJNaDG9aCJAUltaveAUk3dsa6vxg",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "T\u00fcrkiye (TLW) J16",
-      "sheet_id": "1ngCZciz22ianxXcQ1XTg4qPu6bx5oEktLfIK3CEpMYE",
       "registry_script_id": null,
       "bound_scripts": [],
       "status": "NO_SCRIPT",
@@ -4229,24 +4265,6 @@
       "orphan_script_ids": []
     },
     {
-      "label": "United States (NBA) J25",
-      "sheet_id": "1Ta9J_Ufg0bmR9XtNm14Ul8KivSHdBZBfIWWZ6-TzgLs",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "United States (NBA) J27",
-      "sheet_id": "1Cpf1wgrtuCTilF3PO9uUlfa1HBPvoAdyi6qggrqKr7k",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
       "label": "United States (NBA) J28",
       "sheet_id": "1K4xDax6p2sTVwnrRnRfrbO5NTYbUoxJGBx3Ilzn68BI",
       "registry_script_id": null,
@@ -4484,33 +4502,6 @@
       "label": "WABA League (WAB) J28",
       "sheet_id": "1BCUMB41K4LhYy8O1m7aQxMn-VJ0XYMos3_gA0_XyMk0",
       "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "None ?",
-      "sheet_id": "37d70fb8-6c08-4eff-977d-5f8453fa252d",
-      "registry_script_id": null,
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Argentina (LAA) J12",
-      "sheet_id": "1u1oSm1V3dQ4ML3GV4zblBUus6GU6WsMe5Te4P0DLPhA",
-      "registry_script_id": "1Jdj7uq27-IlAKPlFWyX0qTrSU8pcVWpZYr0sCwfpWnrEzLu9VP_rh1VV",
-      "bound_scripts": [],
-      "status": "NO_SCRIPT",
-      "canonical_script_id": null,
-      "orphan_script_ids": []
-    },
-    {
-      "label": "Argentina (LAA) J13",
-      "sheet_id": "13oFN_X9gm0v_vkLhdFl4h5TC4EIYAWceU1kkMRZTfkM",
-      "registry_script_id": "1RfNsrJ2EksFG9hFaRtI0rRE1ZgE7rsAADXcmA2-LE4_GJIYToHo_DG78",
       "bound_scripts": [],
       "status": "NO_SCRIPT",
       "canonical_script_id": null,

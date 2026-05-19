@@ -66,7 +66,23 @@ def classify_tier(win_rate, lower_bound, n):
 def _normalise(val):
     if val is None:
         return ""
-    return str(val).strip().lower()
+    # Remove common decorative characters and emojis
+    s = str(val).strip().lower()
+    s = s.replace('○', '').replace('⭐', '').replace('✅', '').replace('❌', '').replace('✦', '').replace('•', '')
+    return s.strip()
+
+def _clean_segment_val(val, category="general"):
+    v = _normalise(val)
+    if category == "tier":
+        for t in ["banker", "sniper", "robber", "elite", "strong", "medium", "weak"]:
+            if t in v: return t
+    if category == "pick":
+        # Remove confidence percentages like (65%)
+        import re
+        v = re.sub(r'\(.*?\)', '', v)
+        # Remove extra whitespace
+        v = re.sub(r'\s+', ' ', v)
+    return v.strip()
 
 
 def _parse_outcome(val):
@@ -187,11 +203,22 @@ def assay_bet_slips_data(bet_slips_rows, source_label="BetSlips"):
             continue
 
         league = _normalise(row.get("league") or row.get("League") or "unknown")
-        market = _normalise(row.get("market") or row.get("Market") or "unknown")
-        tier = _normalise(row.get("tier") or row.get("Tier") or "unknown")
-        pick = _normalise(row.get("selection_side") or row.get("Selection_Side") or
-                          row.get("selection_team") or row.get("Selection_Team") or
-                          row.get("pick") or row.get("Pick") or "unknown")
+        
+        # Infer market if empty
+        market = _normalise(row.get("market") or row.get("Market") or "")
+        bet_type = _normalise(row.get("type") or row.get("Type") or "")
+        if not market:
+            if "margin" in bet_type: market = "margin"
+            elif "o/u" in bet_type or "totals" in bet_type: market = "totals"
+            elif "1h" in bet_type: market = "first_half"
+            else: market = bet_type or "unknown"
+
+        tier = _clean_segment_val(row.get("tier") or row.get("Tier") or "unknown", "tier")
+        
+        pick_raw = (row.get("selection_side") or row.get("Selection_Side") or
+                    row.get("selection_team") or row.get("Selection_Team") or
+                    row.get("pick") or row.get("Pick") or "unknown")
+        pick = _clean_segment_val(pick_raw, "pick")
 
         conf_raw = _parse_float(
             row.get("confidence") or row.get("Confidence") or

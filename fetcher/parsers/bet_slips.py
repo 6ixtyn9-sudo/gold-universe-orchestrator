@@ -72,9 +72,9 @@ def _get(row: List[Any], hm: Dict[str, int], *keys: str) -> str:
 
 def _parse_outcome(val: str) -> Optional[str]:
     v = val.strip().lower()
-    if v in ("win", "w", "1", "yes", "correct", "hit", "true"):
+    if "hit" in v or v in ("win", "w", "1", "yes", "correct", "true"):
         return "win"
-    if v in ("loss", "lose", "l", "0", "no", "wrong", "miss", "false"):
+    if "miss" in v or v in ("loss", "lose", "l", "0", "no", "wrong", "false"):
         return "loss"
     return None
 

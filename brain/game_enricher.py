@@ -232,12 +232,20 @@ def _classify_banker_or_robber(
     pick_odds = _pick_odds(side, home_odds, away_odds)
     other_odds = _pick_odds("AWAY" if side == "HOME" else "HOME", home_odds, away_odds)
 
+    print(f"DEBUG ROBBER [Game: {game.get('home')} vs {game.get('away')}]: "
+          f"pick={pick}, side={side}, home_odds={home_odds}, away_odds={away_odds}, "
+          f"pick_odds={pick_odds}, other_odds={other_odds}")
+
     if pick_odds is None or other_odds is None:
+        print(f"DEBUG ROBBER -> BANKER (missing odds)")
         return "BANKER"
 
     # If we're picking the underdog (higher odds), it's a ROBBER
     if pick_odds > other_odds:
+        print(f"DEBUG ROBBER -> ROBBER (pick_odds {pick_odds} > other_odds {other_odds})")
         return "ROBBER"
+        
+    print(f"DEBUG ROBBER -> BANKER (pick_odds {pick_odds} <= other_odds {other_odds})")
     return "BANKER"
 
 
@@ -259,12 +267,15 @@ def _build_first_half_struct(
     if not fh_pick:
         # For Phase 1: propagate the main pick as a 1H signal with reduced confidence
         if not pick:
+            print(f"DEBUG 1H [Game: {game.get('home')} vs {game.get('away')}]: no fh_pick, no main pick. Returning None.")
             return None
         conf = parse_conf_pct(game.get("confidence"))
         if conf is None:
+            print(f"DEBUG 1H [Game: {game.get('home')} vs {game.get('away')}]: no fh_pick, no parsed confidence for main pick. Returning None.")
             return None
         # Reduce confidence for the 1H signal (heuristic)
         fh_conf = max(50.0, conf - 5.0)
+        print(f"DEBUG 1H [Game: {game.get('home')} vs {game.get('away')}]: no fh_pick, propagating main pick '{pick}' with reduced conf: {conf} -> {fh_conf}")
         return {
             "pick": pick,
             "side": side,
@@ -276,6 +287,7 @@ def _build_first_half_struct(
         }
 
     fh_side = _derive_side(fh_pick, game.get("home", ""), game.get("away", ""))
+    print(f"DEBUG 1H [Game: {game.get('home')} vs {game.get('away')}]: found explicit fh_pick '{fh_pick}', side={fh_side}")
     return {
         "pick": fh_pick,
         "side": fh_side,

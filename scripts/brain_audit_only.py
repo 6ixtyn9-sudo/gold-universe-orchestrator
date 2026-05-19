@@ -67,6 +67,27 @@ def main():
     legacy_bet_slips = tabs.get("Bet_Slips", [])
 
     # 4. Compare logic parity
+    print("\n--- DEBUG ALL PYTHON PICKS ---")
+    if len(python_bet_slips) > 0:
+        hm_py = _build_hm(python_bet_slips[0])
+        for row in python_bet_slips[1:]:
+            match = _gc(row, hm_py, "match", "game")
+            pick = _gc(row, hm_py, "pick", "selection")
+            market = _gc(row, hm_py, "market", "type")
+            print(f"  {match} | {pick} ({market})")
+        
+    print("\n--- DEBUG ALL LEGACY GS PICKS ---")
+    header_idx = _find_header_row_in_slips(legacy_bet_slips)
+    if header_idx != -1:
+        hm = _build_hm(legacy_bet_slips[header_idx])
+        for row in legacy_bet_slips[header_idx+1:]:
+            if not row: continue
+            match = _gc(row, hm, "match", "game")
+            pick = _gc(row, hm, "pick", "selection")
+            market = _gc(row, hm, "market", "type")
+            if match and pick and market:
+                print(f"  {match} | {pick} ({market})")
+                
     compare_logic(python_bet_slips, legacy_bet_slips)
 
 def _find_header_row_in_slips(rows):

@@ -59,7 +59,7 @@ GS_ORDER = [
     "Sheet_Setup", "Config_Ledger_Satellite", "Signal_Processor",
     "Data_Parser", "Margin_Analyzer", "Forecaster", "Game_Processor",
     "Inventory_Manager", "Accumulator_Builder", "Contract_Enforcer",
-    "Contract_Enforcement",
+    "Contract_Enforcement", "fix_triggers",
 ]
 
 
