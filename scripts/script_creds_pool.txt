@@ -1,5 +1,0 @@
-credentials_writer_esl4smartkids.json
-credentials_writer_nicodemus.json
-credentials_writer_cocobiskit.json
-credentials_writer_matauzen.json
-credentials_writer_sibiyacitadel.json

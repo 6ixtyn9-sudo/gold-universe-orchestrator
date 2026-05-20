@@ -1,0 +1,27 @@
+{
+  "name": "gold-universe-orchestrator",
+  "version": "1.0.0",
+  "description": "**\"The one who sees all satellites, consults the Assayer, and builds the Accas\"**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/6ixtyn9-sudo/gold-universe-orchestrator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/6ixtyn9-sudo/gold-universe-orchestrator/issues"
+  },
+  "homepage": "https://github.com/6ixtyn9-sudo/gold-universe-orchestrator#readme",
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  }
+}

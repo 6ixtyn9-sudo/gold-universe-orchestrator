@@ -130,7 +130,25 @@ def check_prerequisites(bridge_only: bool = False) -> Tuple[bool, List[str]]:
     else:
         gs_files = list(sources_dir.glob("*.gs"))
         if not gs_files:
-            issues.append(f"No .gs files found in {sources_dir}")
+            # Fallback: try recursive scan of assayer/ subdirectory
+            assayer_sub = sources_dir / "assayer"
+            if assayer_sub.is_dir():
+                gs_files = list(assayer_sub.rglob("*.gs"))
+            
+            # Also check REPO_ROOT / "assayer" if it exists
+            repo_assayer = REPO_ROOT / "assayer"
+            if repo_assayer.is_dir():
+                for f in repo_assayer.rglob("*.gs"):
+                    if f not in gs_files:
+                        gs_files.append(f)
+                        
+            if not gs_files:
+                issues.append(
+                    f"No .gs files found in {sources_dir} or {assayer_sub}. "
+                    "Ensure .gs modules are present before deploying."
+                )
+            else:
+                logger.info(f"Found {len(gs_files)} .gs source file(s) via fallback scan")
         else:
             logger.info(f"Found {len(gs_files)} .gs source file(s) in {sources_dir.name}")
     
@@ -171,7 +189,22 @@ def load_gs_files_direct(bridge_only: bool = False) -> Optional[List[Dict[str, A
         })
     
     # Add .gs files
-    for p in sorted(sources_dir.glob("*.gs")):
+    # Primary: direct .gs files in sources_dir
+    gs_files = list(sources_dir.glob("*.gs"))
+
+    # Fallback / supplement: recursively scan sources_dir/assayer/ for nested .gs files
+    assayer_sub = sources_dir / "assayer"
+    if assayer_sub.is_dir():
+        gs_files += [f for f in assayer_sub.rglob("*.gs") if f not in gs_files]
+
+    # Also recursively scan REPO_ROOT/assayer/ if it exists (central assayer store)
+    repo_assayer = REPO_ROOT / "assayer"
+    if repo_assayer.is_dir():
+        for f in repo_assayer.rglob("*.gs"):
+            if f not in gs_files:
+                gs_files.append(f)
+
+    for p in sorted(gs_files):
         files.append({
             "name": p.stem,
             "type": "SERVER_JS",
