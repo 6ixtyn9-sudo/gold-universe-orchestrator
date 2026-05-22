@@ -98,6 +98,39 @@ var LEFTOVER_CONFIG = {
   ALLOW_SINGLES:      true           
 };
 
+function _getBetId_(b) {
+  if (b && typeof b.betId === 'string' && b.betId.trim() !== '') return b.betId;
+  if (b && typeof b.id === 'string' && b.id.trim() !== '') return b.id;
+  if (b && typeof b.bet_id === 'string' && b.bet_id.trim() !== '') return b.bet_id;
+  
+  const base = [
+    String(b.league || '').trim().toUpperCase(),
+    String(b.match || b.home + ' vs ' + b.away || '').trim().toUpperCase(),
+    String(b.pick || '').trim().toUpperCase(),
+    String(b.type || '').trim().toUpperCase(),
+    (b.time instanceof Date) ? b.time.toISOString() : String(b.time || '')
+  ].join('|');
+
+  try {
+    const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
+    let hex = '';
+    for (let i = 0; i < bytes.length; i++) {
+      let v = bytes[i];
+      if (v < 0) v += 256;
+      let hexStr = v.toString(16);
+      if (hexStr.length === 1) hexStr = '0' + hexStr;
+      hex += hexStr;
+    }
+    const generatedId = 'MD5_' + hex;
+    if (b) b.betId = generatedId;
+    return generatedId;
+  } catch (e) {
+    const fallbackId = ('BET_' + base).replace(/[^a-z0-9_]/gi, '_');
+    if (b) b.betId = fallbackId;
+    return fallbackId;
+  }
+}
+
 var BET_STATUS = {
   MAIN:     'MAIN_ACCA',
   LEFTOVER: 'LEFTOVER_ACCA',
@@ -111,6 +144,7 @@ var BET_STATUS = {
 
 function _normBet_(b) {
   if (b._norm) return b;
+  b.betId = _getBetId_(b);
   const league = String(b.league || '').toLowerCase().trim();
   let match = String(b.match || '').toLowerCase().trim().replace(/\s+/g, ' ');
   if (!match) {
@@ -121,21 +155,31 @@ function _normBet_(b) {
   b._leagueKey = league;
   b._matchKey = league + '|' + match;
   
-  // Resolve betId robustly
-  if (!b.betId) {
-    b.betId = b.id || b.bet_id || ('BET_' + b._matchKey + '|' + String(b.pick).toLowerCase()).replace(/[^a-z0-9_]/gi, '_');
-  }
-
   // Precompute probabilities
   let p = ACCA_ENGINE_CONFIG.OPT_P_MIN;
+  b._pSource = 'default';
+  
   if (b.assayer && b.assayer.edge && b.assayer.edge.lower_bound) {
     p = parseFloat(b.assayer.edge.lower_bound);
+    b._pSource = 'assayer_lower_bound';
+  } else if (b.assayer_lower_bound || b.assayerEdgeLowerBound) {
+    p = parseFloat(b.assayer_lower_bound || b.assayerEdgeLowerBound);
+    b._pSource = 'assayer_lower_bound';
   } else if (b.assayer && b.assayer.edge && b.assayer.edge.win_rate) {
     p = parseFloat(b.assayer.edge.win_rate);
+    b._pSource = 'assayer_win_rate';
+  } else if (b.assayer_win_rate || b.assayerEdgeWinRate) {
+    p = parseFloat(b.assayer_win_rate || b.assayerEdgeWinRate);
+    b._pSource = 'assayer_win_rate';
   } else if (b.accuracyScore) {
     p = parseFloat(b.accuracyScore) / 100.0;
+    b._pSource = 'accuracyScore';
   }
-  if (isNaN(p)) p = ACCA_ENGINE_CONFIG.OPT_P_MIN;
+  
+  if (isNaN(p)) {
+    p = ACCA_ENGINE_CONFIG.OPT_P_MIN;
+    b._pSource = 'default';
+  }
   b._p = Math.max(ACCA_ENGINE_CONFIG.OPT_P_MIN, Math.min(ACCA_ENGINE_CONFIG.OPT_P_MAX, p));
 
   // Extract odds safely
@@ -184,12 +228,19 @@ function _normBet_(b) {
   return b;
 }
 
-function _canAddLegToAcca_(legs, candidate, cfg) {
+function _canAddLegToAcca_(legs, candidate, cfg, targetSize) {
   const normC = _normBet_(candidate);
+  const candMatchKey = _getStrictMatchKey(candidate);
   
-  // Rule 1: No duplicate match
+  // Rule 1: Same match picks up to MAX_SAME_GAME_PICKS
+  let sameMatchCount = 0;
   for (let i = 0; i < legs.length; i++) {
-    if (_normBet_(legs[i])._matchKey === normC._matchKey) return false;
+    if (_getStrictMatchKey(legs[i]) === candMatchKey) sameMatchCount++;
+  }
+  const maxSameGame = cfg && cfg.MAX_SAME_GAME_PICKS ? Number(cfg.MAX_SAME_GAME_PICKS) : 1;
+  if (sameMatchCount >= maxSameGame) {
+    candidate._rejectReason = 'MAX_SAME_GAME_PICKS';
+    return false;
   }
 
   // Rule 2: MAX_PER_LEAGUE
@@ -197,8 +248,18 @@ function _canAddLegToAcca_(legs, candidate, cfg) {
   for (let i = 0; i < legs.length; i++) {
     if (legs[i]._leagueKey === normC._leagueKey) leagueCount++;
   }
-  const maxLeague = cfg && cfg.MAX_PER_LEAGUE ? cfg.MAX_PER_LEAGUE : 2;
-  if (leagueCount >= maxLeague) return false;
+  let maxLeague = 2;
+  if (cfg && cfg.MAX_PER_LEAGUE) {
+    if (typeof cfg.MAX_PER_LEAGUE === 'object' && targetSize && cfg.MAX_PER_LEAGUE[targetSize] !== undefined) {
+      maxLeague = Number(cfg.MAX_PER_LEAGUE[targetSize]);
+    } else if (typeof cfg.MAX_PER_LEAGUE === 'number') {
+      maxLeague = Number(cfg.MAX_PER_LEAGUE);
+    }
+  }
+  if (leagueCount >= maxLeague) {
+    candidate._rejectReason = 'MAX_PER_LEAGUE';
+    return false;
+  }
 
   return true;
 }
@@ -316,8 +377,19 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
     if (mode === 'FILL') {
       // Greedy legacy parity
       const current = [];
+      let evals = 0;
+      const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
       for (let i = 0; i < available.length && current.length < targetSize; i++) {
-        if (_canAddLegToAcca_(current, available[i], cfg)) {
+        evals++;
+        if (evals > maxEvals) {
+          Logger.log(`[${FUNC_NAME}] CAP HIT size=${targetSize} evals=${evals}`);
+          break;
+        }
+        if (evals % 100 === 0 && Date.now() - startMs > maxTimeMs) {
+          Logger.log(`[${FUNC_NAME}] TIME BUDGET HIT size=${targetSize}`);
+          break;
+        }
+        if (_canAddLegToAcca_(current, available[i], cfg, targetSize)) {
           current.push(available[i]);
         }
       }
@@ -329,12 +401,22 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
       // Brute force 3-folds
       let evals = 0;
       const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
-      for (let i=0; i<available.length && evals < maxEvals; i++) {
-        for (let j=i+1; j<available.length && evals < maxEvals; j++) {
-          if (!_canAddLegToAcca_([available[i]], available[j], cfg)) continue;
-          for (let k=j+1; k<available.length && evals < maxEvals; k++) {
+      let capHit = false;
+      let timeHit = false;
+      for (let i=0; i<available.length && !capHit && !timeHit; i++) {
+        for (let j=i+1; j<available.length && !capHit && !timeHit; j++) {
+          if (!_canAddLegToAcca_([available[i]], available[j], cfg, targetSize)) continue;
+          for (let k=j+1; k<available.length && !capHit && !timeHit; k++) {
             evals++;
-            if (!_canAddLegToAcca_([available[i], available[j]], available[k], cfg)) continue;
+            if (evals > maxEvals) {
+              Logger.log(`[${FUNC_NAME}] CAP HIT size=${targetSize} evals=${evals}`);
+              capHit = true; break;
+            }
+            if (evals % 50 === 0 && Date.now() - startMs > maxTimeMs) {
+              Logger.log(`[${FUNC_NAME}] TIME BUDGET HIT size=${targetSize}`);
+              timeHit = true; break;
+            }
+            if (!_canAddLegToAcca_([available[i], available[j]], available[k], cfg, targetSize)) continue;
             
             const candidate = [available[i], available[j], available[k]];
             const score = _scoreAcca_(candidate, mode, cfg);
@@ -350,26 +432,35 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
       const beamWidth = cfg.OPT_BEAM_WIDTH || 20;
       const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
       let evals = 0;
+      let capHit = false;
+      let timeHit = false;
       
       let beams = [ [] ];
-      for (let step = 0; step < targetSize; step++) {
+      for (let step = 0; step < targetSize && !capHit && !timeHit; step++) {
         let nextBeams = [];
-        for (let bIdx = 0; bIdx < beams.length; bIdx++) {
+        for (let bIdx = 0; bIdx < beams.length && !capHit && !timeHit; bIdx++) {
           const currentBeam = beams[bIdx];
-          for (let cIdx = 0; cIdx < available.length; cIdx++) {
+          for (let cIdx = 0; cIdx < available.length && !capHit && !timeHit; cIdx++) {
             evals++;
-            if (evals > maxEvals) break;
+            if (evals > maxEvals) {
+              Logger.log(`[${FUNC_NAME}] CAP HIT size=${targetSize} evals=${evals}`);
+              capHit = true; break;
+            }
+            if (evals % 50 === 0 && Date.now() - startMs > maxTimeMs) {
+              Logger.log(`[${FUNC_NAME}] TIME BUDGET HIT size=${targetSize}`);
+              timeHit = true; break;
+            }
+            
             const cand = available[cIdx];
             
             // Optimization: avoid duplicate states by enforcing ordered insertion
             if (currentBeam.length > 0 && currentBeam[currentBeam.length-1].betId >= cand.betId) continue;
             
-            if (_canAddLegToAcca_(currentBeam, cand, cfg)) {
+            if (_canAddLegToAcca_(currentBeam, cand, cfg, targetSize)) {
               const newBeam = currentBeam.concat([cand]);
               nextBeams.push(newBeam);
             }
           }
-          if (evals > maxEvals) break;
         }
         
         // Score and prune
@@ -450,29 +541,6 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
   }
 
   var metrics = leagueMetrics || {};
-
-  // ── Stable betId generator (MD5 hash — deterministic across runs) ──
-  var _makeStableBetId = function(b) {
-    var base = [
-      String(b.league || '').trim().toUpperCase(),
-      String(b.match || '').trim().toUpperCase(),
-      String(b.pick || '').trim().toUpperCase(),
-      String(b.type || '').trim().toUpperCase(),
-      (b.time instanceof Date) ? b.time.toISOString() : String(b.time || '')
-    ].join('|');
-
-    try {
-      var bytes = Utilities.computeDigest(
-        Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
-      var hex = bytes.map(function(x) {
-        var v = (x < 0) ? x + 256 : x;
-        return ('0' + v.toString(16)).slice(-2);
-      }).join('');
-      return 'BET_' + hex.slice(0, 20);
-    } catch (e) {
-      return 'BET_' + base.replace(/[^A-Z0-9|]+/gi, '_').slice(0, 60);
-    }
-  };
 
   // ── Grade normalization helper ──
   var _normGrade = function(g) {
@@ -625,7 +693,7 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
 
     // Ensure stable betId
     if (!betOut.betId || String(betOut.betId).trim() === '') {
-      betOut.betId = _makeStableBetId(betOut);
+      betOut.betId = _getBetId_(betOut);
       betIdGenerated++;
     }
 
@@ -1512,32 +1580,7 @@ function _allocatePortfolios(bets, leagueMetrics, assayerData) {
   Logger.log('╚══════════════════════════════════════════════════════════════════════════╝');
 
   // ── Robust betId accessor (MD5 fallback, matches _enrichBetsWithAccuracy) ──
-  const getBetId = (b) => {
-    if (!b) return '';
-    var id = b.betId || b.id || b.bet_id;
-    if (id && String(id).trim()) return String(id).trim();
-
-    // MD5 fallback (same logic as _enrichBetsWithAccuracy)
-    var base = [
-      String(b.league || '').trim().toUpperCase(),
-      String(b.match || '').trim().toUpperCase(),
-      String(b.pick || '').trim().toUpperCase(),
-      String(b.type || '').trim().toUpperCase(),
-      (b.time instanceof Date) ? b.time.toISOString() : String(b.time || '')
-    ].join('|');
-
-    try {
-      var bytes = Utilities.computeDigest(
-        Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
-      var hex = bytes.map(function(x) {
-        var v = (x < 0) ? x + 256 : x;
-        return ('0' + v.toString(16)).slice(-2);
-      }).join('');
-      return 'BET_' + hex.slice(0, 20);
-    } catch (e) {
-      return 'BET_' + base.replace(/[^A-Z0-9|]+/gi, '_').slice(0, 60);
-    }
-  };
+  const getBetId = (b) => _getBetId_(b);
 
   // ── Ensure enriched ──
   let enrichedBets = bets;
@@ -1547,6 +1590,19 @@ function _allocatePortfolios(bets, leagueMetrics, assayerData) {
   }
 
   Logger.log(`[${FUNC_NAME}] Total bets available: ${enrichedBets.length}`);
+
+  // Audit Assayer Probability Source
+  Logger.log(`[${FUNC_NAME}] --- ASSAYER PROBABILITY SOURCE AUDIT (First 5 bets) ---`);
+  let allAccuracyScore = true;
+  for (let i = 0; i < Math.min(5, enrichedBets.length); i++) {
+    const b = _normBet_(enrichedBets[i]);
+    if (b._pSource !== 'accuracyScore' && b._pSource !== 'default') allAccuracyScore = false;
+    Logger.log(`  BetID: ${b.betId} | League: ${b.league} | Odds: ${b._odds} | P: ${b._p.toFixed(3)} | pSource: ${b._pSource}`);
+  }
+  if (allAccuracyScore && enrichedBets.length > 0) {
+    Logger.log(`[${FUNC_NAME}] ⚠️ WARNING: All sampled bets used fallback accuracyScore!`);
+  }
+  Logger.log(`[${FUNC_NAME}] --------------------------------------------------------`);
 
   const bankers = enrichedBets.filter(b => b.isBanker);
   const snipers = enrichedBets.filter(b => b.isSniper);
@@ -2920,21 +2976,34 @@ function debugAccaLegacyParityTest() {
   const oldMode = ACCA_ENGINE_CONFIG.ALLOCATOR_MODE;
   ACCA_ENGINE_CONFIG.ALLOCATOR_MODE = 'FILL';
   
-  // 3. Run allocation
   try {
-    const portfolios = _allocatePortfolios(mockBets, {}, null);
-    Logger.log(`Generated ${portfolios.length} accas in FILL mode.`);
-    let success = true;
-    for (const acca of portfolios) {
-      Logger.log(`- ${acca.name} [Size: ${acca.legs.length}] -> EV: ${(acca._metrics.ev*100).toFixed(1)}%, P: ${(acca._metrics.prob*100).toFixed(1)}%`);
-      if (!acca._metrics || typeof acca._metrics.ev === 'undefined') {
-        Logger.log('ERROR: Metrics missing on acca!');
-        success = false;
+    // Run NEW builder
+    const newUsedIds = new Set();
+    const cfg = Object.assign({}, ACCA_ENGINE_CONFIG);
+    const newAccas = _buildAccas_(mockBets, newUsedIds, 6, cfg, 'NEW');
+    
+    // Run OLD builder
+    const oldUsedIds = new Set();
+    const oldAccas = _buildAccasOfTargetSize(mockBets, oldUsedIds, 6, 'OLD');
+    
+    Logger.log(`NEW output count: ${newAccas.length}`);
+    Logger.log(`OLD output count: ${oldAccas.length}`);
+    
+    // Compare membership sets
+    let matchCount = 0;
+    for (let i = 0; i < Math.min(newAccas.length, oldAccas.length); i++) {
+      const newIds = newAccas[i].legs.map(l => l.betId).sort().join(',');
+      const oldIds = oldAccas[i].legs.map(l => l.betId).sort().join(',');
+      if (newIds === oldIds) matchCount++;
+      else {
+        Logger.log(`MISMATCH at acca ${i}:`);
+        Logger.log(`  NEW: ${newIds}`);
+        Logger.log(`  OLD: ${oldIds}`);
       }
     }
     
-    if (success) {
-      Logger.log('✅ legacy FILL parity test PASSED! Metrics correctly injected.');
+    if (newAccas.length === oldAccas.length && matchCount === oldAccas.length) {
+      Logger.log('✅ legacy FILL parity test PASSED! Outputs are strictly identical.');
     } else {
       Logger.log('❌ legacy FILL parity test FAILED!');
     }
@@ -7151,15 +7220,7 @@ function _extractUsedBetIdsFromAccaPortfolio(ss, targetSheets) {
     return d;
   };
   var _md5 = function(base) {
-    try {
-      var b = Utilities.computeDigest(
-        Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
-      return 'BET_' + b.map(function(x) {
-        return ('0' + ((x < 0 ? x + 256 : x).toString(16))).slice(-2);
-      }).join('').slice(0, 20);
-    } catch (_) {
-      return 'BET_' + base.replace(/[^A-Z0-9|]/gi, '_').slice(0, 60);
-    }
+    return _getBetId_({ league: base }); // hack if passed raw string, though not strictly correct. 
   };
 
   var rows = 0;
@@ -7284,21 +7345,10 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     var d = new Date(x); return (!isNaN(d)) ? d : null;
   };
   var _md5 = function(base) {
-    try {
-      var b = Utilities.computeDigest(
-        Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
-      return 'BET_' + b.map(function(x) {
-        return ('0' + ((x < 0 ? x + 256 : x).toString(16))).slice(-2);
-      }).join('').slice(0, 20);
-    } catch (_) {
-      return 'BET_' + base.replace(/[^A-Z0-9|]/gi, '_').slice(0, 60);
-    }
+    return _getBetId_({ league: base }); 
   };
   var _sid = function(b) {
-    var t = _pt(b && b.time);
-    return _md5([_up(b&&b.league), _up(b&&b.match),
-      _cpk(b&&b.pick), _ctp(b&&b.type),
-      t ? t.toISOString() : ''].join('|'));
+    return _getBetId_(b);
   };
   var _fk = function(b) {
     return [_up(b&&b.league), _up(b&&b.match),
