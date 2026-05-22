@@ -142,6 +142,18 @@ var BET_STATUS = {
 // CORE MATH PRIMITIVES & OPTIMIZER HELPERS
 // ============================================================
 
+function _maxPerLeague_(cfg, targetSize) {
+  if (cfg && cfg.MAX_PER_LEAGUE !== undefined) {
+    if (typeof cfg.MAX_PER_LEAGUE === 'object' && targetSize && cfg.MAX_PER_LEAGUE[targetSize] !== undefined) {
+      return Number(cfg.MAX_PER_LEAGUE[targetSize]);
+    }
+    if (typeof cfg.MAX_PER_LEAGUE === 'number') {
+      return Number(cfg.MAX_PER_LEAGUE);
+    }
+  }
+  return targetSize ? Number(targetSize) : 2;
+}
+
 function _normBet_(b) {
   if (b._norm) return b;
   b.betId = _getBetId_(b);
@@ -233,14 +245,29 @@ function _canAddLegToAcca_(legs, candidate, cfg, targetSize) {
   const candMatchKey = _getStrictMatchKey(candidate);
   
   // Rule 1: Same match picks up to MAX_SAME_GAME_PICKS
+  const maxSameGame = cfg && cfg.MAX_SAME_GAME_PICKS ? Number(cfg.MAX_SAME_GAME_PICKS) : 1;
   let sameMatchCount = 0;
+  let usedGameKeys = new Set();
+  
   for (let i = 0; i < legs.length; i++) {
     if (_getStrictMatchKey(legs[i]) === candMatchKey) sameMatchCount++;
+    if (maxSameGame > 1) usedGameKeys.add(_getGameKey(legs[i]));
   }
-  const maxSameGame = cfg && cfg.MAX_SAME_GAME_PICKS ? Number(cfg.MAX_SAME_GAME_PICKS) : 1;
-  if (sameMatchCount >= maxSameGame) {
-    candidate._rejectReason = 'MAX_SAME_GAME_PICKS';
-    return false;
+  
+  if (maxSameGame <= 1) {
+    if (sameMatchCount >= 1) {
+      candidate._rejectReason = 'MAX_SAME_GAME_PICKS';
+      return false;
+    }
+  } else {
+    if (sameMatchCount >= maxSameGame) {
+      candidate._rejectReason = 'MAX_SAME_GAME_PICKS';
+      return false;
+    }
+    if (usedGameKeys.has(_getGameKey(candidate))) {
+      candidate._rejectReason = 'MAX_SAME_GAME_PICKS';
+      return false;
+    }
   }
 
   // Rule 2: MAX_PER_LEAGUE
@@ -248,14 +275,8 @@ function _canAddLegToAcca_(legs, candidate, cfg, targetSize) {
   for (let i = 0; i < legs.length; i++) {
     if (legs[i]._leagueKey === normC._leagueKey) leagueCount++;
   }
-  let maxLeague = 2;
-  if (cfg && cfg.MAX_PER_LEAGUE) {
-    if (typeof cfg.MAX_PER_LEAGUE === 'object' && targetSize && cfg.MAX_PER_LEAGUE[targetSize] !== undefined) {
-      maxLeague = Number(cfg.MAX_PER_LEAGUE[targetSize]);
-    } else if (typeof cfg.MAX_PER_LEAGUE === 'number') {
-      maxLeague = Number(cfg.MAX_PER_LEAGUE);
-    }
-  }
+  let maxLeague = _maxPerLeague_(cfg, targetSize);
+  
   if (leagueCount >= maxLeague) {
     candidate._rejectReason = 'MAX_PER_LEAGUE';
     return false;
@@ -378,7 +399,7 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
       // Greedy legacy parity
       const current = [];
       let evals = 0;
-      const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
+      const maxEvals = Number(cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000);
       for (let i = 0; i < available.length && current.length < targetSize; i++) {
         evals++;
         if (evals > maxEvals) {
@@ -400,7 +421,7 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
     } else if (targetSize <= 3) {
       // Brute force 3-folds
       let evals = 0;
-      const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
+      const maxEvals = Number(cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000);
       let capHit = false;
       let timeHit = false;
       for (let i=0; i<available.length && !capHit && !timeHit; i++) {
@@ -430,7 +451,7 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
     } else {
       // Beam Search for 6/9 folds
       const beamWidth = cfg.OPT_BEAM_WIDTH || 20;
-      const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
+      const maxEvals = Number(cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000);
       let evals = 0;
       let capHit = false;
       let timeHit = false;
@@ -1920,7 +1941,7 @@ function _buildSingleAccaRandom(shuffledPool, legsNeeded, accaName, maxWindowMs)
       
       // League limit check (relaxed)
       const league = cand.league || 'unknown';
-      if ((leagueCounts[league] || 0) >= ACCA_ENGINE_CONFIG.MAX_PER_LEAGUE) continue;
+      if ((leagueCounts[league] || 0) >= _maxPerLeague_(ACCA_ENGINE_CONFIG, legsNeeded)) continue;
       
       // All checks passed - add to acca
       cluster.push(cand);
@@ -3012,6 +3033,57 @@ function debugAccaLegacyParityTest() {
     Logger.log(e.stack);
   } finally {
     ACCA_ENGINE_CONFIG.ALLOCATOR_MODE = oldMode;
+  }
+}
+
+function debugNoDriftStabilizationTest() {
+  Logger.log('Running debugNoDriftStabilizationTest...');
+  const mockBets = [];
+  for (let i = 0; i < 20; i++) {
+    mockBets.push({
+      league: 'NBA',
+      match: `Match ${i}`,
+      pick: `Pick ${i}`,
+      odds: 1.5,
+      accuracyScore: 80,
+      betId: `mock_${i}`
+    });
+  }
+  
+  const cfg = Object.assign({}, ACCA_ENGINE_CONFIG);
+  cfg.ALLOCATOR_MODE = 'FILL';
+  cfg.OPT_MAX_EVALS_PER_ACCA_SIZE = 10;
+  cfg.MAX_PER_LEAGUE = 50; // prevent league cap
+  
+  Logger.log('Triggering _buildAccas_ with tiny eval cap of 10...');
+  _buildAccas_(mockBets, new Set(), 6, cfg, 'TEST');
+}
+
+function debugMaxPerLeagueTest() {
+  Logger.log('Running debugMaxPerLeagueTest...');
+  const mockBets = [];
+  for (let i = 0; i < 5; i++) {
+    mockBets.push({
+      league: 'EPL',
+      match: `Match ${i}`,
+      pick: `Pick ${i}`,
+      odds: 1.5,
+      accuracyScore: 80,
+      betId: `mock_${i}`
+    });
+  }
+  
+  const cfg = Object.assign({}, ACCA_ENGINE_CONFIG);
+  cfg.MAX_PER_LEAGUE = { 3: 1 };
+  
+  const legs = [_normBet_(mockBets[0])];
+  const cand = _normBet_(mockBets[1]);
+  
+  const result = _canAddLegToAcca_(legs, cand, cfg, 3);
+  if (!result && cand._rejectReason === 'MAX_PER_LEAGUE') {
+    Logger.log('✅ debugMaxPerLeagueTest PASSED: candidate properly rejected due to MAX_PER_LEAGUE config object map.');
+  } else {
+    Logger.log('❌ debugMaxPerLeagueTest FAILED: candidate was NOT rejected or wrong reason given.');
   }
 }
 
@@ -4670,7 +4742,7 @@ function _buildAccasOfTargetSize(pool, usedBetIds, targetSize, typePrefix) {
   const maxIterations = 50;
   
   // Get constraints for this size
-  const maxPerLeague = ACCA_ENGINE_CONFIG.MAX_PER_LEAGUE[targetSize] || 2;
+  const maxPerLeague = _maxPerLeague_(ACCA_ENGINE_CONFIG, targetSize);
   const minAccuracy = ACCA_ENGINE_CONFIG.MIN_ACCURACY[targetSize] || 50;
   const excludePenalty = targetSize >= ACCA_ENGINE_CONFIG.EXCLUDE_PENALTY_FROM_SIZE;
   
@@ -4882,10 +4954,7 @@ function _buildOneAccaWithConstraints(available, size, label, maxWindowMs) {
   var usedGameKeys = {};
   var usedLeagueCounts = {};
 
-  var maxPerLeague = (ACCA_ENGINE_CONFIG.MAX_PER_LEAGUE &&
-    ACCA_ENGINE_CONFIG.MAX_PER_LEAGUE[size] !== undefined)
-    ? Number(ACCA_ENGINE_CONFIG.MAX_PER_LEAGUE[size])
-    : size;
+  var maxPerLeague = _maxPerLeague_(ACCA_ENGINE_CONFIG, size);
 
   var maxSameGamePicks = Number(ACCA_ENGINE_CONFIG.MAX_SAME_GAME_PICKS || 1);
 
@@ -5248,7 +5317,7 @@ function scanAccaVulnerabilities() {
  */
 function _analyzeAccaForIssues(accaId, accaName, legs, issues) {
   const accaSize = legs.length;
-  const maxPerLeague = ACCA_ENGINE_CONFIG.MAX_PER_LEAGUE[accaSize] || 2;
+  const maxPerLeague = _maxPerLeague_(ACCA_ENGINE_CONFIG, accaSize);
   
   // Check league concentration
   const leagueCounts = {};
@@ -7831,24 +7900,7 @@ function _buildLeftoverAccas(availableBets) {
   };
 
   var getBetId = function(b) {
-    var id = b && (b.betId || b.id || b.bet_id);
-    if (id && String(id).trim()) return String(id).trim();
-
-    // Deterministic fallback (same logic as processLeftoverBets._sid)
-    var _up = function(s) { return String(s||'').trim().toUpperCase(); };
-    var base = [_up(b&&b.league), _up(b&&b.match),
-      _up(b&&b.pick), _up(b&&b.type),
-      (b&&b.time instanceof Date) ? b.time.toISOString()
-        : String(b&&b.time||'')].join('|');
-    try {
-      var bytes = Utilities.computeDigest(
-        Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
-      return 'BET_' + bytes.map(function(x) {
-        return ('0'+((x<0?x+256:x).toString(16))).slice(-2);
-      }).join('').slice(0,20);
-    } catch(_) {
-      return 'BET_' + base.replace(/[^A-Z0-9|]/gi,'_').slice(0,60);
-    }
+    return _getBetId_(b);
   };
 
   // Fill missing betIds
@@ -8055,7 +8107,7 @@ function _buildFromPool(pool, usedIds, targetSize, namePrefix, maxWindowMs, outp
       if (matchesUsed.has(bet.match)) continue;
 
       const league = bet.league || 'unknown';
-      if ((leagueCount[league] || 0) >= LEFTOVER_CONFIG.MAX_PER_LEAGUE) continue;
+      if ((leagueCount[league] || 0) >= _maxPerLeague_(LEFTOVER_CONFIG, targetSize)) continue;
 
       if (seedTime && bet.time) {
         if (Math.abs(bet.time.getTime() - seedTime) > maxWindowMs) continue;
