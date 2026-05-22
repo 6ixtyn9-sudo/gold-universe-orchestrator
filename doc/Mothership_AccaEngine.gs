@@ -62,6 +62,21 @@ const ACCA_ENGINE_CONFIG = {
   UNKNOWN_EDGE_ACTION: 'ALLOW',
   REQUIRE_RELIABLE_EDGE: false,
 
+  // ── Optimizer Config ──
+  ALLOCATOR_MODE: 'FILL',                 // "FILL", "EV_MAX", "ANCHOR_BOOSTER", "DIVERSIFY", "TIME_HEDGE"
+  OPT_MAX_CANDIDATES_PER_POOL: 50,        // Max bets considered per size bucket
+  OPT_BEAM_WIDTH: 20,                     // Beam size for 6/9 folds
+  OPT_MAX_EVALS_PER_ACCA_SIZE: 5000,      // Max evaluated combinations per target acca
+  OPT_P_MIN: 0.05,                        // Minimum win prob to prevent math errors
+  OPT_P_MAX: 0.99,                        // Max win prob to prevent infinity EV
+
+  // ── Mode Thresholds ──
+  ANCHOR_COUNT: 1,                        // Target anchors per acca
+  ANCHOR_MIN_N: 50,                       // Minimum sample size to be considered an anchor
+  ANCHOR_MIN_EDGE_GRADE: 'ELITE',         // Min edge grade for an anchor (fallback to PLATINUM)
+  ANCHOR_MIN_PURITY_GRADE: 'PLATINUM',    // Min purity grade for an anchor
+  MIN_TIME_SPREAD_HOURS: 4,               // Minimum time gap between first and last leg for TIME_HEDGE
+
   LOGGING: {
     ENABLED: true,
     LOG_ACCEPTS: true,
@@ -89,6 +104,327 @@ var BET_STATUS = {
   EXPIRED:  'EXPIRED',
   DROPPED:  'DROPPED'
 };
+
+// ============================================================
+// CORE MATH PRIMITIVES & OPTIMIZER HELPERS
+// ============================================================
+
+function _normBet_(b) {
+  if (b._norm) return b;
+  const league = String(b.league || '').toLowerCase().trim();
+  let match = String(b.match || '').toLowerCase().trim().replace(/\s+/g, ' ');
+  if (!match) {
+    const home = String(b.home || '').toLowerCase().trim();
+    const away = String(b.away || '').toLowerCase().trim();
+    if (home && away) match = home + ' vs ' + away;
+  }
+  b._leagueKey = league;
+  b._matchKey = league + '|' + match;
+  
+  // Resolve betId robustly
+  if (!b.betId) {
+    b.betId = b.id || b.bet_id || ('BET_' + b._matchKey + '|' + String(b.pick).toLowerCase()).replace(/[^a-z0-9_]/gi, '_');
+  }
+
+  // Precompute probabilities
+  let p = ACCA_ENGINE_CONFIG.OPT_P_MIN;
+  if (b.assayer && b.assayer.edge && b.assayer.edge.lower_bound) {
+    p = parseFloat(b.assayer.edge.lower_bound);
+  } else if (b.assayer && b.assayer.edge && b.assayer.edge.win_rate) {
+    p = parseFloat(b.assayer.edge.win_rate);
+  } else if (b.accuracyScore) {
+    p = parseFloat(b.accuracyScore) / 100.0;
+  }
+  if (isNaN(p)) p = ACCA_ENGINE_CONFIG.OPT_P_MIN;
+  b._p = Math.max(ACCA_ENGINE_CONFIG.OPT_P_MIN, Math.min(ACCA_ENGINE_CONFIG.OPT_P_MAX, p));
+
+  // Extract odds safely
+  let odds = 1.0;
+  if (b.odds !== undefined && b.odds !== null) {
+    odds = parseFloat(b.odds);
+    if (isNaN(odds)) odds = 1.0;
+  }
+  b._odds = odds;
+  b._ev = (b._p * b._odds) - 1.0;
+
+  // Extract kickoff epoch for time hedge
+  b._kickoffEpoch = 0;
+  if (b.time instanceof Date) {
+    b._kickoffEpoch = b.time.getTime();
+  } else if (b.time) {
+    const t = new Date(b.time).getTime();
+    if (!isNaN(t)) b._kickoffEpoch = t;
+  }
+
+  // Anchor check
+  b._isAnchor = false;
+  if (b.assayer_passed === true || !ACCA_ENGINE_CONFIG.GOLD_ONLY_MODE) {
+    const edge = b.assayer && b.assayer.edge ? b.assayer.edge : {};
+    const pur = b.assayer && b.assayer.purity ? b.assayer.purity : {};
+    
+    // Evaluate strength
+    const isReliableOrLarge = (edge.reliable === true) || (edge.n >= ACCA_ENGINE_CONFIG.ANCHOR_MIN_N) || 
+                              (edge.sample_size === 'L' || edge.sample_size === 'Large' || edge.sample_size === 'XL');
+    
+    const rankOf = function(g) {
+      const n = String(g || '').trim().toUpperCase();
+      const r = { PLATINUM: 5, ELITE: 4, GOLD: 3, SILVER: 2, BRONZE: 1 };
+      return r[n] || 0;
+    };
+    
+    const meetsEdgeGrade = rankOf(edge.grade) >= rankOf(ACCA_ENGINE_CONFIG.ANCHOR_MIN_EDGE_GRADE);
+    const meetsPurityGrade = !pur.grade || rankOf(pur.grade) >= rankOf(ACCA_ENGINE_CONFIG.ANCHOR_MIN_PURITY_GRADE);
+
+    if (isReliableOrLarge && meetsEdgeGrade && meetsPurityGrade) {
+      b._isAnchor = true;
+    }
+  }
+
+  b._norm = true;
+  return b;
+}
+
+function _canAddLegToAcca_(legs, candidate, cfg) {
+  const normC = _normBet_(candidate);
+  
+  // Rule 1: No duplicate match
+  for (let i = 0; i < legs.length; i++) {
+    if (_normBet_(legs[i])._matchKey === normC._matchKey) return false;
+  }
+
+  // Rule 2: MAX_PER_LEAGUE
+  let leagueCount = 0;
+  for (let i = 0; i < legs.length; i++) {
+    if (legs[i]._leagueKey === normC._leagueKey) leagueCount++;
+  }
+  const maxLeague = cfg && cfg.MAX_PER_LEAGUE ? cfg.MAX_PER_LEAGUE : 2;
+  if (leagueCount >= maxLeague) return false;
+
+  return true;
+}
+
+function _accaMetrics_(legs) {
+  let combinedOdds = 1.0;
+  let combinedProb = 1.0;
+  let minEpoch = Infinity;
+  let maxEpoch = -Infinity;
+  let anchors = 0;
+  const leagueSet = new Set();
+
+  for (let i = 0; i < legs.length; i++) {
+    const l = legs[i];
+    combinedOdds *= l._odds;
+    combinedProb *= l._p;
+    if (l._kickoffEpoch > 0) {
+      if (l._kickoffEpoch < minEpoch) minEpoch = l._kickoffEpoch;
+      if (l._kickoffEpoch > maxEpoch) maxEpoch = l._kickoffEpoch;
+    }
+    if (l._isAnchor) anchors++;
+    leagueSet.add(l._leagueKey);
+  }
+
+  let timeGapHours = 0;
+  if (minEpoch !== Infinity && maxEpoch !== -Infinity && maxEpoch >= minEpoch) {
+    timeGapHours = (maxEpoch - minEpoch) / (1000 * 60 * 60);
+  }
+
+  const ev = (combinedProb * combinedOdds) - 1.0;
+
+  return {
+    prob: combinedProb,
+    odds: combinedOdds,
+    ev: ev,
+    timeSpreadHours: timeGapHours,
+    uniqueLeagues: leagueSet.size,
+    anchorCount: anchors
+  };
+}
+
+function _scoreAcca_(legs, mode, cfg) {
+  const metrics = _accaMetrics_(legs);
+  let score = 0;
+
+  if (mode === 'FILL') {
+    // Legacy fallback: prefer anchors, then sum of probabilities
+    score = (metrics.anchorCount * 1000) + legs.reduce((s, l) => s + l._p, 0);
+  } else if (mode === 'EV_MAX') {
+    score = metrics.ev;
+  } else if (mode === 'ANCHOR_BOOSTER') {
+    if (metrics.anchorCount !== cfg.ANCHOR_COUNT) return -1; // invalid
+    score = metrics.ev;
+  } else if (mode === 'DIVERSIFY') {
+    score = (metrics.uniqueLeagues * 100) + metrics.ev;
+  } else if (mode === 'TIME_HEDGE') {
+    if (metrics.timeSpreadHours < cfg.MIN_TIME_SPREAD_HOURS) return -1; // invalid
+    score = metrics.prob; 
+  } else {
+    // Default fallback
+    score = metrics.ev;
+  }
+
+  return score;
+}
+
+// ============================================================
+// OPTIMIZER ENGINE: _buildAccas_
+// ============================================================
+
+function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
+  const FUNC_NAME = '_buildAccas_';
+  const startMs = Date.now();
+  const maxTimeMs = 50000; // soft cap for this batch
+  
+  // 1. Filter available & norm
+  let available = [];
+  for (let i = 0; i < pool.length; i++) {
+    const b = _normBet_(pool[i]);
+    if (!usedBetIds.has(b.betId)) available.push(b);
+  }
+  
+  if (available.length < targetSize) return [];
+
+  // 2. Pre-filter top K candidates (reduce search space)
+  const maxCands = cfg.OPT_MAX_CANDIDATES_PER_POOL || 50;
+  if (available.length > maxCands) {
+    // Sort by p as cheap proxy
+    available.sort((a, b) => b._p - a._p);
+    available = available.slice(0, maxCands);
+  }
+  
+  const mode = cfg.ALLOCATOR_MODE || 'FILL';
+  const builtAccas = [];
+  
+  let loopCount = 0;
+  
+  while (available.length >= targetSize) {
+    if (Date.now() - startMs > maxTimeMs) {
+      Logger.log(`[${FUNC_NAME}] Time budget reached. Truncating build.`);
+      break;
+    }
+    loopCount++;
+    if (loopCount > 100) break; // failsafe
+    
+    let bestAcca = null;
+    let bestScore = -Infinity;
+    
+    // Sort available to ensure determinism
+    available.sort((a, b) => {
+      if (a._p !== b._p) return b._p - a._p;
+      return String(a.betId).localeCompare(String(b.betId));
+    });
+
+    if (mode === 'FILL') {
+      // Greedy legacy parity
+      const current = [];
+      for (let i = 0; i < available.length && current.length < targetSize; i++) {
+        if (_canAddLegToAcca_(current, available[i], cfg)) {
+          current.push(available[i]);
+        }
+      }
+      if (current.length === targetSize) {
+        bestAcca = current;
+        bestScore = _scoreAcca_(current, mode, cfg);
+      }
+    } else if (targetSize <= 3) {
+      // Brute force 3-folds
+      let evals = 0;
+      const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
+      for (let i=0; i<available.length && evals < maxEvals; i++) {
+        for (let j=i+1; j<available.length && evals < maxEvals; j++) {
+          if (!_canAddLegToAcca_([available[i]], available[j], cfg)) continue;
+          for (let k=j+1; k<available.length && evals < maxEvals; k++) {
+            evals++;
+            if (!_canAddLegToAcca_([available[i], available[j]], available[k], cfg)) continue;
+            
+            const candidate = [available[i], available[j], available[k]];
+            const score = _scoreAcca_(candidate, mode, cfg);
+            if (score > bestScore) {
+              bestScore = score;
+              bestAcca = candidate;
+            }
+          }
+        }
+      }
+    } else {
+      // Beam Search for 6/9 folds
+      const beamWidth = cfg.OPT_BEAM_WIDTH || 20;
+      const maxEvals = cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000;
+      let evals = 0;
+      
+      let beams = [ [] ];
+      for (let step = 0; step < targetSize; step++) {
+        let nextBeams = [];
+        for (let bIdx = 0; bIdx < beams.length; bIdx++) {
+          const currentBeam = beams[bIdx];
+          for (let cIdx = 0; cIdx < available.length; cIdx++) {
+            evals++;
+            if (evals > maxEvals) break;
+            const cand = available[cIdx];
+            
+            // Optimization: avoid duplicate states by enforcing ordered insertion
+            if (currentBeam.length > 0 && currentBeam[currentBeam.length-1].betId >= cand.betId) continue;
+            
+            if (_canAddLegToAcca_(currentBeam, cand, cfg)) {
+              const newBeam = currentBeam.concat([cand]);
+              nextBeams.push(newBeam);
+            }
+          }
+          if (evals > maxEvals) break;
+        }
+        
+        // Score and prune
+        nextBeams.sort((a, b) => {
+          // Score partial beams using EV as a proxy
+          const scoreA = _accaMetrics_(a).ev;
+          const scoreB = _accaMetrics_(b).ev;
+          if (scoreA !== scoreB) return scoreB - scoreA;
+          return String(a[0].betId).localeCompare(String(b[0].betId));
+        });
+        
+        beams = nextBeams.slice(0, beamWidth);
+        if (beams.length === 0) break;
+      }
+      
+      // Pick best completed beam
+      for (let bIdx = 0; bIdx < beams.length; bIdx++) {
+        if (beams[bIdx].length === targetSize) {
+          const score = _scoreAcca_(beams[bIdx], mode, cfg);
+          if (score > bestScore) {
+            bestScore = score;
+            bestAcca = beams[bIdx];
+          }
+        }
+      }
+    }
+    
+    // Accept or break
+    if (bestAcca && bestScore >= 0) {
+      const idx = String(builtAccas.length + 1).padStart(2, '0');
+      const name = `${typePrefix || 'ACCA'} ${idx} (${targetSize}-fold)`;
+      
+      let accaObj = null;
+      if (typeof _createAccaObjectEnhanced === 'function') {
+        accaObj = _createAccaObjectEnhanced(bestAcca, name);
+      } else {
+        accaObj = { name: name, size: targetSize, legs: bestAcca };
+      }
+      
+      accaObj._metrics = _accaMetrics_(bestAcca);
+      accaObj._score = bestScore;
+      builtAccas.push(accaObj);
+      
+      for (let i = 0; i < bestAcca.length; i++) {
+        usedBetIds.add(bestAcca[i].betId);
+      }
+      
+      return builtAccas; // Return exactly 1 built acca per call to respect activeSizePlan
+    } else {
+      break; // No valid acca could be formed
+    }
+  }
+  
+  return builtAccas;
+}
 
 // ============================================================
 // ENRICH BETS WITH ACCURACY - PATCHED FOR SNIPER DIR
@@ -1251,9 +1587,13 @@ function _allocatePortfolios(bets, leagueMetrics, assayerData) {
         const size = uniqueTargets[si];
         if (avail.length < size) continue;
 
-        const acca = _buildOneAccaWithConstraints(avail, size, label, MAX_WINDOW_MS);
-        if (acca) {
-          acca.legs.forEach(leg => usedBetIds.add(getBetId(leg)));
+        const accas = _buildAccas_(avail, usedBetIds, size, ACCA_ENGINE_CONFIG, label);
+        if (accas && accas.length > 0) {
+          const acca = accas[0];
+          
+          // Re-attach legacy format expected by downstream
+          acca.avgAccuracy = acca.legs.reduce((s,l) => s + l._p*100, 0) / acca.legs.length;
+          
           portfolios.push(acca);
           built++;
 
@@ -1308,11 +1648,11 @@ function _allocatePortfolios(bets, leagueMetrics, assayerData) {
       const size = uniqueTargets[si];
       if (avail.length < size) continue;
 
-      const acca = _buildOneAccaWithConstraints(avail, size, '⚔️ Mixed', MAX_WINDOW_MS);
-      if (acca) {
+      const accas = _buildAccas_(avail, usedBetIds, size, ACCA_ENGINE_CONFIG, '⚔️ Mixed');
+      if (accas && accas.length > 0) {
+        const acca = accas[0];
         let bCount = 0, sCount = 0;
         acca.legs.forEach(leg => {
-          usedBetIds.add(getBetId(leg));
           if (leg.isBanker) bCount++;
           if (leg.isSniper) sCount++;
         });
@@ -1365,6 +1705,9 @@ function _allocatePortfolios(bets, leagueMetrics, assayerData) {
           [leg1, leg2],
           `🎲 Double (🔒${bCount} 🎯${sCount})`
         );
+        acca._metrics = _accaMetrics_([leg1, leg2]);
+        acca._score = _scoreAcca_([leg1, leg2], ACCA_ENGINE_CONFIG.ALLOCATOR_MODE, ACCA_ENGINE_CONFIG);
+        
         portfolios.push(acca);
         Logger.log(`[${FUNC_NAME}]   ✅ Built Double`);
         foundPartner = true;
@@ -1391,6 +1734,8 @@ function _allocatePortfolios(bets, leagueMetrics, assayerData) {
       usedBetIds.add(getBetId(bet));
       const typeEmoji = bet.isBanker ? '🔒' : '🎯';
       const acca = _createAccaObjectEnhanced([bet], `📌 Single ${typeEmoji}`);
+      acca._metrics = _accaMetrics_([bet]);
+      acca._score = _scoreAcca_([bet], ACCA_ENGINE_CONFIG.ALLOCATOR_MODE, ACCA_ENGINE_CONFIG);
       portfolios.push(acca);
       Logger.log(`[${FUNC_NAME}]   ✅ Built Single: ${String(bet.pick || '').substring(0, 30)}`);
     }
@@ -2125,7 +2470,7 @@ function _buildSummary(portfolios, totalBets) {
 
 function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
   const FUNC_NAME = '_writePortfolioWithAccuracy';
-  const NUM_COLS = 13; // PATCHED
+  const NUM_COLS = 15; // PATCHED: Added Prob% and EV
   const PENALTY_THRESHOLD = 5.0;
   
   // Ensure we have metrics to look up
@@ -2139,12 +2484,12 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
   const output = [];
   
   // Header section
-  output.push(['🎰 MA GOLIDE - MULTI-SIZE PORTFOLIO', '', '', '', '', '', '', '', '', '', '', '', '']);
-  output.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '', '', '', '', '', '', '']);
+  output.push(['🎰 MA GOLIDE - MULTI-SIZE PORTFOLIO', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+  output.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '', '', '', '', '', '', '', '', '']);
   
   const totalLegs = accas.reduce((sum, a) => sum + a.legs.length, 0);
-  output.push(['Total Accas:', accas.length, '', 'Total Bets:', totalLegs, '', '', '', '', '', '', '', '']);
-  output.push(['', '', '', '', '', '', '', '', '', '', '', '', '']);
+  output.push(['Total Accas:', accas.length, '', 'Total Bets:', totalLegs, '', '', '', '', '', '', '', '', '', '']);
+  output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
   
   // Size breakdown
   const sizeMap = {};
@@ -2156,11 +2501,11 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
     .sort((a, b) => Number(b) - Number(a))
     .map(s => `${s}-Fold: ${sizeMap[s]}`)
     .join(' | ');
-  output.push([sizeStr || 'No accumulators', '', '', '', '', '', '', '', '', '', '', '', '']);
-  output.push(['', '', '', '', '', '', '', '', '', '', '', '', '']);
+  output.push([sizeStr || 'No accumulators', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+  output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
   
   if (accas.length === 0) {
-    output.push(['No accumulators built with current configuration.', '', '', '', '', '', '', '', '', '', '', '', '']);
+    output.push(['No accumulators built with current configuration.', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
   } else {
     // Sort accas by size descending
     const sortedAccas = [...accas].sort((a, b) => b.legs.length - a.legs.length);
@@ -2182,11 +2527,12 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
       const penaltyNote = penaltyLegs > 0 ? ` | ⚠️${penaltyLegs} penalty` : '';
       
       // Acca header row
-      const accaHeader = `${acca.type || acca.name} | Legs: ${acca.legs.length} | Odds: ${acca.totalOdds.toFixed(2)} | Avg Acc: ${avgAcc}%${penaltyNote}`;
-      output.push([accaHeader, '', '', '', '', '', '', '', '', '', '', '', acca.id || '']);
+      const metricsInfo = acca._metrics ? ` | EV: ${(acca._metrics.ev*100).toFixed(1)}% | Prob: ${(acca._metrics.prob*100).toFixed(1)}%` : '';
+      const accaHeader = `${acca.type || acca.name} | Legs: ${acca.legs.length} | Odds: ${acca.totalOdds.toFixed(2)} | Avg Acc: ${avgAcc}%${penaltyNote}${metricsInfo}`;
+      output.push([accaHeader, '', '', '', '', '', '', '', '', '', '', '', acca.id || '', '', '']);
       
       // Column headers
-      output.push(['Date', 'Time', 'League', 'Match', 'Pick', 'Type', 'Odds', 'Conf%', 'Acc%', 'Status', 'Info', 'Assayer Proof', 'BetID']);
+      output.push(['Date', 'Time', 'League', 'Match', 'Pick', 'Type', 'Odds', 'Conf%', 'Acc%', 'Status', 'Info', 'Assayer Proof', 'BetID', 'Prob%', 'EV']);
       
       // Sort legs by time
       const sortedLegs = [...acca.legs].sort((a, b) => {
@@ -2308,6 +2654,10 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
           Logger.log(`[${FUNC_NAME}] Leg: ${leg.league} | Type: ${leg.type} | Acc: ${accDisplay} | Info: "${infoDisplay}"`);
         }
         
+        // Extract Prob and EV from leg (injected by _normBet_)
+        const probDisplay = leg._p !== undefined ? `${(leg._p * 100).toFixed(1)}%` : 'N/A';
+        const evDisplay = leg._ev !== undefined ? `${(leg._ev * 100).toFixed(1)}%` : 'N/A';
+
         output.push([
           leg.date || '',
           timeDisplay,
@@ -2321,13 +2671,15 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
           'PENDING',
           infoDisplay,
           assayerProof,
-          leg.betId || ''
+          leg.betId || '',
+          probDisplay,
+          evDisplay
         ]);
       }
       
       // Acca status row
-      output.push(['ACCA STATUS:', 'PENDING', '', '', '', '', '', '', '', '', '', '', '']);
-      output.push(['', '', '', '', '', '', '', '', '', '', '', '', '']);
+      output.push(['ACCA STATUS:', 'PENDING', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+      output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
     }
   }
   
@@ -2345,7 +2697,7 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
   _applyPortfolioFormattingWithInfo(sheet, normalized);
   
   // Set column widths - make Info column wider
-  const widths = [90, 55, 70, 200, 140, 100, 55, 55, 70, 70, 180, 320, 140]; // PATCHED
+  const widths = [90, 55, 70, 200, 140, 100, 55, 55, 70, 70, 180, 320, 140, 60, 60]; // PATCHED
   widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   
   Logger.log(`[${FUNC_NAME}] ✅ Portfolio written (${normalized.length} rows, ${accas.length} accas)`);
@@ -2370,7 +2722,7 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
  */
 function _applyPortfolioFormattingWithInfo(sheet, data) {
   const FUNC_NAME = '_applyPortfolioFormattingWithInfo';
-  const NUM_COLS = 12;
+  const NUM_COLS = 15;
   
   Logger.log(`[${FUNC_NAME}] Applying formatting to ${data.length} rows...`);
   
@@ -2536,6 +2888,64 @@ function _applyPortfolioFormattingWithInfo(sheet, data) {
  * ◄◄ PATCH: BIG BANG EXTRACTOR — post-build cherry-pick of TOP 10% by
  *           totalOdds (with league-diversity tie-break) → Blockbuster_Accas
  */
+
+// ============================================================
+// TEST HARNESS: debugAccaLegacyParityTest
+// ============================================================
+
+function debugAccaLegacyParityTest() {
+  Logger.log('Running debugAccaLegacyParityTest...');
+  
+  // 1. Mock Data
+  const mockBets = [];
+  for (let i = 0; i < 20; i++) {
+    const isBanker = i % 2 === 0;
+    mockBets.push({
+      date: '2026-05-22',
+      time: '12:00',
+      league: isBanker ? 'NBA' : 'EPL',
+      match: `Match ${i}`,
+      pick: `Pick ${i}`,
+      type: isBanker ? 'BANKER' : 'SNIPER',
+      odds: 1.5 + (i * 0.1),
+      confidence: 0.8,
+      accuracyScore: 80,
+      betId: `mock_${i}`,
+      isBanker: isBanker,
+      isSniper: !isBanker
+    });
+  }
+  
+  // 2. Set mode to FILL
+  const oldMode = ACCA_ENGINE_CONFIG.ALLOCATOR_MODE;
+  ACCA_ENGINE_CONFIG.ALLOCATOR_MODE = 'FILL';
+  
+  // 3. Run allocation
+  try {
+    const portfolios = _allocatePortfolios(mockBets, {}, null);
+    Logger.log(`Generated ${portfolios.length} accas in FILL mode.`);
+    let success = true;
+    for (const acca of portfolios) {
+      Logger.log(`- ${acca.name} [Size: ${acca.legs.length}] -> EV: ${(acca._metrics.ev*100).toFixed(1)}%, P: ${(acca._metrics.prob*100).toFixed(1)}%`);
+      if (!acca._metrics || typeof acca._metrics.ev === 'undefined') {
+        Logger.log('ERROR: Metrics missing on acca!');
+        success = false;
+      }
+    }
+    
+    if (success) {
+      Logger.log('✅ legacy FILL parity test PASSED! Metrics correctly injected.');
+    } else {
+      Logger.log('❌ legacy FILL parity test FAILED!');
+    }
+  } catch (e) {
+    Logger.log(`❌ ERROR: ${e.message}`);
+    Logger.log(e.stack);
+  } finally {
+    ACCA_ENGINE_CONFIG.ALLOCATOR_MODE = oldMode;
+  }
+}
+
 function buildAccumulatorPortfolio() {
   var FUNC_NAME = 'buildAccumulatorPortfolio';
   var ss = SpreadsheetApp.getActiveSpreadsheet();
