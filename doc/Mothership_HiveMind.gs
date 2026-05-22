@@ -121,7 +121,7 @@ function createHeaderMapWithAliases(headerRow) {
     'ev': ['ev', 'expected value', 'expectedvalue', 'value'],
     'match': ['match', 'game', 'matchup', 'teams'],
     'pick': ['pick', 'selection', 'bet', 'prediction', 'selection_text'],
-    'type': ['type', 'bet type', 'bettype', 'category'],
+    'type': ['type', 'bet type', 'bettype', 'category', 'market'],
     'odds': ['odds', 'price', 'decimal odds'],
     'league': ['league', 'competition', 'tournament', 'league id'],
     'league name': ['league name', 'leaguename', 'name'],
@@ -475,6 +475,7 @@ function syncAllLeagues() {
 
           if (matchStr.includes('━') || matchStr.includes('---') || matchStr.includes('===') ||
               matchStr.toLowerCase() === 'match' || matchStr.toLowerCase() === 'game' ||
+              matchStr.toLowerCase() === 'home vs away' ||
               matchStr.toLowerCase().includes('no bankers') ||
               matchStr.toLowerCase().includes('no snipers') ||
               matchStr.toLowerCase().includes('matching criteria')) {
@@ -482,7 +483,9 @@ function syncAllLeagues() {
           }
 
           const pick = String(betRow[pickCol] || '').trim();
-          if (!pick) { skippedRows++; continue; }
+          if (!pick || pick.toLowerCase() === 'selection_text' || pick.toLowerCase() === 'pick') {
+            skippedRows++; continue;
+          }
 
           const rowLeague = leagueCol !== undefined ? String(betRow[leagueCol] || '').trim() : '';
           const league = rowLeague || leagueName || leagueId;
@@ -580,8 +583,35 @@ function syncAllLeagues() {
             }
           }
 
-          const dateOut = dateRaw || tier1.date || '';
-          const timeOut = timeRaw || tier1.time || '';
+          const dateOut = dateRaw || tier1.date || upc.date || '';
+
+          // ◄◄ PATCH: multi-level time fallback
+          // 1. Direct time cell from Bet_Slips
+          // 2. time column from Tier1_Predictions
+          // 3. time column from UpcomingClean
+          // 4. Extract HH:MM from a Date object in tier1.date (Sheets datetime cell)
+          // 5. Extract HH:MM from a Date object in upc.date
+          let timeOut = timeRaw || tier1.time || upc['time'] || '';
+          if (!timeOut) {
+            const _extractTime_ = function(v) {
+              if (!v) return '';
+              if (v instanceof Date && !isNaN(v.getTime())) {
+                const h = v.getHours(), m = v.getMinutes();
+                if (h !== 0 || m !== 0) {
+                  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+                }
+              }
+              if (typeof v === 'string' && v.includes('T') && v.includes(':')) {
+                const d = new Date(v);
+                if (!isNaN(d.getTime())) {
+                  const h = d.getHours(), m = d.getMinutes();
+                  if (h !== 0 || m !== 0) return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+                }
+              }
+              return '';
+            };
+            timeOut = _extractTime_(tier1.date) || _extractTime_(upc.date) || '';
+          }
 
           const evOut = (evRaw !== '' && evRaw !== null) ? evRaw : ouEV;
           const evSource = (evRaw !== '' && evRaw !== null) ? 'Bet_Slips' : (ouEV !== '' ? 'OU_Log(EV)' : '');
@@ -717,9 +747,13 @@ function syncAllLeagues() {
     if (out.length > 0) {
       syncSheet.getRange(2, 1, out.length, headers.length).setValues(out);
       try {
+        const edgeScoreCol = headers.indexOf('Edge Score') + 1;
+        const sourceRowCol = headers.indexOf('SourceRow') + 1;
+        if (edgeScoreCol > 0) syncSheet.getRange(2, edgeScoreCol, out.length, 1).setNumberFormat('0');
+        if (sourceRowCol > 0) syncSheet.getRange(2, sourceRowCol, out.length, 1).setNumberFormat('0');
         syncSheet.autoResizeColumns(1, headers.length);
       } catch (e) {
-        Logger.log('[FINALIZE] autoResizeColumns failed (non-fatal): ' + e.message);
+        Logger.log('[FINALIZE] formatting/autoResizeColumns failed (non-fatal): ' + e.message);
       }
     }
 
@@ -1038,6 +1072,7 @@ function _loadUpcomingCleanMap_(satellite) {
   const homeCol = h['home'];
   const awayCol = h['away'];
   const dateCol = h['date'];
+  const timeCol = h['time'];  // ◄◄ PATCH: capture time
 
   const qConfCols = {
     q1: h['t2-q1-conf'],
@@ -1061,6 +1096,14 @@ function _loadUpcomingCleanMap_(satellite) {
     if (qConfCols.q2 !== undefined) map[key]['t2-q2-conf'] = row[qConfCols.q2];
     if (qConfCols.q3 !== undefined) map[key]['t2-q3-conf'] = row[qConfCols.q3];
     if (qConfCols.q4 !== undefined) map[key]['t2-q4-conf'] = row[qConfCols.q4];
+
+    // ◄◄ PATCH: store time and raw date for game-time fallback
+    if (timeCol !== undefined && row[timeCol] !== '' && row[timeCol] !== null) {
+      map[key]['time'] = row[timeCol];
+    }
+    if (dateCol !== undefined) {
+      map[key]['date'] = row[dateCol];
+    }
   }
 
   return map;
@@ -1687,7 +1730,8 @@ function syncAllResults() {
  */
 function syncEverything() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const ui = SpreadsheetApp.getUi();
+  let ui = null;
+  try { ui = SpreadsheetApp.getUi(); } catch (e) {}
   
   ss.toast('🔄 Syncing bets and results...', 'Hive Mind', 5);
   
@@ -1714,13 +1758,19 @@ function syncEverything() {
     const betCount = syncSheet && syncSheet.getLastRow() > 1 ? syncSheet.getLastRow() - 1 : 0;
     const gameCount = resultsSheet && resultsSheet.getLastRow() > 1 ? resultsSheet.getLastRow() - 1 : 0;
     
-    ui.alert('Full Sync Complete', 
-      `✅ Synced ${betCount} bets\n✅ Synced ${gameCount} games\n\nDashboard updated.`, 
-      ui.ButtonSet.OK);
+    if (ui) {
+      ui.alert('Full Sync Complete', 
+        `✅ Synced ${betCount} bets\n✅ Synced ${gameCount} games\n\nDashboard updated.`, 
+        ui.ButtonSet.OK);
+    } else {
+      Logger.log(`[HiveMind] Full Sync Complete: Synced ${betCount} bets, ${gameCount} games.`);
+    }
     
   } catch (e) {
     Logger.log(`[HiveMind] FATAL: ${e.message}\n${e.stack}`);
-    ui.alert('❌ Sync Error', e.message, ui.ButtonSet.OK);
+    if (ui) {
+      ui.alert('❌ Sync Error', e.message, ui.ButtonSet.OK);
+    }
   }
 }
 
@@ -2122,8 +2172,10 @@ function _syncBetsSilent(ss) {
       let headerRowIndex = -1;
       for (let scanRow = 0; scanRow < Math.min(20, betData.length); scanRow++) {
         const rowStrings = betData[scanRow].map(cell => String(cell || '').toLowerCase().trim());
-        if ((rowStrings.includes('match') || rowStrings.includes('game')) && 
-            (rowStrings.includes('pick') || rowStrings.includes('type'))) {
+        const hasMatch = rowStrings.includes('match') || rowStrings.includes('game');
+        const hasHomeAway = rowStrings.includes('home') && rowStrings.includes('away');
+        if ((hasMatch || hasHomeAway) && 
+            (rowStrings.includes('pick') || rowStrings.includes('type') || rowStrings.includes('selection'))) {
           headerRowIndex = scanRow;
           break;
         }
@@ -2133,7 +2185,9 @@ function _syncBetsSilent(ss) {
       
       const betHeaderMap = createHeaderMapWithAliases(betData[headerRowIndex]);
       const matchCol = betHeaderMap['match'];
-      if (matchCol === undefined) continue;
+      const homeCol  = betHeaderMap['home'];
+      const awayCol  = betHeaderMap['away'];
+      if (matchCol === undefined && (homeCol === undefined || awayCol === undefined)) continue;
       
       const pickCol = betHeaderMap['pick'];
       const dateCol = betHeaderMap['date'];
@@ -2152,8 +2206,14 @@ function _syncBetsSilent(ss) {
       
       for (let i = headerRowIndex + 1; i < betData.length; i++) {
         const betRow = betData[i];
-        const matchStr = String(betRow[matchCol] || '').trim();
-        
+        let matchStr = '';
+        if (matchCol !== undefined) {
+          matchStr = String(betRow[matchCol] || '').trim();
+        } else if (homeCol !== undefined && awayCol !== undefined) {
+          const h = String(betRow[homeCol] || '').trim();
+          const a = String(betRow[awayCol] || '').trim();
+          matchStr = (h && a) ? (h + ' vs ' + a) : '';
+        }
         if (!matchStr || matchStr.includes('━') || matchStr.toLowerCase() === 'match') continue;
         if (matchStr.toLowerCase().includes('summary') || matchStr.toLowerCase().includes('total')) continue;
         if (matchStr.toLowerCase().includes('no bankers') || matchStr.toLowerCase().includes('no snipers')) continue;
@@ -2230,7 +2290,26 @@ function _syncResultsSilent(ss) {
       const satData = satResultsSheet.getDataRange().getValues();
       if (satData.length < 2) continue;
 
-      const satHeaders = createHeaderMapWithAliases(satData[0]);
+      let headerRowIndex = -1;
+      let firstDataRowIndex = -1;
+
+      for (let scanRow = 0; scanRow < Math.min(20, satData.length); scanRow++) {
+        const rowStrings = satData[scanRow].map(cell => String(cell || '').toLowerCase().trim());
+        const hasHome = rowStrings.includes('home') || rowStrings.includes('home team');
+        const hasAway = rowStrings.includes('away') || rowStrings.includes('away team');
+        const hasStatus = rowStrings.includes('status');
+        const hasDate = rowStrings.includes('date');
+
+        if (hasHome && hasAway && (hasStatus || hasDate)) {
+          headerRowIndex = scanRow;
+          firstDataRowIndex = scanRow + 1;
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1) continue;
+
+      const satHeaders = createHeaderMapWithAliases(satData[headerRowIndex]);
       const homeCol = satHeaders['home'];
       const awayCol = satHeaders['away'];
       if (homeCol === undefined || awayCol === undefined) continue;
@@ -2251,7 +2330,7 @@ function _syncResultsSilent(ss) {
       const gameTypeCol = satHeaders['game type'];
       const otCol = satHeaders['ot'];
 
-      for (let i = 1; i < satData.length; i++) {
+      for (let i = firstDataRowIndex; i < satData.length; i++) {
         const satRow = satData[i];
         const home = String(satRow[homeCol] || '').trim();
         const away = String(satRow[awayCol] || '').trim();
@@ -3132,9 +3211,13 @@ function computeVerdict(bet, gateCfg) {
     reasons.push('UNKNOWN_LEAGUE_BLOCK');
   }
 
+  var unknownEdgeAction = String(gateCfg.unknownEdgeAction || 'ALLOW').trim().toUpperCase();
+
   if (minEdge) {
     if (!edgeGrade) {
-      reasons.push('NO_EDGE_MATCH');
+      if (unknownEdgeAction !== 'ALLOW') {
+        reasons.push('NO_EDGE_MATCH');
+      }
     } else if (rankOf(edgeGrade) < rankOf(minEdge)) {
       reasons.push('EDGE_GRADE_FAIL(' + edgeGrade + '<' + minEdge + ')');
     }
@@ -3240,7 +3323,8 @@ function _filterBets(bets, opts) {
     minEdgeGrade:       (opts.minEdgeGrade   !== undefined) ? String(opts.minEdgeGrade)   : '',
     minPurityGrade:     (opts.minPurityGrade !== undefined) ? String(opts.minPurityGrade) : '',
     requireReliableEdge: (opts.requireReliableEdge !== undefined) ? !!opts.requireReliableEdge : false,
-    unknownLeagueAction: (opts.unknownLeagueAction !== undefined) ? String(opts.unknownLeagueAction) : 'ALLOW'
+    unknownLeagueAction: (opts.unknownLeagueAction !== undefined) ? String(opts.unknownLeagueAction) : 'ALLOW',
+    unknownEdgeAction:   (opts.unknownEdgeAction !== undefined) ? String(opts.unknownEdgeAction) : 'ALLOW'
   };
 
   // ── Legacy gold gate config (uses ACCA_ENGINE_CONFIG defaults) ──
@@ -3248,7 +3332,8 @@ function _filterBets(bets, opts) {
     minEdgeGrade:        cfg.MIN_EDGE_GRADE   || 'GOLD',
     minPurityGrade:      cfg.MIN_PURITY_GRADE || 'GOLD',
     requireReliableEdge: (cfg.REQUIRE_EDGE_RELIABLE !== undefined) ? !!cfg.REQUIRE_EDGE_RELIABLE : !!cfg.REQUIRE_RELIABLE_EDGE,
-    unknownLeagueAction: cfg.UNKNOWN_LEAGUE_ACTION || 'BLOCK'
+    unknownLeagueAction: cfg.UNKNOWN_LEAGUE_ACTION || 'BLOCK',
+    unknownEdgeAction:   cfg.UNKNOWN_EDGE_ACTION || 'BLOCK'
   };
 
   // ── Standard thresholds ──

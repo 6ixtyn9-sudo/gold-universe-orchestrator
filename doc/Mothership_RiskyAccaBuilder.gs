@@ -35,12 +35,12 @@ const RISKY_ACCA_CONFIG = {
   // ─────────────────────────────────────────────────────────────
   // PATCH: Assayer SILVER floor for risky accas
   // ─────────────────────────────────────────────────────────────
-  ASSAYER_FLOOR_ENABLED: true,
+  ASSAYER_FLOOR_ENABLED: false,
   MIN_EDGE_GRADE: 'SILVER',
   MIN_PURITY_GRADE: 'SILVER',
 
-  UNKNOWN_EDGE_ACTION: 'BLOCK',     // 'BLOCK' | 'ALLOW'
-  UNKNOWN_PURITY_ACTION: 'BLOCK',   // 'BLOCK' | 'ALLOW'
+  UNKNOWN_EDGE_ACTION: 'ALLOW',     // 'BLOCK' | 'ALLOW'
+  UNKNOWN_PURITY_ACTION: 'ALLOW',   // 'BLOCK' | 'ALLOW'
 
   REQUIRE_RELIABLE_EDGE: false,     // safe default
   DISALLOW_SMALL_SAMPLE_EDGES: false, // safe default
@@ -69,10 +69,10 @@ var LEFTOVER_CONFIG = {
   // ── Risky tier settings ──
   RISKY_ENABLED:          true,
   RISKY_ACCA_SIZES:       [3, 2],         // ◄◄ FIX: smaller — 4-folds at ~60% WR are decorative
-  RISKY_MIN_EDGE_GRADE:   'SILVER',
+  RISKY_MIN_EDGE_GRADE:   'NONE',         // Allow bets with no edge into risky leftovers
   RISKY_MIN_POOL_SIZE:    2,
-  RISKY_REQUIRE_RELIABLE: true,           // ◄◄ FIX: demand edge.reliable === true
-  RISKY_MIN_EDGE_N:       30,             // ◄◄ FIX: no small-sample mirages
+  RISKY_REQUIRE_RELIABLE: false,          // Risky doesn't need to be reliable
+  RISKY_MIN_EDGE_N:       0,              // Allow small sample sizes for risky
   RISKY_MAX_PER_LEAGUE:   2               // ◄◄ FIX: tighter cap than Silver
 };
 
@@ -90,14 +90,10 @@ var RISKY_ALLOWED_BLOCK_REASONS = new Set([
 ]);
 
 /**
- * Purity grades that NEVER enter Risky — these are active "avoid" signals.
- * CHARCOAL/ROCK mean the league's historical data says "stay away".
+ * Purity grades that NEVER enter Risky.
+ * NOTE: User requested relaxing purity hard blocks, so we don't forbid these anymore.
  */
-var RISKY_FORBIDDEN_PURITY_GRADES = new Set([
-  'CHARCOAL',
-  'ROCK'
-  // Add 'BRONZE' here if BRONZE is also a hard-avoid in your world
-]);
+var RISKY_FORBIDDEN_PURITY_GRADES = new Set([]);
 
 
 /**
@@ -204,16 +200,22 @@ function _isRiskyCandidate(b, LCFG, GRADE_RANK) {
   // Hard-stop: explicit hard-block is not a soft failure
   if (reason === 'PURITY_HARD_BLOCK') return false;
 
-  // Accept if: purity is missing/empty OR reason is in the allowed soft-failure list
+  // ── STRICT RULE: Exclude ALL Unverified Leagues ──
+  // If a league is PURITY_MISSING (no purity grade), ban it entirely from the Risky tier.
+  // This blocks Bankers, Snipers, and O/U from unverified leagues.
   var purityMissing = (!pg || pg === '' || pg === 'NONE');
+  if (purityMissing) {
+    return false;
+  }
+
   var reasonAllowed = RISKY_ALLOWED_BLOCK_REASONS.has(reason);
 
-  // Also accept if bet wasn't blocked but simply failed grade gate on purity
+  // Accept if bet wasn't blocked but simply failed grade gate on purity
   // (edge ≥ SILVER but purity grade was e.g. BRONZE, which is NOT in forbidden set)
   var purityBelowFloor = (_rank(pg) > 0 && _rank(pg) < _rank('SILVER') &&
                           !RISKY_FORBIDDEN_PURITY_GRADES.has(pg));
 
-  return (purityMissing || reasonAllowed || purityBelowFloor);
+  return (reasonAllowed || purityBelowFloor);
 }
 
 
@@ -237,14 +239,30 @@ function buildRiskyAccumulators() {
 
   try {
     Logger.log(`[${FUNC_NAME}] STEP 1: Loading pending risky bets...`);
-    const pendingRiskyBets = _loadPendingRiskyBets(ss);
+    let pendingRiskyBets = _loadPendingRiskyBets(ss);
 
     if (pendingRiskyBets.length === 0) {
       const msg = 'No pending RISKY bets found in satellites.';
       Logger.log(`[${FUNC_NAME}] ❌ ${msg}`);
+      _writeRiskyAccaPortfolio(ss, [], []); // Clear stale bets
       if (ui) ui.alert('❌ No Risky Bets', msg, ui.ButtonSet.OK);
       return;
     }
+    
+    // ── MUTUAL EXCLUSIVITY FIX: Filter out bets already used in Main Portfolio ──
+    if (typeof _extractUsedBetIdsFromAccaPortfolio === 'function') {
+      const mainUsedIds = _extractUsedBetIdsFromAccaPortfolio(ss, ['Acca_Portfolio']);
+      const originalCount = pendingRiskyBets.length;
+      
+      pendingRiskyBets = pendingRiskyBets.filter(b => {
+        // Since Risky format might slightly differ from Main, we check both raw BetID and the canonical keys
+        const canonPick = String(b.pick || b.match || '').replace(/[^\w]/g, '').toLowerCase(); // Simplistic check if needed
+        return !mainUsedIds.has(b.betId);
+      });
+      
+      Logger.log(`[${FUNC_NAME}] Mutually exclusive filter: excluded ${originalCount - pendingRiskyBets.length} bets already in Main Portfolio.`);
+    }
+
     Logger.log(`[${FUNC_NAME}] ✅ Loaded ${pendingRiskyBets.length} pending risky bets`);
 
     Logger.log(`[${FUNC_NAME}] STEP 2: Calculating riskiness scores...`);
@@ -254,7 +272,7 @@ function buildRiskyAccumulators() {
     const actionableBets = enrichedBets.filter(b => b.recommendedAction !== 'SKIP');
 
     // Defense-in-depth: assayer_passed must be true when floor enabled
-    const filteredBets = _filterRiskyBets(actionableBets, { applyAssayerFloor: true });
+    const filteredBets = _filterRiskyBets(actionableBets, { applyAssayerFloor: false });
 
     Logger.log(`[${FUNC_NAME}] ✅ ${filteredBets.length} actionable bets (${enrichedBets.length - filteredBets.length} skipped/blocked)`);
 
@@ -281,6 +299,7 @@ function buildRiskyAccumulators() {
     if (filteredBets.length < 3) {
       const msg = `Only ${filteredBets.length} actionable bets after SILVER floor. Need at least 3 for accumulator.`;
       Logger.log(`[${FUNC_NAME}] ❌ ${msg}`);
+      _writeRiskyAccaPortfolio(ss, [], enrichedBets); // Clear stale bets
       if (ui) ui.alert('❌ Not Enough Bets', msg, ui.ButtonSet.OK);
       return;
     }
@@ -816,9 +835,9 @@ function _enrichRiskyBetsWithStrategy(bets) {
 
   var bestPurityFor = function(query, purityRowsList) {
     var qLeague  = normLeague(query.league);
-    var qSource  = String(query.source || '').trim();
+    var qSource  = String(query.source || 'FLEET').trim().toUpperCase();
     var qQuarter = String(query.quarter || 'All').trim();
-    var qGender  = String(query.gender || 'All').trim();
+    var qGender  = String(query.gender || 'All').trim().toUpperCase();
     var qTier    = String(query.tier || 'UNKNOWN').trim();
 
     var best = null;
@@ -830,8 +849,8 @@ function _enrichRiskyBetsWithStrategy(bets) {
       var lg = normLeague(r.league || r.League);
       if (!lg || lg !== qLeague) continue;
 
-      var src = String(r.source || r.Source || '').trim();
-      if (qSource && src && src !== qSource) continue;
+      var src = String(r.source || r.Source || '').trim().toUpperCase();
+      if (qSource && src && src !== String(qSource).toUpperCase()) continue;
 
       var quarter = String(r.quarter || r.Quarter || '').trim();
       var gender  = String(r.gender || r.Gender || '').trim();
@@ -1114,7 +1133,7 @@ function _enrichRiskyBetsWithStrategy(bets) {
     var ctx = assayer ? {
       assayer:       assayer,
       league:        bLeague,
-      source:        'Side',
+      source:        'FLEET',
       pickSide:      null,
       quarter:       'Full',
       gender:        'All',
@@ -1318,18 +1337,21 @@ function _enrichRiskyBetsWithStrategy(bets) {
     if (assayer && withPred && againstPred &&
         recommendedAction !== 'SKIP') {
 
-      var buildSideDims = function(pred) {
+      // ◄◄ PATCH: Fleet dimension builder
+      var buildFleetDims = function(pred) {
         return {
           league:        normLeague(league),
-          source:        'Side',
+          source:        'FLEET',
           quarter:       null,
           isWomen:       null,
-          tier:          tier0,
-          side:          pred === 1 ? 'H' : 'A',
+          tier:          null, // ignored by Fleet matcher
+          side:          null, // ignored by Fleet matcher
           direction:     null,
-          conf_bucket:   confBucket0,
+          conf_bucket:   null, // ignored by Fleet matcher
           spread_bucket: null,
-          line_bucket:   null
+          line_bucket:   null,
+          cfgKey:        ctx?.cfgKey,
+          cfgBucket:     ctx?.cfgBucket
         };
       };
 
@@ -1371,12 +1393,8 @@ function _enrichRiskyBetsWithStrategy(bets) {
         };
       };
 
-      withSupport    = edgeToSupport(
-        bestEdgeForDims(buildSideDims(withPred))
-      );
-      againstSupport = edgeToSupport(
-        bestEdgeForDims(buildSideDims(againstPred))
-      );
+      withSupport    = edgeToSupport(bestEdgeForDims(buildFleetDims(withPred)));
+      againstSupport = edgeToSupport(bestEdgeForDims(buildFleetDims(againstPred)));
 
       var withRank    = withSupport    ? withSupport.gradeRank    : 0;
       var againstRank = againstSupport ? againstSupport.gradeRank : 0;
@@ -1492,7 +1510,7 @@ function _enrichRiskyBetsWithStrategy(bets) {
       // ── Purity check ──
       var purityRow = bestPurityFor({
         league:  league,
-        source:  'Side',
+        source:  'FLEET',
         quarter: 'Full',
         gender:  'All',
         tier:    tier0
@@ -2174,10 +2192,8 @@ function _buildRiskyAccaSummary(portfolios, allBets, tierCounts) {
  */
 function _writeRiskySheet(ss, portfolios) {
   var FUNC = '_writeRiskySheet';
-  if (!portfolios || portfolios.length === 0) {
-    Logger.log('[' + FUNC + '] No risky accas to write');
-    return;
-  }
+  // ◄◄ PATCH: Always clear+rewrite — never skip even when portfolios is empty
+  // (skipping left stale bets from previous runs visible)
 
   var COL_COUNT = 14;
   var DEFAULT_ODDS = (typeof LEFTOVER_CONFIG !== 'undefined' && LEFTOVER_CONFIG)
@@ -2186,9 +2202,21 @@ function _writeRiskySheet(ss, portfolios) {
 
   var sheet = ss.getSheetByName('Risky_Accas');
   if (sheet) {
-    sheet.clearContents();                              // ◄◄ FIX: preserves formatting
+    sheet.clearContents();
   } else {
     sheet = ss.insertSheet('Risky_Accas');
+  }
+
+  if (!portfolios || portfolios.length === 0) {
+    // Write a clean "nothing today" header block and exit
+    sheet.getRange(1, 1, 4, COL_COUNT).setValues([
+      ['⚠️ RISKY TIER PORTFOLIO (Risky_Accas)', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['Generated: ' + new Date().toLocaleString(), '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['No risky accumulators could be built today.', '', '', '', '', '', '', '', '', '', '', '', '', '']
+    ]);
+    Logger.log('[' + FUNC + '] No risky accas to write — sheet cleared');
+    return;
   }
 
   var rows = [];

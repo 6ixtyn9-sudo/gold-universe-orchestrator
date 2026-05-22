@@ -301,7 +301,7 @@ function _runAnalysis(options) {
             netRtgDiff: _safeParseFloat(gameRow[netRtgDiffCol])
           };
           
-          const ctx = assayer ? { assayer, league: leagueName, source: 'Side', pickSide: null, quarter: 'Full', gender: 'All' } : null;
+          const ctx = assayer ? { assayer, league: leagueName, source: 'FLEET', pickSide: null, quarter: 'Full', gender: 'All' } : null;
           const { riskinessScore, breakdown } = _calculateCalibratedRiskinessScore(riskinessData, ctx);
           
           scoreDistribution.push(riskinessScore);
@@ -783,6 +783,15 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
     const edgeSource = String(edgeField(edge, 'source', 'source') || '').trim();
     if (edgeSource && String(bet.source || '').trim() !== edgeSource) return false;
 
+    // ◄◄ PATCH: Fleet edges match exclusively on criteria
+    if (edgeSource === 'FLEET') {
+      const crit = edge.criteria || {};
+      if (crit.type      != null && bet.typeKey   !== crit.type)      return false;
+      if (crit.cfgKey    != null && bet.cfgKey    !== crit.cfgKey)    return false;
+      if (crit.cfgBucket != null && bet.cfgBucket !== crit.cfgBucket) return false;
+      return true;
+    }
+
     const checks = [
       ['quarter', 'quarter', 'quarter'],
       ['isWomen', 'is_women', 'isWomen'],
@@ -809,6 +818,15 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
     // also check camelCase just in case
     const camelKeys = ['quarter','isWomen','tier','side','direction','confBucket','spreadBucket','lineBucket'];
     for (const k of camelKeys) if (!isBlank(edge?.[k])) n = Math.max(n, n); // no-op, kept intentionally minimal
+    
+    // ◄◄ PATCH: Fleet edges store specificity inside criteria
+    const edgeSource = String(edgeField(edge, 'source', 'source') || '').trim();
+    if (edgeSource === 'FLEET' && edge?.criteria) {
+      if (edge.criteria.type != null) n++;
+      if (edge.criteria.cfgKey != null) n++;
+      if (edge.criteria.cfgBucket != null) n++;
+    }
+    
     return n;
   };
 
@@ -860,9 +878,9 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
 
   const bestPurityFor = (query, purityRows) => {
     const qLeague = normLeague(query.league);
-    const qSource = String(query.source || '').trim();
+    const qSource = String(query.source || 'FLEET').trim().toUpperCase();
     const qQuarter = String(query.quarter || 'All').trim();
-    const qGender = String(query.gender || 'All').trim();
+    const qGender = String(query.gender || 'All').trim().toUpperCase();
     const qTier = String(query.tier || 'UNKNOWN').trim();
 
     let best = null;
@@ -872,8 +890,8 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
       const lg = normLeague(r.league || r.League);
       if (!lg || lg !== qLeague) continue;
 
-      const src = String(r.source || r.Source || '').trim();
-      if (qSource && src && src !== qSource) continue;
+      const src = String(r.source || r.Source || '').trim().toUpperCase();
+      if (qSource && src && src !== qSource.toUpperCase()) continue;
 
       const quarter = String(r.quarter || r.Quarter || '').trim();
       const gender = String(r.gender || r.Gender || '').trim();
@@ -967,7 +985,7 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
     const purityRows = assayer?.purity || assayer?.ASSAYER_LEAGUE_PURITY || assayer?.assayerPurity || null;
 
     const league = ctx?.league;
-    const source = String(ctx?.source || 'Side');
+    const source = String(ctx?.source || 'FLEET').toUpperCase();
     const confDec = isFinite(ctx?.confidenceDec) ? ctx.confidenceDec : normalizeConfidenceDec(data?.confidence);
 
     if (assayer && league && (edges || purityRows)) {
@@ -984,19 +1002,20 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
       let bestEdge = null;
 
       for (const ps of pickSides) {
-        const bet = {
+        let m = bestEdgeForBet({
           league,
-          source,
+          source: 'FLEET',
           side: ps,
           quarter: null,
           isWomen: null,
-          tier,
+          tier: null, // ignored by Fleet matcher
           direction: null,
-          confBucket,
+          confBucket: null, // ignored by Fleet matcher
           spreadBucket: null,
           lineBucket: null,
-        };
-        const m = bestEdgeForBet(bet, edges || []);
+          cfgKey: ctx?.cfgKey,
+          cfgBucket: ctx?.cfgBucket
+        }, edges || []);
         if (!m) continue;
         if (!bestEdge || m.specificity > bestEdge.specificity ||
             (m.specificity === bestEdge.specificity && m.gradeRank > bestEdge.gradeRank) ||

@@ -74,7 +74,7 @@ const SYS_CONTRACT = {
   // ── Enum constraints for type validation ──
   VALID_GRADES:       ["PLATINUM","GOLD","SILVER","BRONZE","ROCK","CHARCOAL"],
   VALID_SAMPLE_SIZES: ["Small","Medium","Large"],
-  VALID_SOURCES:      ["Side","Totals"],
+  VALID_SOURCES:      ["FLEET", "Fleet", "Other"],
   VALID_QUARTERS_EDGE:   ["Q1","Q2","Q3","Q4"],          // edges use Q-prefix
   VALID_QUARTERS_LEAGUE: ["All","Full","Q1","Q2","Q3","Q4"], // purity uses All/Full/Q-prefix
   VALID_SIDES:        ["H","A"],
@@ -355,8 +355,6 @@ function inferRoleFromFingerprints_(sheetInfos) {
   let legacyEdgeHit      = false;
 
   let maCount        = 0;
-  let hasSide        = names.has("Side");
-  let hasTotals      = names.has("Totals");
   let hasRawH2H      = false;
   let hasAccaPort    = names.has("Acca_Portfolio");
   let hasUpName      = names.has(SYS_CONTRACT.UPCOMING_SHEET_NAME);
@@ -416,8 +414,6 @@ function inferRoleFromFingerprints_(sheetInfos) {
   if (legacyEdgeHit)     { sA += 30;  why.push("Legacy Edge_Output (needs migration)"); }
   if (maCount >= 3)      { sA += 120; why.push(`MA_* sheets (${maCount})`); }
   else if (maCount >= 1) { sA += 30;  why.push(`MA_* sheets (${maCount})`); }
-  if (hasSide)           { sA += 15;  why.push("Side"); }
-  if (hasTotals)         { sA += 15;  why.push("Totals"); }
 
   // GOLIDE signals (unchanged)
   if (hasRawH2H)         { sG += 120; why.push("RawH2H_N pattern"); }
@@ -817,7 +813,7 @@ function validateEdgeDataTypes_(add, sheet, disc, prefix, lastRow) {
     // source: enum
     const src = String(getByHeader_(row, colMap, "source") || "");
     if (SYS_CONTRACT.VALID_SOURCES.includes(src)) pass();
-    else fail(`${label}: source="${src}" (expected Side|Totals)`);
+    else fail(`${label}: source="${src}" (expected Side|Totals|Fleet)`);
 
     // filters_json: valid JSON
     const fj = String(getByHeader_(row, colMap, "filters_json") || "");
@@ -888,7 +884,7 @@ function validatePurityDataTypes_(add, sheet, disc, prefix, lastRow) {
     // source: enum
     const src = String(getByHeader_(row, colMap, "source") || "");
     if (SYS_CONTRACT.VALID_SOURCES.includes(src)) pass();
-    else fail(`${label}: source="${src}" (expected Side|Totals)`);
+    else fail(`${label}: source="${src}" (expected Side|Totals|Fleet)`);
 
     // gender: enum
     const gen = String(getByHeader_(row, colMap, "gender") || "");
@@ -1024,11 +1020,32 @@ function assayerChecks_(ctx) {
   const names = new Set(sheetInfos.map(s => s.name));
 
   // Check that source data sheets exist
-  if (names.has("Side"))   add("OK","integration","assayer_source_side","Side sheet present");
-  else add("WARN","integration","assayer_source_side","Side sheet missing — edges may be incomplete");
+  if (names.has("FLEET"))   add("OK","integration","assayer_source_fleet","FLEET sheet present");
+  else add("WARN","integration","assayer_source_fleet","FLEET sheet missing — edges may be incomplete");
 
-  if (names.has("Totals")) add("OK","integration","assayer_source_totals","Totals sheet present");
-  else add("WARN","integration","assayer_source_totals","Totals sheet missing — edges may be incomplete");
+  // Check that Fleet rows exist in ASSAYER_EDGES
+  var edgeSh = ss.getSheetByName(contract.EDGE_SHEET_NAME);
+  if (edgeSh) {
+    var hasFleet = false;
+    var data = edgeSh.getDataRange().getValues();
+    // find 'source' col index
+    if (data.length > 0) {
+      var sourceCol = -1;
+      for (var c = 0; c < data[0].length; c++) {
+        if (normKey_(data[0][c]) === "source") { sourceCol = c; break; }
+      }
+      if (sourceCol >= 0) {
+        for (var r = 1; r < data.length; r++) {
+          if (String(data[r][sourceCol] || "").toUpperCase() === "FLEET") {
+            hasFleet = true;
+            break;
+          }
+        }
+      }
+    }
+    if (hasFleet) add("OK","integration","assayer_source_fleet","Fleet rows present in ASSAYER_EDGES");
+    else add("WARN","integration","assayer_source_fleet","No Fleet rows in ASSAYER_EDGES — feature may not be live yet");
+  }
 
   // Count MA_* sheets for health
   const maSheets = sheetInfos.filter(s => s.name.startsWith("MA_")).map(s => s.name);

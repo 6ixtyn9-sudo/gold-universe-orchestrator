@@ -3,7 +3,7 @@
  * DEFAULT CONFIG (can be overridden at runtime)
  * ========================= */
 if (typeof MIC_DEFAULTS === 'undefined') {
-  const MIC_DEFAULTS = {
+  var MIC_DEFAULTS = {
   SHEETS: {
     BETS_ARCHIVE: 'Historical_Bets_Archive',
     RESULTS_ARCHIVE: 'Historical_Results_Archive',
@@ -76,7 +76,7 @@ if (typeof MIC_DEFAULTS === 'undefined') {
  * =========================================================== */
 
 if (typeof SCHEMA === 'undefined') {
-  const SCHEMA = {
+  var SCHEMA = {
 
   BETS_ARCHIVE: [
   // ── Core identity
@@ -530,7 +530,7 @@ function _cfg_() {
 
 // Markets your MIC "Type" should represent
 if (typeof _KNOWN_MARKETS_ === 'undefined') {
-  const _KNOWN_MARKETS_ = new Set(['MAIN','OU','Q_SPREAD','SPREAD','ML','TOTALS']);
+  var _KNOWN_MARKETS_ = new Set(['MAIN','OU','Q_SPREAD','SPREAD','ML','TOTALS']);
 }
 
 function _micBetType_(bet) {

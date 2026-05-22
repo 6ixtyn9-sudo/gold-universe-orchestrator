@@ -81,7 +81,12 @@ function assayerApplyBridgeConfig_(cfg) {
   if (cfg.UNKNOWN_LEAGUE_ACTION) {
     var ula = String(cfg.UNKNOWN_LEAGUE_ACTION).trim().toUpperCase();
     ASSAYER_BRIDGE.UNKNOWN_LEAGUE_ACTION =
-      (ula === "BLOCK" || ula === "NEUTRAL") ? ula : ASSAYER_BRIDGE.UNKNOWN_LEAGUE_ACTION;
+      (ula === "BLOCK" || ula === "NEUTRAL" || ula === "ALLOW") ? ula : ASSAYER_BRIDGE.UNKNOWN_LEAGUE_ACTION;
+  }
+  if (cfg.UNKNOWN_EDGE_ACTION) {
+    var uea = String(cfg.UNKNOWN_EDGE_ACTION).trim().toUpperCase();
+    ASSAYER_BRIDGE.UNKNOWN_EDGE_ACTION =
+      (uea === "BLOCK" || uea === "NEUTRAL" || uea === "ALLOW") ? uea : ASSAYER_BRIDGE.UNKNOWN_EDGE_ACTION;
   }
 
   // ── LOGGING sub-config ──
@@ -102,6 +107,7 @@ function assayerApplyBridgeConfig_(cfg) {
     " MIN_EDGE_GRADE=" + ASSAYER_BRIDGE.MIN_EDGE_GRADE +
     " MIN_PURITY_GRADE=" + ASSAYER_BRIDGE.MIN_PURITY_GRADE +
     " UNKNOWN_LEAGUE_ACTION=" + ASSAYER_BRIDGE.UNKNOWN_LEAGUE_ACTION +
+    " UNKNOWN_EDGE_ACTION=" + ASSAYER_BRIDGE.UNKNOWN_EDGE_ACTION +
     " REQUIRE_EDGE_RELIABLE=" + ASSAYER_BRIDGE.REQUIRE_EDGE_RELIABLE
   );
 
@@ -126,6 +132,7 @@ const ASSAYER_BRIDGE = {
   MIN_EDGE_GRADE: "SILVER",               // minimum edge grade allowed when GOLD_ONLY_MODE=true
   MIN_PURITY_GRADE: "SILVER",             // minimum purity grade allowed when GOLD_ONLY_MODE=true
   UNKNOWN_LEAGUE_ACTION: "BLOCK",       // what to do when no purity row exists: "BLOCK" | "NEUTRAL"
+  UNKNOWN_EDGE_ACTION: "ALLOW",         // what to do when no edge row exists: "ALLOW" | "BLOCK"
   REQUIRE_EDGE_RELIABLE: false,          // if true: only edges with reliable===true are match-eligible
   DISALLOW_SMALL_SAMPLE_EDGES: false,    // if true: sample_size==="Small" edges are excluded (hard)
   MIN_EDGE_SPECIFICITY: 1,              // mitigates wildcard/broad-edge risk (0 disables)
@@ -161,6 +168,31 @@ const ASSAYER_GRADE_RANK = {
 
 
 /* ═══════════════════════════════════════════
+   CONFIG PROFILE HELPERS (Assayer Port)
+   ═══════════════════════════════════════════ */
+
+function _bridgeSafeParseJSON_(s) {
+  if (!s || typeof s !== 'string') return null;
+  s = s.trim();
+  if (!s.startsWith('{') && !s.startsWith('[')) return null;
+  try { return JSON.parse(s); } catch (e) { return null; }
+}
+
+function _bridgeNormalizeConfigVal_(raw) {
+  if (raw === null || raw === undefined || raw === '') return null;
+  var s = String(raw).trim().toUpperCase();
+  return s || null;
+}
+
+function _bridgeFlattenConfigProfile_(obj) {
+  if (!obj || typeof obj !== 'object') return {};
+  var out = {};
+  if (obj.cfgKey) out.cfgKey = _bridgeNormalizeConfigVal_(obj.cfgKey);
+  if (obj.cfgBucket) out.cfgBucket = _bridgeNormalizeConfigVal_(obj.cfgBucket);
+  return out;
+}
+
+/* ═══════════════════════════════════════════
    SHARED UTILITIES
    ═══════════════════════════════════════════ */
 
@@ -175,8 +207,7 @@ function assayerCanonSource_(v) {
   if (!s) return null;
   if (s === "SIDE" || s === "SIDES" || s === "SPREAD" || s === "SPREADS") return "SIDE";
   if (s === "TOTAL" || s === "TOTALS" || s === "OU" || s === "O/U") return "TOTALS";
-  if (s === "HIGHQUARTER" || s === "HIGH_QTR" || s === "HIGHQTR" ||
-      s === "HIGHESTQTR" || s === "HIGHESTQUARTER") return "HIGHQUARTER";
+  if (s === "FLEET") return "FLEET";
   return s;
 }
 
@@ -347,6 +378,10 @@ function assayerBoolOrNull_(v) {
   if (s === "false") return false;
   if (s === "yes" || s === "y" || s === "1") return true;
   if (s === "no" || s === "n" || s === "0") return false;
+  if (cfg.MIN_PURITY_GRADE) ASSAYER_BRIDGE.MIN_PURITY_GRADE = String(cfg.MIN_PURITY_GRADE).toUpperCase();
+  if (cfg.UNKNOWN_LEAGUE_ACTION) ASSAYER_BRIDGE.UNKNOWN_LEAGUE_ACTION = String(cfg.UNKNOWN_LEAGUE_ACTION).toUpperCase();
+  if (cfg.UNKNOWN_EDGE_ACTION) ASSAYER_BRIDGE.UNKNOWN_EDGE_ACTION = String(cfg.UNKNOWN_EDGE_ACTION).toUpperCase();
+  if (cfg.REQUIRE_EDGE_RELIABLE !== undefined) ASSAYER_BRIDGE.REQUIRE_EDGE_RELIABLE = !!cfg.REQUIRE_EDGE_RELIABLE;
   return null;
 }
 
@@ -520,13 +555,17 @@ function assayerIsGoldStandard_(dims, bestEdge, purityRow, purityEval) {
   // EDGE GATE
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   if (!bestEdge) {
-    passed = false;
-    addBlock('NO_EDGE', 'No edge match found in ASSAYER_EDGES');
+    if (String(ASSAYER_BRIDGE.UNKNOWN_EDGE_ACTION || '').toUpperCase() === 'ALLOW') {
+      addEvidence('NoEdge(allowed by config)');
+    } else {
+      passed = false;
+      addBlock('NO_EDGE', 'No edge match found in ASSAYER_EDGES');
+    }
 
   } else {
 
     // Hard blocks (ALWAYS forbidden regardless of goldOnly)
-    if (edgeGrade === 'ROCK' || edgeGrade === 'CHARCOAL' || edgeGrade === 'BRONZE') {
+    if (edgeGrade === 'ROCK' || edgeGrade === 'CHARCOAL') {
       passed = false;
       addBlock('EDGE_HARD_BLOCK',
         'Edge grade ' + edgeGrade + ' is always forbidden');
@@ -602,7 +641,7 @@ function assayerIsGoldStandard_(dims, bestEdge, purityRow, purityEval) {
     var status = String(purityRow.status || '').trim();
 
     // Hard blocks (always forbidden)
-    if (purityGrade === 'CHARCOAL' || purityGrade === 'ROCK' || purityGrade === 'BRONZE') {
+    if (purityGrade === 'CHARCOAL' || purityGrade === 'ROCK') {
       passed = false;
       addBlock('PURITY_HARD_BLOCK',
         'Purity grade ' + purityGrade + ' is always forbidden');
@@ -853,6 +892,7 @@ function assayerFormatDimsRef_(d) {
       ' qPur='    + assayerSafe_(d.quarterPurity) +
       ' isWomen=' + assayerFmtBool_(d.isWomen) +
       ' gender='  + assayerSafe_(d.gender) +
+      ' typeKey=' + assayerSafe_(d.typeKey) +
       ' tierEdge=' + assayerSafe_(d.tier) +
       ' tierPur=' + assayerSafe_(d.tierPurity) +
       ' side='    + assayerSafe_(d.side) +
@@ -1171,7 +1211,7 @@ function assayerEnrichBet_(bet, assayerData) {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // BRANCH B: Unsupported source → neutral pass-through
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  var SUPPORTED_SOURCES = ['SIDE', 'TOTALS'];
+  var SUPPORTED_SOURCES = ['SIDE', 'TOTALS', 'FLEET'];
   if (SUPPORTED_SOURCES.indexOf(dims.source) < 0) {
 
     var unsupEvidence = 'Unsupported source "' + dims.source + '" — neutral pass-through';
@@ -1418,6 +1458,7 @@ function assayerBetMatchesEdge_(dims, edge) {
 
   if (edge.source && dims.source && edge.source !== dims.source) return false;
 
+  // Match flat dimensions for ALL edges (including FLEET)
   if (edge.quarter       != null && dims.quarter       !== edge.quarter)       return false;
   if (edge.is_women      != null && dims.isWomen       !== edge.is_women)      return false;
   if (edge.tier          != null && dims.tier          !== edge.tier)          return false;
@@ -1427,10 +1468,13 @@ function assayerBetMatchesEdge_(dims, edge) {
   if (edge.spread_bucket != null && dims.spread_bucket !== edge.spread_bucket) return false;
   if (edge.line_bucket   != null && dims.line_bucket   !== edge.line_bucket)   return false;
 
-  // ◄◄ PATCH: strict market boundary enforcement
-  // If edge declares type_key, bet MUST match exactly.
-  // If edge has null type_key, it applies to all market types (wildcard).
+  // Exact type match enforcement
   if (edge.type_key != null && dims.typeKey !== edge.type_key) return false;
+
+  // If edge has cfgKey or cfgBucket stored in filters_json, match those too
+  // (Currently, Assayer doesn't output cfgKey as columns, but we future-proof this)
+  if (edge.cfgKey != null && dims.cfgKey !== undefined && dims.cfgKey !== edge.cfgKey) return false;
+  if (edge.cfgBucket != null && dims.cfgBucket !== undefined && dims.cfgBucket !== edge.cfgBucket) return false;
 
   return true;
 }
@@ -1440,8 +1484,10 @@ function assayerBetMatchesEdge_(dims, edge) {
  * ◄◄ PATCH: includes type_key so correct-market edges win tie-breaks.
  */
 function assayerEdgeSpecificity_(edge) {
-  let n = 0;
-  const keys = [
+  var n = 0;
+  if (!edge) return n;
+
+  var keys = [
     "quarter",
     "is_women",
     "tier",
@@ -1450,9 +1496,14 @@ function assayerEdgeSpecificity_(edge) {
     "conf_bucket",
     "spread_bucket",
     "line_bucket",
-    "type_key"                                              // ◄◄ PATCH
+    "type_key",
+    "cfgKey",
+    "cfgBucket"
   ];
-  for (const k of keys) if (edge && edge[k] != null) n++;
+  for (var i = 0; i < keys.length; i++) {
+    if (edge[keys[i]] != null) n++;
+  }
+
   return n;
 }
 
@@ -1728,6 +1779,102 @@ function assayerDerivePurityAction_(purityRow) {
  *            cleaned = "Q1: H +5.5"
  *            → clean pattern matching, correct SIDE classification
  */
+
+// ---------------------------------------------------------------------------
+// Config-profile helpers (v5.0.0 Fleet support)
+// ---------------------------------------------------------------------------
+function _assayerSafeParseJSON_(s) {
+  if (!s || typeof s !== 'string') return {};
+  var t = s.trim();
+  if (!t || t === '{}') return {};
+  try { return JSON.parse(t); } catch (_) { return {}; }
+}
+
+function _assayerNormalizeConfigVal_(raw) {
+  if (raw === null || raw === undefined || raw === '') return undefined;
+  var s = String(raw).trim();
+  if (!s) return undefined;
+  var u = s.toUpperCase();
+  if (u === 'TRUE')  return true;
+  if (u === 'FALSE') return false;
+  if (/^\d+(\.\d+)?%$/.test(s)) { var p = parseFloat(s); return isFinite(p) ? p / 100 : s; }
+  var n = Number(s);
+  if (!isNaN(n) && isFinite(n)) return n;
+  return s;
+}
+
+function _assayerFlattenConfigProfile_(obj) {
+  if (!obj || typeof obj !== 'object') return {};
+  var out = {};
+  var sheets = Object.keys(obj);
+  for (var si = 0; si < sheets.length; si++) {
+    var sheet = sheets[si];
+    var props  = obj[sheet];
+    if (!props || typeof props !== 'object') continue;
+    var pkeys = Object.keys(props);
+    for (var pi = 0; pi < pkeys.length; pi++) {
+      var normKey = String(pkeys[pi]).trim().replace(/\s+/g, ' ');
+      if (!normKey) continue;
+      out[sheet + '.' + normKey] = _assayerNormalizeConfigVal_(props[pkeys[pi]]);
+    }
+  }
+  return out;
+}
+
+function _assayerIsThresholdKey_(keyPath) {
+  return /min|max|threshold|\bev\b|expected.value|confidence|edge|tolerance/i.test(keyPath);
+}
+
+function _assayerBucketCfgValue_(keyPath, val) {
+  if (val === undefined || val === null) return 'MISSING';
+  if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+
+  if (/confidence/i.test(keyPath)) {
+    var c = typeof val === 'number' ? val : parseFloat(val);
+    if (!isFinite(c)) return 'MISSING';
+    if (c > 1 && c <= 100) c = c / 100;
+    // For Mothership fallback, we don't have Config_.confBuckets easily available
+    // but Assayer uses default buckets:
+    if (c < 0.55) return '<55%';
+    if (c < 0.60) return '55-60%';
+    if (c < 0.65) return '60-65%';
+    if (c < 0.70) return '65-70%';
+    return '>=70%';
+  }
+
+  if (/\bev\b|expected.value/i.test(keyPath)) {
+    var ev = typeof val === 'number' ? val : parseFloat(val);
+    if (!isFinite(ev)) return 'MISSING';
+    if (ev < 0)  return '<0';
+    if (ev < 2)  return '0-2';
+    if (ev < 5)  return '2-5';
+    if (ev < 10) return '5-10';
+    return '>=10';
+  }
+
+  var nv = typeof val === 'number' ? val : Number(val);
+  if (!isNaN(nv) && isFinite(nv)) {
+    if (nv <= 0)  return '<=0';
+    if (nv <= 1)  return '0-1';
+    if (nv <= 2)  return '1-2';
+    if (nv <= 5)  return '2-5';
+    if (nv <= 10) return '5-10';
+    return '>=10';
+  }
+
+  return String(val).trim().slice(0, 30) || 'MISSING';
+}
+
+function _assayerGetCfgFlat_(bet) {
+  if (!bet._cfgFlat) {
+    bet._cfgFlat = _assayerFlattenConfigProfile_(
+      _assayerSafeParseJSON_((bet && bet.config_profile) ? bet.config_profile : '{}')
+    );
+  }
+  return bet._cfgFlat;
+}
+
+// ---------------------------------------------------------------------------
 function assayerDeriveBetSource_(bet) {
 
   // ── ◄◄ FIX: Inline cleaner (self-sufficient if _stripGlyphsForDims not called) ──
@@ -1759,33 +1906,9 @@ function assayerDeriveBetSource_(bet) {
   var type = typeRaw.toUpperCase();
   var pick = pickRaw.toUpperCase();
 
-  // ── 1. HighQuarter detection (most specific — check first) ──
-  if (
-    pick.includes("HIGHEST SCORING QUARTER") ||
-    pick.includes("HIGHEST QUARTER") ||
-    pick.includes("HIGH SCORING QUARTER") ||
-    pick.includes("HIGH QTR") ||
-    type.includes("HIGH QTR") ||
-    type.includes("HIGHEST QTR") ||
-    type.includes("HIGHQTR") ||
-    /\bHIGH(EST)?\s*(SCORING\s*)?Q(UARTER|TR)\b/.test(pick) ||
-    /\bHIGH(EST)?\s*(SCORING\s*)?Q(UARTER|TR)\b/.test(type)
-  ) {
-    return "HIGHQUARTER";
-  }
-
-  // ── 2. Totals detection ──
-  if (
-    /\b(OVER|UNDER)\b/.test(pick) ||
-    type.includes("O/U") ||
-    /\bOU\b/.test(type) ||
-    pick.includes("TOTAL")
-  ) {
-    return "TOTALS";
-  }
-
-  // ── 3. Default: Side ──
-  return "SIDE";
+  // ── 1. Default: FLEET ──
+  // All INTAKE__ sheets in Assayer generate Fleet edges.
+  return "FLEET";
 }
 
 /* ═══════════════════════════════════════════
@@ -1807,6 +1930,7 @@ function assayerDeriveBetSource_(bet) {
 function assayerDeriveBetDims_(bet) {
   var leagueRaw = String((bet && bet.league) || "").trim();
   var league = leagueRaw.toUpperCase();
+  if (league === "WNB") league = "WNBA";
 
   // ══════════════════════════════════════════════════
   // ◄◄ FIX: Glyph stripping — clean strings for pattern matching
@@ -1863,102 +1987,32 @@ function assayerDeriveBetDims_(bet) {
   if (!isFinite(confidence)) confidence = null;
   var conf_bucket = (confidence == null) ? null : computeConfidenceBucket_(confidence);
 
-  var source = assayerCanonSource_(assayerDeriveBetSource_(bet));
+  var source = "FLEET";
 
   var direction = null, line = null, line_bucket = null;
   var side = null, spread = null, spread_bucket = null;
+  var typeKey = typeU;
+  var cfgKey = undefined, cfgBucket = undefined;
 
-  if (source === "TOTALS") {
-    var totalsInfo = assayerParseTotalsPick_(pick);        // ◄◄ uses cleaned pick
-    if (totalsInfo) {
-      direction   = assayerCanonDirection_(totalsInfo.direction);
-      line        = totalsInfo.line;
-      line_bucket = computeLineBucket_(line);
-    }
-  } else if (source === "SIDE") {
-    spread        = assayerParseSpreadFromText_(pick);     // ◄◄ uses cleaned pick
-    spread_bucket = (spread != null) ? computeSpreadBucket_(spread) : null;
-    side          = assayerCanonSide_(assayerInferSideFromPickMatch_(pick, match)); // ◄◄ cleaned
+  // Flatten config profile if available
+  if (bet && bet.Config_Profile) {
+    var flatCfg = _bridgeFlattenConfigProfile_(_bridgeSafeParseJSON_(bet.Config_Profile));
+    if (flatCfg.cfgKey) cfgKey = flatCfg.cfgKey;
+    if (flatCfg.cfgBucket) cfgBucket = flatCfg.cfgBucket;
   }
 
   var tierPurity = "UNKNOWN";
-  if (typeU.includes("TIER1") || typeU.includes("BANKER") || typeU.includes("WIN"))
-    tierPurity = "STRONG";
-  else if (typeU.includes("TIER2") || typeU.includes("SNIPER") || typeU.includes("QUARTER"))
-    tierPurity = "MEDIUM";
+  if (bet && bet.tier) {
+    tierPurity = String(bet.tier);
+  } else {
+    if (typeU.includes("TIER1") || typeU.includes("BANKER") || typeU.includes("WIN"))
+      tierPurity = "STRONG";
+    else if (typeU.includes("TIER2") || typeU.includes("SNIPER") || typeU.includes("QUARTER"))
+      tierPurity = "MEDIUM";
+  }
 
   tierPurity = assayerCanonTier_(tierPurity) || "UNKNOWN";
   var tierEdge = (tierPurity === "UNKNOWN") ? null : tierPurity;
-
-  // ◄◄ PATCH START: derive strict typeKey (market discriminator) ─────────────
-  //
-  // Must match ASSAYER_EDGES type_key values exactly:
-  //   SNIPER_HIGH_QTR, SNIPER_MARGIN, SNIPER_OU_STAR, SNIPER_OU_DIR, SNIPER_OU
-  //
-  // Detection order: most specific first within each source.
-  // Includes ★☆ symbol detection and structural direction+line fallback.
-  // null typeKey = only edges with null type_key can match (safe default).
-
-  var typeKey = null;
-
-  // ── 1. High Quarter (filtered upstream, classified here for safety) ──
-  //    Uses CLEANED typeU/pickU (no glyphs needed for this detection)
-  var isHighQtr =
-    typeU.includes("HIGH QTR") ||
-    typeU.includes("HIGHQTR") ||
-    typeU.includes("HIGH_QTR") ||
-    typeU.includes("HIGHEST SCORING QUARTER") ||
-    pickU.includes("HIGHEST SCORING QUARTER");
-
-  // ── 2. STAR detection ──
-  //    ◄◄ FIX: Checks CLEANED typeU for word "STAR",
-  //            but checks RAW typeOrig/pickOrig for ★☆ symbols.
-  //            These symbols are semantic (not decorative) and were
-  //            intentionally NOT stripped by _dimsSafeClean.
-  //            If _stripGlyphsForDims was used instead (which strips everything),
-  //            the raw originals still have them.
-  var isStar =
-    typeU.includes("STAR") ||
-    /[★☆]/.test(typeOrig) ||                              // ◄◄ FIX: raw original
-    /[★☆]/.test(pickOrig);                                // ◄◄ FIX: raw original
-
-  // ── 3. DIR detection (word boundary + legacy includes) ──
-  //    Uses CLEANED typeU/pick (glyphs won't false-match)
-  var isDir =
-    /\bDIR\b/.test(typeU) ||
-    typeU.includes("SNIPER DIR") ||
-    typeU.includes("DIRECTION") ||
-    typeU.includes("DIRECTIONAL") ||
-    /Q[1-4]\s*(OVER|UNDER)\s*[\d.]+/i.test(pick);         // ◄◄ FIX: cleaned pick
-
-  // ── 4. Generic O/U detection ──
-  //    Uses CLEANED typeU
-  var isOU =
-    typeU.includes("O/U") ||
-    /\bOU\b/.test(typeU) ||
-    typeU.includes("OVER/UNDER");
-
-  if (isHighQtr) {
-    typeKey = "SNIPER_HIGH_QTR";
-
-  } else if (source === "SIDE") {
-    typeKey = "SNIPER_MARGIN";
-
-  } else if (source === "TOTALS") {
-    // STAR must be checked before DIR: "SNIPER O/U STAR" contains no "DIR"
-    if (isStar)       typeKey = "SNIPER_OU_STAR";
-    else if (isDir)   typeKey = "SNIPER_OU_DIR";
-    else if (isOU)    typeKey = "SNIPER_OU";
-    else {
-      // Structural fallback: if pick parsed into direction+line, it's directional
-      if (direction != null && line != null) typeKey = "SNIPER_OU_DIR";
-      else typeKey = null;
-    }
-
-  } else {
-    // Unknown/other source: null → only null-type_key edges can match
-    typeKey = null;
-  }
 
   // ◄◄ PATCH END ─────────────────────────────────────────────────────────────
 
@@ -1979,7 +2033,9 @@ function assayerDeriveBetDims_(bet) {
     spread_bucket: assayerCanonBucket_(spread_bucket),
     line:          line,
     line_bucket:   assayerCanonBucket_(line_bucket),
-    typeKey:       typeKey                                  // ◄◄ PATCH
+    typeKey:       typeKey,                                 // ◄◄ PATCH
+    cfgKey:        cfgKey,
+    cfgBucket:     cfgBucket
   };
 }
 
@@ -2140,7 +2196,7 @@ function assayerNormalizeEdgeRow_(r) {
     return (n !== null && Number.isInteger(n)) ? n : null;
   };
 
-  return {
+  var out = {
     edge_id:       norm(r.edge_id),
     source:        assayerCanonSource_(r.source),
     pattern:       norm(r.pattern),
@@ -2158,6 +2214,8 @@ function assayerNormalizeEdgeRow_(r) {
     type_key:      upperOrNull(r.type_key),                // ◄◄ PATCH
 
     filters_json:  norm(r.filters_json),
+    cfgKey:        null,
+    cfgBucket:     null,
 
     n:             intOrNull(r.n),
     wins:          intOrNull(r.wins),
@@ -2172,6 +2230,22 @@ function assayerNormalizeEdgeRow_(r) {
     reliable:      assayerBoolOrNull_(r.reliable),
     sample_size:   norm(r.sample_size),
   };
+
+  if (out.filters_json) {
+    try {
+      var parsed = JSON.parse(out.filters_json);
+      if (parsed.cfgKey != null) out.cfgKey = String(parsed.cfgKey);
+      if (parsed.cfgBucket != null) out.cfgBucket = String(parsed.cfgBucket);
+      if (!out.type_key) {
+        var t = parsed.typeKey || parsed.type;
+        if (t != null) out.type_key = upperOrNull(t);
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+
+  return out;
 }
 
 function assayerNormalizePurityRow_(r) {

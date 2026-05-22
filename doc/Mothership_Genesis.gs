@@ -120,6 +120,12 @@ function setupMothership() {
     
     ss.toast('Creating Historical sheets...', 'Step 11/11', 3);
     _createHistoricalSheets(ss);
+
+    _createAssayerEdgesSheet(ss);
+    _createAssayerLeaguePuritySheet(ss);
+    _createTeamAssaySheet(ss);
+    _createMatchupAssaySheet(ss);
+    _createVaultDashboardSheet(ss);
     
     _cleanupDefaultSheet(ss);
 
@@ -459,12 +465,17 @@ function _createAnalysisSheets(ss) {
   }
   discoverySheet.clear();
 
-  const discoveryHeaders = [['discovery_id', 'league', 'team', 'opponent', 'edge_type', 'edge_value', 'confidence', 'timestamp']];
+  const MA_DISCOVERY_HEADERS = [
+    "Edge ID", "Source", "League", "Date", "Matchup",
+    "Pick", "Type", "Confidence", "Conf Bucket", "Grade",
+    "Purity Status", "Backed Team", "Opponent", "Spread / Line",
+    "Result / Outcome", "Edge Score"
+  ];
   
   // Sanity check to prevent column mismatch
-  _validateHeadersAndRange(discoveryHeaders[0], 'A1:H1');
+  _validateHeadersAndRange(MA_DISCOVERY_HEADERS, 'A1:P1');
   
-  discoverySheet.getRange('A1:H1').setValues(discoveryHeaders)
+  discoverySheet.getRange('A1:P1').setValues([MA_DISCOVERY_HEADERS])
     .setFontWeight('bold')
     .setBackground('#ff9900')
     .setFontColor('#ffffff');
@@ -594,6 +605,100 @@ function _createHistoricalSheets(ss) {
 
   Logger.log('[Genesis] Historical sheets created');
 }
+
+/**
+ * _createAssayerEdgesSheet — Creates/resets ASSAYER_EDGES with the 26-column Mother contract schema.
+ */
+function _createAssayerEdgesSheet(ss) {
+  const SHEET_NAME = "ASSAYER_EDGES";
+  const HEADERS = [
+    "Edge ID", "Source Satellite", "League", "Date", "Matchup",
+    "Pick", "Type", "Confidence", "Conf Bucket", "Grade",
+    "Purity Status", "Backed Team", "Opponent", "Spread / Line",
+    "Result / Outcome", "Win Rate", "ROI", "Sample N", "Decisive N",
+    "Reliability", "Is Reliable", "Is Perf Elite", "Is Perf Toxic",
+    "League Purity", "Matchup Purity", "Edge Score"
+  ];
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  else sheet.clearContents();
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
+    .setFontWeight("bold").setBackground("#0d1117").setFontColor("#58a6ff");
+  sheet.setFrozenRows(1);
+  Logger.log("[Genesis] _createAssayerEdgesSheet: done (" + HEADERS.length + " cols).");
+}
+
+/**
+ * _createAssayerLeaguePuritySheet — Creates/resets ASSAYER_LEAGUE_PURITY with 11 columns.
+ */
+function _createAssayerLeaguePuritySheet(ss) {
+  const SHEET_NAME = "ASSAYER_LEAGUE_PURITY";
+  const HEADERS = [
+    "League", "Total Bets", "Wins", "Losses", "Pushes",
+    "Win Rate", "ROI", "Sample N", "Decisive N", "Reliability", "Purity Grade"
+  ];
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  else sheet.clearContents();
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
+    .setFontWeight("bold").setBackground("#0d1117").setFontColor("#58a6ff");
+  sheet.setFrozenRows(1);
+  Logger.log("[Genesis] _createAssayerLeaguePuritySheet: done (" + HEADERS.length + " cols).");
+}
+
+/**
+ * _createTeamAssaySheet — Creates/resets MA_TeamAssay sheet.
+ */
+function _createTeamAssaySheet(ss) {
+  const SHEET_NAME = "MA_TeamAssay";
+  const HEADERS = [
+    "Team", "League", "Total Bets", "Wins", "Losses", "Pushes",
+    "Win Rate", "ROI", "Decisive N", "Reliability", "Is Reliable",
+    "Is Perf Elite", "Is Perf Toxic", "Purity Grade"
+  ];
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  else sheet.clearContents();
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
+    .setFontWeight("bold").setBackground("#0d1117").setFontColor("#58a6ff");
+  sheet.setFrozenRows(1);
+  Logger.log("[Genesis] _createTeamAssaySheet: done (" + HEADERS.length + " cols).");
+}
+
+/**
+ * _createMatchupAssaySheet — Creates/resets MA_MatchupAssay sheet.
+ */
+function _createMatchupAssaySheet(ss) {
+  const SHEET_NAME = "MA_MatchupAssay";
+  const HEADERS = [
+    "Matchup Key", "League", "Total Bets", "Wins", "Losses", "Pushes",
+    "Win Rate", "ROI", "Sample N", "Decisive N", "Reliability",
+    "Is Reliable", "Purity Grade", "Last Seen"
+  ];
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  else sheet.clearContents();
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
+    .setFontWeight("bold").setBackground("#0d1117").setFontColor("#58a6ff");
+  sheet.setFrozenRows(1);
+  Logger.log("[Genesis] _createMatchupAssaySheet: done (" + HEADERS.length + " cols).");
+}
+
+/**
+ * _createVaultDashboardSheet — Creates/resets the MA_Vault_Dashboard visual sheet stub.
+ */
+function _createVaultDashboardSheet(ss) {
+  const SHEET_NAME = "MA_Vault_Dashboard";
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  else { sheet.clearContents(); sheet.clearFormats(); }
+  // Placeholder header row — will be overwritten by writeVaultDashboard() on first assay run
+  sheet.getRange(1, 1).setValue("🏆 MA Vault Dashboard — awaiting first assay run.")
+    .setFontWeight("bold").setFontColor("#f0c040").setBackground("#0d1117");
+  sheet.setFrozenRows(1);
+  Logger.log("[Genesis] _createVaultDashboardSheet: done.");
+}
+
 
 
 

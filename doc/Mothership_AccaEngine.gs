@@ -55,11 +55,18 @@ const ACCA_ENGINE_CONFIG = {
   VERBOSE_LOGGING: true,
 
   // ─── Assayer Grade Policy (legacy defaults for gold gate recompute path) ───
-  GOLD_ONLY_MODE: true,
-  MIN_EDGE_GRADE: 'GOLD',
-  MIN_PURITY_GRADE: 'GOLD',
-  UNKNOWN_LEAGUE_ACTION: 'BLOCK',
-  REQUIRE_RELIABLE_EDGE: true
+  GOLD_ONLY_MODE: false,
+  MIN_EDGE_GRADE: 'SILVER',
+  MIN_PURITY_GRADE: 'SILVER',
+  UNKNOWN_LEAGUE_ACTION: 'ALLOW',
+  UNKNOWN_EDGE_ACTION: 'ALLOW',
+  REQUIRE_RELIABLE_EDGE: false,
+
+  LOGGING: {
+    ENABLED: true,
+    LOG_ACCEPTS: true,
+    LOG_REJECTS: false
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -847,7 +854,7 @@ function _formatDateValue(dateRaw) {
   if (typeof dateRaw === 'string') {
     const str = dateRaw.trim();
     
-    const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+.*)?$/);
     if (dmyMatch) {
       const day = String(parseInt(dmyMatch[1], 10)).padStart(2, '0');
       const month = String(parseInt(dmyMatch[2], 10)).padStart(2, '0');
@@ -855,7 +862,7 @@ function _formatDateValue(dateRaw) {
       return `${day}/${month}/${year}`;
     }
     
-    const ymdMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    const ymdMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+.*)?$/);
     if (ymdMatch) {
       const day = String(parseInt(ymdMatch[3], 10)).padStart(2, '0');
       const month = String(parseInt(ymdMatch[2], 10)).padStart(2, '0');
@@ -961,8 +968,30 @@ function _parseMatchString(matchStr) {
 
 function _parseTime(timeRaw, dateRaw) {
   let betDate = new Date();
+  let dateHadTime = false;
   
-  if (dateRaw) {
+  if (dateRaw instanceof Date && !isNaN(dateRaw.getTime())) {
+    betDate = new Date(dateRaw.getTime());
+    if (betDate.getHours() !== 0 || betDate.getMinutes() !== 0) dateHadTime = true;
+  } else if (typeof dateRaw === 'string' && dateRaw.trim()) {
+    const str = dateRaw.trim();
+    const nativeDate = new Date(str);
+    if (!isNaN(nativeDate.getTime()) && str.includes(':') && !str.includes('/')) {
+      betDate = new Date(nativeDate.getTime());
+      if (betDate.getHours() !== 0 || betDate.getMinutes() !== 0) dateHadTime = true;
+    } else {
+      const dateStr = _formatDateValue(dateRaw);
+      if (dateStr) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const year = parseInt(parts[2], 10);
+          betDate = new Date(year, month, day);
+        }
+      }
+    }
+  } else if (dateRaw) {
     const dateStr = _formatDateValue(dateRaw);
     if (dateStr) {
       const parts = dateStr.split('/');
@@ -980,7 +1009,9 @@ function _parseTime(timeRaw, dateRaw) {
   let hasTimeComponent = false;
   
   if (timeRaw === null || timeRaw === undefined || timeRaw === '') {
-    betDate.setHours(0, 0, 0, 0);
+    if (!dateHadTime) {
+      betDate.setHours(0, 0, 0, 0);
+    }
     return betDate;
   }
   
@@ -2728,15 +2759,16 @@ function buildAccumulatorPortfolio() {
     // ═══════════════════════════════════════════════════════════════════════════
     Logger.log('');
     Logger.log('═══════════════════════════════════════════════════════════════════════════');
-    Logger.log('STEP 4b: APPLYING GOLD FLOOR (edge>=GOLD, purity>=GOLD)');
+    Logger.log('STEP 4b: APPLYING FLOOR (edge>=' + ACCA_ENGINE_CONFIG.MIN_EDGE_GRADE + ', purity>=' + ACCA_ENGINE_CONFIG.MIN_PURITY_GRADE + ')');
     Logger.log('═══════════════════════════════════════════════════════════════════════════');
 
     var goldBets = _filterBets(enrichedBets0, {
       applyAssayerBlocks: true,
       skipStandard: true,
       applyGoldGate: false,
-      minEdgeGrade: 'GOLD',
-      minPurityGrade: 'GOLD'
+      minEdgeGrade: ACCA_ENGINE_CONFIG.MIN_EDGE_GRADE || 'GOLD',
+      minPurityGrade: ACCA_ENGINE_CONFIG.MIN_PURITY_GRADE || 'GOLD',
+      unknownEdgeAction: ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION || 'ALLOW'
     });
 
     Logger.log('[' + FUNC_NAME + '] ✅ GOLD filter: ' + goldBets.length + '/' +
@@ -5700,8 +5732,8 @@ function runLeftoverProcessing() {
     if (!allBets || allBets.length === 0) throw new Error('Sync_Temp has no valid bets');
     Logger.log('[' + FUNC + '] Loaded: ' + allBets.length);
 
-    var usedBetIds = _extractUsedBetIdsFromAccaPortfolio(ss);
-    Logger.log('[' + FUNC + '] Main-used: ids=' + usedBetIds.size);
+    var usedBetIds = _extractUsedBetIdsFromAccaPortfolio(ss, ['Acca_Portfolio', 'Risky_Acca_Portfolio']);
+    Logger.log('[' + FUNC + '] Main/Risky-used: ids=' + usedBetIds.size);
 
     var leagueMetrics = fetchLeagueAccuracyMetrics();
     Logger.log('[' + FUNC + '] ✅ Metrics: ' + Object.keys(leagueMetrics || {}).length);
@@ -6339,6 +6371,8 @@ function _loadBetsFromSyncTemp(ss) {
     match:         headers.indexOf('match'),
     pick:          headers.indexOf('pick'),
     type:          headers.indexOf('type'),
+    market:        headers.indexOf('market'),
+    tier:          headers.indexOf('risktier'),
     odds:          headers.indexOf('odds'),
     confidence:    headers.findIndex(function(h) { return h.includes('conf'); }),
     ev:            headers.indexOf('ev'),
@@ -6409,10 +6443,13 @@ function _loadBetsFromSyncTemp(ss) {
     var dateRaw = getCell(row, colIdx.date);
     var timeRaw = getCell(row, colIdx.time);
 
-    var typeRaw = (colIdx.type >= 0)
-      ? String(getCell(row, colIdx.type) || '').trim()
-      : '';
+    var typeRaw = (colIdx.type >= 0) ? String(getCell(row, colIdx.type) || '').trim() : '';
+    if (!typeRaw && colIdx.market >= 0) {
+      typeRaw = String(getCell(row, colIdx.market) || '').trim();
+    }
     var type = typeRaw || 'UNKNOWN';
+
+    var tier = (colIdx.tier >= 0) ? String(getCell(row, colIdx.tier) || '').trim() : '';
 
     if (type.toUpperCase().startsWith('RISKY_')) {
       type = type.replace(/^RISKY_/i, '').trim() || 'UNKNOWN';
@@ -6659,9 +6696,11 @@ function debugLeftoverSystem() {
  * When BetID column is present: uses it directly.
  * When missing: reconstructs same MD5 hash as Phase 2 enrichment from row fields.
  */
-function _extractUsedBetIdsFromAccaPortfolio(ss) {
+function _extractUsedBetIdsFromAccaPortfolio(ss, targetSheets) {
   var FUNC = '_extractUsedBetIdsFromAccaPortfolio';
-  var sheet = ss.getSheetByName('Acca_Portfolio');
+  if (!targetSheets || !Array.isArray(targetSheets)) {
+    targetSheets = ['Acca_Portfolio'];
+  }
 
   // ── Return container ──
   var usedIds      = new Set();   // raw BetID strings
@@ -6672,10 +6711,6 @@ function _extractUsedBetIdsFromAccaPortfolio(ss) {
   usedIds._keys      = canonKeys;
   usedIds._pickKeys  = canonPicks;
   usedIds._stableIds = stableIds;
-
-  if (!sheet) { Logger.log('[' + FUNC + '] Acca_Portfolio not found'); return usedIds; }
-  var data = sheet.getDataRange().getValues();
-  if (!data || data.length < 2) { Logger.log('[' + FUNC + '] empty'); return usedIds; }
 
   // ── Shared canon helpers ──
   var _up   = function(s) { return String(s || '').trim().toUpperCase(); };
@@ -6717,41 +6752,53 @@ function _extractUsedBetIdsFromAccaPortfolio(ss) {
     }
   };
 
-  // ── Find BetID column ──
-  var bidCol = -1;
-  for (var r0 = 0; r0 < Math.min(60, data.length) && bidCol < 0; r0++)
-    for (var c0 = 0; c0 < data[r0].length; c0++)
-      if (_up(data[r0][c0]) === 'BETID') { bidCol = c0; break; }
+  var rows = 0;
+  var fromCol = 0;
 
-  Logger.log('[' + FUNC + '] BetID col: ' +
-    (bidCol < 0 ? 'NOT FOUND' : 'col ' + (bidCol + 1)));
+  for (var sn = 0; sn < targetSheets.length; sn++) {
+    var sheet = ss.getSheetByName(targetSheets[sn]);
+    if (!sheet) { Logger.log('[' + FUNC + '] ' + targetSheets[sn] + ' not found'); continue; }
+    
+    var data = sheet.getDataRange().getValues();
+    if (!data || data.length < 2) { Logger.log('[' + FUNC + '] ' + targetSheets[sn] + ' empty'); continue; }
 
-  // ── Scan rows  (cols: 0=Date 1=Time 2=League 3=Match 4=Pick 5=Type) ──
-  var rows = 0, fromCol = 0;
-  for (var r = 0; r < data.length; r++) {
-    var row = data[r];
-    if (!row || row.length < 6) continue;
+    // ── Find BetID column ──
+    var bidCol = -1;
+    for (var r0 = 0; r0 < Math.min(60, data.length) && bidCol < 0; r0++) {
+      for (var c0 = 0; c0 < data[r0].length; c0++) {
+        if (_up(data[r0][c0]) === 'BETID') { bidCol = c0; break; }
+      }
+    }
 
-    var league = String(row[2] || '').trim();
-    var match  = String(row[3] || '').trim();
-    var pick   = String(row[4] || '').trim();
-    var type   = String(row[5] || '').trim();
+    Logger.log('[' + FUNC + '] ' + targetSheets[sn] + ' BetID col: ' +
+      (bidCol < 0 ? 'NOT FOUND' : 'col ' + (bidCol + 1)));
 
-    if (match.indexOf(' vs ') === -1 || !pick || pick === 'Pick') continue;
-    rows++;
+    // ── Scan rows  (cols: 0=Date 1=Time 2=League 3=Match 4=Pick 5=Type) ──
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      if (!row || row.length < 6) continue;
 
-    var cp = _cpk(pick), ct = _ctp(type);
-    canonKeys.add([_up(league), _up(match), cp, ct].join('|'));
-    canonPicks.add([_up(league), _up(match), cp].join('|'));
+      var league = String(row[2] || '').trim();
+      var match  = String(row[3] || '').trim();
+      var pick   = String(row[4] || '').trim();
+      var type   = String(row[5] || '').trim();
 
-    var dt = _joinDT(row[0], row[1]);
-    stableIds.add(_md5(
-      [_up(league), _up(match), cp, ct,
-       dt ? dt.toISOString() : ''].join('|')));
+      if (match.indexOf(' vs ') === -1 || !pick || pick === 'Pick') continue;
+      rows++;
 
-    if (bidCol >= 0) {
-      var bid = String(row[bidCol] || '').trim();
-      if (bid) { usedIds.add(bid); fromCol++; }
+      var cp = _cpk(pick), ct = _ctp(type);
+      canonKeys.add([_up(league), _up(match), cp, ct].join('|'));
+      canonPicks.add([_up(league), _up(match), cp].join('|'));
+
+      var dt = _joinDT(row[0], row[1]);
+      stableIds.add(_md5(
+        [_up(league), _up(match), cp, ct,
+         dt ? dt.toISOString() : ''].join('|')));
+
+      if (bidCol >= 0) {
+        var bid = String(row[bidCol] || '').trim();
+        if (bid) { usedIds.add(bid); fromCol++; }
+      }
     }
   }
 
@@ -6922,6 +6969,9 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     UNKNOWN_LEAGUE_ACTION: (typeof ACCA_ENGINE_CONFIG !== 'undefined' &&
                             ACCA_ENGINE_CONFIG.UNKNOWN_LEAGUE_ACTION)
                             ? ACCA_ENGINE_CONFIG.UNKNOWN_LEAGUE_ACTION : 'BLOCK',
+    UNKNOWN_EDGE_ACTION:   (typeof ACCA_ENGINE_CONFIG !== 'undefined' &&
+                            ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION)
+                            ? ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION : 'ALLOW',
     REQUIRE_RELIABLE_EDGE: false
   }, FUNC);
 
@@ -7242,11 +7292,12 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
   // ══════════════════════════════════════════════════
   // 8. Write sheets
   // ══════════════════════════════════════════════════
-  if (portfolios.length > 0) _writeLeftoverSheet(ss, portfolios);
-  else Logger.log('[' + FUNC + '] No leftover accas to write');
+  // Always write both sheets — clears stale data even when 0 accas built
+  _writeLeftoverSheet(ss, portfolios);
+  if (portfolios.length === 0) Logger.log('[' + FUNC + '] No leftover accas to write');
 
-  if (riskyPortfolios.length > 0) _writeRiskySheet(ss, riskyPortfolios);
-  else Logger.log('[' + FUNC + '] No risky accas to write');
+  _writeRiskySheet(ss, riskyPortfolios);
+  if (riskyPortfolios.length === 0) Logger.log('[' + FUNC + '] No risky accas to write');
 
   _writeAuditSheet(ss, audit);
 
