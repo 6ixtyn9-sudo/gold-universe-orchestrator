@@ -339,7 +339,17 @@ def enrich_games(
 
         pick = _normalize_pick(pred, home, away)
         if not pick:
-            continue
+            pick = "⚠️ NO-PREDICTION"
+            conf = 0
+            game["banker"] = {
+                "pick": pick,
+                "side": "",
+                "team": pick,
+                "confidence": 0,
+                "ev": None,
+                "edge": 0,
+                "odds": None,
+            }
 
         side = _derive_side(pick, home, away)
         pick_odds_val = _pick_odds(side, home_odds, away_odds)

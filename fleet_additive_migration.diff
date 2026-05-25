@@ -1,0 +1,407 @@
+diff --git a/doc/Mothership_AssayerBridge.gs b/doc/Mothership_AssayerBridge.gs
+index 72b1a06..ad13619 100644
+--- a/doc/Mothership_AssayerBridge.gs
++++ b/doc/Mothership_AssayerBridge.gs
+@@ -177,6 +177,7 @@ function assayerCanonSource_(v) {
+   if (s === "TOTAL" || s === "TOTALS" || s === "OU" || s === "O/U") return "TOTALS";
+   if (s === "HIGHQUARTER" || s === "HIGH_QTR" || s === "HIGHQTR" ||
+       s === "HIGHESTQTR" || s === "HIGHESTQUARTER") return "HIGHQUARTER";
++  if (s === "FLEET") return "FLEET";
+   return s;
+ }
+ 
+@@ -1171,7 +1172,7 @@ function assayerEnrichBet_(bet, assayerData) {
+   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   // BRANCH B: Unsupported source → neutral pass-through
+   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-  var SUPPORTED_SOURCES = ['SIDE', 'TOTALS'];
++  var SUPPORTED_SOURCES = ['SIDE', 'TOTALS', 'FLEET'];
+   if (SUPPORTED_SOURCES.indexOf(dims.source) < 0) {
+ 
+     var unsupEvidence = 'Unsupported source "' + dims.source + '" — neutral pass-through';
+@@ -1418,6 +1419,16 @@ function assayerBetMatchesEdge_(dims, edge) {
+ 
+   if (edge.source && dims.source && edge.source !== dims.source) return false;
+ 
++  if (edge.source === 'FLEET') {
++    // Fleet edges match exclusively on criteria type + cfgKey + cfgBucket
++    var crit = edge.criteria || {};
++    if (crit.type      != null && dims.typeKey   !== crit.type)      return false;
++    if (crit.cfgKey    != null && dims.cfgKey    !== crit.cfgKey)    return false;
++    if (crit.cfgBucket != null && dims.cfgBucket !== crit.cfgBucket) return false;
++    return true;
++  }
++
++  // Legacy SIDE / TOTALS match logic
+   if (edge.quarter       != null && dims.quarter       !== edge.quarter)       return false;
+   if (edge.is_women      != null && dims.isWomen       !== edge.is_women)      return false;
+   if (edge.tier          != null && dims.tier          !== edge.tier)          return false;
+@@ -1453,6 +1464,14 @@ function assayerEdgeSpecificity_(edge) {
+     "type_key"                                              // ◄◄ PATCH
+   ];
+   for (const k of keys) if (edge && edge[k] != null) n++;
++  
++  // ◄◄ PATCH: Fleet edges store specificity inside criteria
++  if (edge && edge.source === 'FLEET' && edge.criteria) {
++    if (edge.criteria.type != null) n++;
++    if (edge.criteria.cfgKey != null) n++;
++    if (edge.criteria.cfgBucket != null) n++;
++  }
++
+   return n;
+ }
+ 
+@@ -1728,6 +1747,102 @@ function assayerDerivePurityAction_(purityRow) {
+  *            cleaned = "Q1: H +5.5"
+  *            → clean pattern matching, correct SIDE classification
+  */
++
++// ---------------------------------------------------------------------------
++// Config-profile helpers (v5.0.0 Fleet support)
++// ---------------------------------------------------------------------------
++function _assayerSafeParseJSON_(s) {
++  if (!s || typeof s !== 'string') return {};
++  var t = s.trim();
++  if (!t || t === '{}') return {};
++  try { return JSON.parse(t); } catch (_) { return {}; }
++}
++
++function _assayerNormalizeConfigVal_(raw) {
++  if (raw === null || raw === undefined || raw === '') return undefined;
++  var s = String(raw).trim();
++  if (!s) return undefined;
++  var u = s.toUpperCase();
++  if (u === 'TRUE')  return true;
++  if (u === 'FALSE') return false;
++  if (/^\d+(\.\d+)?%$/.test(s)) { var p = parseFloat(s); return isFinite(p) ? p / 100 : s; }
++  var n = Number(s);
++  if (!isNaN(n) && isFinite(n)) return n;
++  return s;
++}
++
++function _assayerFlattenConfigProfile_(obj) {
++  if (!obj || typeof obj !== 'object') return {};
++  var out = {};
++  var sheets = Object.keys(obj);
++  for (var si = 0; si < sheets.length; si++) {
++    var sheet = sheets[si];
++    var props  = obj[sheet];
++    if (!props || typeof props !== 'object') continue;
++    var pkeys = Object.keys(props);
++    for (var pi = 0; pi < pkeys.length; pi++) {
++      var normKey = String(pkeys[pi]).trim().replace(/\s+/g, ' ');
++      if (!normKey) continue;
++      out[sheet + '.' + normKey] = _assayerNormalizeConfigVal_(props[pkeys[pi]]);
++    }
++  }
++  return out;
++}
++
++function _assayerIsThresholdKey_(keyPath) {
++  return /min|max|threshold|\bev\b|expected.value|confidence|edge|tolerance/i.test(keyPath);
++}
++
++function _assayerBucketCfgValue_(keyPath, val) {
++  if (val === undefined || val === null) return 'MISSING';
++  if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
++
++  if (/confidence/i.test(keyPath)) {
++    var c = typeof val === 'number' ? val : parseFloat(val);
++    if (!isFinite(c)) return 'MISSING';
++    if (c > 1 && c <= 100) c = c / 100;
++    // For Mothership fallback, we don't have Config_.confBuckets easily available
++    // but Assayer uses default buckets:
++    if (c < 0.55) return '<55%';
++    if (c < 0.60) return '55-60%';
++    if (c < 0.65) return '60-65%';
++    if (c < 0.70) return '65-70%';
++    return '>=70%';
++  }
++
++  if (/\bev\b|expected.value/i.test(keyPath)) {
++    var ev = typeof val === 'number' ? val : parseFloat(val);
++    if (!isFinite(ev)) return 'MISSING';
++    if (ev < 0)  return '<0';
++    if (ev < 2)  return '0-2';
++    if (ev < 5)  return '2-5';
++    if (ev < 10) return '5-10';
++    return '>=10';
++  }
++
++  var nv = typeof val === 'number' ? val : Number(val);
++  if (!isNaN(nv) && isFinite(nv)) {
++    if (nv <= 0)  return '<=0';
++    if (nv <= 1)  return '0-1';
++    if (nv <= 2)  return '1-2';
++    if (nv <= 5)  return '2-5';
++    if (nv <= 10) return '5-10';
++    return '>=10';
++  }
++
++  return String(val).trim().slice(0, 30) || 'MISSING';
++}
++
++function _assayerGetCfgFlat_(bet) {
++  if (!bet._cfgFlat) {
++    bet._cfgFlat = _assayerFlattenConfigProfile_(
++      _assayerSafeParseJSON_((bet && bet.config_profile) ? bet.config_profile : '{}')
++    );
++  }
++  return bet._cfgFlat;
++}
++
++// ---------------------------------------------------------------------------
+ function assayerDeriveBetSource_(bet) {
+ 
+   // ── ◄◄ FIX: Inline cleaner (self-sufficient if _stripGlyphsForDims not called) ──
+@@ -1774,7 +1889,23 @@ function assayerDeriveBetSource_(bet) {
+     return "HIGHQUARTER";
+   }
+ 
+-  // ── 2. Totals detection ──
++  // ── 2. Fleet detection (if config_profile is present and parseable) ──
++  if (bet && bet.config_profile) {
++    var flatCfg = _assayerGetCfgFlat_(bet);
++    var keys = Object.keys(flatCfg);
++    var hasThreshold = false;
++    for (var i = 0; i < keys.length; i++) {
++      if (_assayerIsThresholdKey_(keys[i])) {
++        hasThreshold = true;
++        break;
++      }
++    }
++    if (hasThreshold) {
++      return "FLEET";
++    }
++  }
++
++  // ── 3. Totals detection ──
+   if (
+     /\b(OVER|UNDER)\b/.test(pick) ||
+     type.includes("O/U") ||
+@@ -1784,7 +1915,7 @@ function assayerDeriveBetSource_(bet) {
+     return "TOTALS";
+   }
+ 
+-  // ── 3. Default: Side ──
++  // ── 4. Default: Side ──
+   return "SIDE";
+ }
+ 
+@@ -1867,8 +1998,22 @@ function assayerDeriveBetDims_(bet) {
+ 
+   var direction = null, line = null, line_bucket = null;
+   var side = null, spread = null, spread_bucket = null;
+-
+-  if (source === "TOTALS") {
++  var typeKey = typeU;
++  var cfgKey = null, cfgBucket = null;
++
++  if (source === "FLEET") {
++    var flatCfg = _assayerGetCfgFlat_(bet);
++    var keys = Object.keys(flatCfg);
++    var thresholdKeys = [];
++    for (var i = 0; i < keys.length; i++) {
++      if (_assayerIsThresholdKey_(keys[i])) thresholdKeys.push(keys[i]);
++    }
++    // We just take the first threshold key since we match multiple fleet edges independently
++    if (thresholdKeys.length > 0) {
++      cfgKey = thresholdKeys[0];
++      cfgBucket = _assayerBucketCfgValue_(cfgKey, flatCfg[cfgKey]);
++    }
++  } else if (source === "TOTALS") {
+     var totalsInfo = assayerParseTotalsPick_(pick);        // ◄◄ uses cleaned pick
+     if (totalsInfo) {
+       direction   = assayerCanonDirection_(totalsInfo.direction);
+@@ -1979,7 +2124,9 @@ function assayerDeriveBetDims_(bet) {
+     spread_bucket: assayerCanonBucket_(spread_bucket),
+     line:          line,
+     line_bucket:   assayerCanonBucket_(line_bucket),
+-    typeKey:       typeKey                                  // ◄◄ PATCH
++    typeKey:       typeKey,                                 // ◄◄ PATCH
++    cfgKey:        cfgKey,
++    cfgBucket:     cfgBucket
+   };
+ }
+ 
+diff --git a/doc/Mothership_RiskyAccaBuilder.gs b/doc/Mothership_RiskyAccaBuilder.gs
+index f4003d4..8e9bdba 100644
+--- a/doc/Mothership_RiskyAccaBuilder.gs
++++ b/doc/Mothership_RiskyAccaBuilder.gs
+@@ -1333,6 +1333,22 @@ function _enrichRiskyBetsWithStrategy(bets) {
+         };
+       };
+ 
++      // ◄◄ PATCH: Fleet dimension builder
++      var buildFleetDims = function(pred) {
++        return {
++          league:        normLeague(league),
++          source:        'FLEET',
++          quarter:       null,
++          isWomen:       null,
++          tier:          tier0,
++          side:          pred === 1 ? 'H' : 'A',
++          direction:     null,
++          conf_bucket:   confBucket0,
++          spread_bucket: null,
++          line_bucket:   null
++        };
++      };
++
+       var bestEdgeForDims = function(dims) {
+         var edge = null;
+         if (typeof assayerMatchBetToBestEdge_ === 'function') {
+@@ -1371,11 +1387,15 @@ function _enrichRiskyBetsWithStrategy(bets) {
+         };
+       };
+ 
++      // ◄◄ PATCH: Cascade from FLEET -> SIDE
++      var bestWithFleet = bestEdgeForDims(buildFleetDims(withPred));
+       withSupport    = edgeToSupport(
+-        bestEdgeForDims(buildSideDims(withPred))
++        bestWithFleet ? bestWithFleet : bestEdgeForDims(buildSideDims(withPred))
+       );
++
++      var bestAgainstFleet = bestEdgeForDims(buildFleetDims(againstPred));
+       againstSupport = edgeToSupport(
+-        bestEdgeForDims(buildSideDims(againstPred))
++        bestAgainstFleet ? bestAgainstFleet : bestEdgeForDims(buildSideDims(againstPred))
+       );
+ 
+       var withRank    = withSupport    ? withSupport.gradeRank    : 0;
+diff --git a/doc/Mothership_RiskyAnalyzer.gs b/doc/Mothership_RiskyAnalyzer.gs
+index 09707ed..9cf60b5 100644
+--- a/doc/Mothership_RiskyAnalyzer.gs
++++ b/doc/Mothership_RiskyAnalyzer.gs
+@@ -783,6 +783,15 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
+     const edgeSource = String(edgeField(edge, 'source', 'source') || '').trim();
+     if (edgeSource && String(bet.source || '').trim() !== edgeSource) return false;
+ 
++    // ◄◄ PATCH: Fleet edges match exclusively on criteria
++    if (edgeSource === 'FLEET') {
++      const crit = edge.criteria || {};
++      if (crit.type      != null && bet.typeKey   !== crit.type)      return false;
++      if (crit.cfgKey    != null && bet.cfgKey    !== crit.cfgKey)    return false;
++      if (crit.cfgBucket != null && bet.cfgBucket !== crit.cfgBucket) return false;
++      return true;
++    }
++
+     const checks = [
+       ['quarter', 'quarter', 'quarter'],
+       ['isWomen', 'is_women', 'isWomen'],
+@@ -809,6 +818,15 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
+     // also check camelCase just in case
+     const camelKeys = ['quarter','isWomen','tier','side','direction','confBucket','spreadBucket','lineBucket'];
+     for (const k of camelKeys) if (!isBlank(edge?.[k])) n = Math.max(n, n); // no-op, kept intentionally minimal
++    
++    // ◄◄ PATCH: Fleet edges store specificity inside criteria
++    const edgeSource = String(edgeField(edge, 'source', 'source') || '').trim();
++    if (edgeSource === 'FLEET' && edge?.criteria) {
++      if (edge.criteria.type != null) n++;
++      if (edge.criteria.cfgKey != null) n++;
++      if (edge.criteria.cfgBucket != null) n++;
++    }
++    
+     return n;
+   };
+ 
+@@ -984,9 +1002,10 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
+       let bestEdge = null;
+ 
+       for (const ps of pickSides) {
+-        const bet = {
++        // ◄◄ PATCH: Cascade FLEET -> SIDE
++        let m = bestEdgeForBet({
+           league,
+-          source,
++          source: 'FLEET',
+           side: ps,
+           quarter: null,
+           isWomen: null,
+@@ -995,8 +1014,22 @@ function _calculateCalibratedRiskinessScore(data, ctx) {
+           confBucket,
+           spreadBucket: null,
+           lineBucket: null,
+-        };
+-        const m = bestEdgeForBet(bet, edges || []);
++        }, edges || []);
++
++        if (!m) {
++          m = bestEdgeForBet({
++            league,
++            source: 'Side',
++            side: ps,
++            quarter: null,
++            isWomen: null,
++            tier,
++            direction: null,
++            confBucket,
++            spreadBucket: null,
++            lineBucket: null,
++          }, edges || []);
++        }
+         if (!m) continue;
+         if (!bestEdge || m.specificity > bestEdge.specificity ||
+             (m.specificity === bestEdge.specificity && m.gradeRank > bestEdge.gradeRank) ||
+diff --git a/doc/Systems Audit.gs b/doc/Systems Audit.gs
+index 6a3d0d8..b8b6dd5 100644
+--- a/doc/Systems Audit.gs	
++++ b/doc/Systems Audit.gs	
+@@ -74,7 +74,7 @@ const SYS_CONTRACT = {
+   // ── Enum constraints for type validation ──
+   VALID_GRADES:       ["PLATINUM","GOLD","SILVER","BRONZE","ROCK","CHARCOAL"],
+   VALID_SAMPLE_SIZES: ["Small","Medium","Large"],
+-  VALID_SOURCES:      ["Side","Totals"],
++  VALID_SOURCES:      ["Side","Totals","Fleet"],
+   VALID_QUARTERS_EDGE:   ["Q1","Q2","Q3","Q4"],          // edges use Q-prefix
+   VALID_QUARTERS_LEAGUE: ["All","Full","Q1","Q2","Q3","Q4"], // purity uses All/Full/Q-prefix
+   VALID_SIDES:        ["H","A"],
+@@ -817,7 +817,7 @@ function validateEdgeDataTypes_(add, sheet, disc, prefix, lastRow) {
+     // source: enum
+     const src = String(getByHeader_(row, colMap, "source") || "");
+     if (SYS_CONTRACT.VALID_SOURCES.includes(src)) pass();
+-    else fail(`${label}: source="${src}" (expected Side|Totals)`);
++    else fail(`${label}: source="${src}" (expected Side|Totals|Fleet)`);
+ 
+     // filters_json: valid JSON
+     const fj = String(getByHeader_(row, colMap, "filters_json") || "");
+@@ -888,7 +888,7 @@ function validatePurityDataTypes_(add, sheet, disc, prefix, lastRow) {
+     // source: enum
+     const src = String(getByHeader_(row, colMap, "source") || "");
+     if (SYS_CONTRACT.VALID_SOURCES.includes(src)) pass();
+-    else fail(`${label}: source="${src}" (expected Side|Totals)`);
++    else fail(`${label}: source="${src}" (expected Side|Totals|Fleet)`);
+ 
+     // gender: enum
+     const gen = String(getByHeader_(row, colMap, "gender") || "");
+@@ -1030,6 +1030,30 @@ function assayerChecks_(ctx) {
+   if (names.has("Totals")) add("OK","integration","assayer_source_totals","Totals sheet present");
+   else add("WARN","integration","assayer_source_totals","Totals sheet missing — edges may be incomplete");
+ 
++  // Check that Fleet rows exist in ASSAYER_EDGES
++  var edgeSh = ss.getSheetByName(contract.EDGE_SHEET_NAME);
++  if (edgeSh) {
++    var hasFleet = false;
++    var data = edgeSh.getDataRange().getValues();
++    // find 'source' col index
++    if (data.length > 0) {
++      var sourceCol = -1;
++      for (var c = 0; c < data[0].length; c++) {
++        if (normKey_(data[0][c]) === "source") { sourceCol = c; break; }
++      }
++      if (sourceCol >= 0) {
++        for (var r = 1; r < data.length; r++) {
++          if (String(data[r][sourceCol] || "").toUpperCase() === "FLEET") {
++            hasFleet = true;
++            break;
++          }
++        }
++      }
++    }
++    if (hasFleet) add("OK","integration","assayer_source_fleet","Fleet rows present in ASSAYER_EDGES");
++    else add("WARN","integration","assayer_source_fleet","No Fleet rows in ASSAYER_EDGES — feature may not be live yet");
++  }
++
+   // Count MA_* sheets for health
+   const maSheets = sheetInfos.filter(s => s.name.startsWith("MA_")).map(s => s.name);
+   add("INFO","integration","assayer_ma_sheets", `${maSheets.length}: ${maSheets.join(", ")}`);
