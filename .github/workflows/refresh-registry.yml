@@ -1,0 +1,64 @@
+name: Refresh Satellite Registry
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+
+  # Scheduled: runs at 06:00 UTC every day
+  schedule:
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-registry:
+    name: Rebuild registry.json from Drive folder
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install gspread google-auth
+
+      - name: Validate secret is present
+        run: |
+          if [ -z "$GOOGLE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "❌ ERROR: GOOGLE_SERVICE_ACCOUNT_JSON secret is not set."
+            echo "   Go to: Settings → Secrets and variables → Actions → New repository secret"
+            echo "   Name:  GOOGLE_SERVICE_ACCOUNT_JSON"
+            echo "   Value: The full JSON content of your service account key file."
+            exit 1
+          fi
+          echo "✅ GOOGLE_SERVICE_ACCOUNT_JSON secret is present."
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+      - name: Populate registry from Drive folder
+        run: python registry/populate_registry_from_folder.py
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          # SATELLITES_FOLDER_ID is optional — defaults to 1fZYPWLG1OKTnML0Yil82y4cAI-ioli0K
+
+      - name: Validate registry
+        run: python registry/validate_registry.py
+
+      - name: Commit changes if registry changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add registry/registry.json registry/registry_fingerprint.json
+          if git diff --cached --quiet; then
+            echo "✅ No changes to registry — nothing to commit."
+          else
+            git commit -m "chore(registry): auto-refresh satellite registry [skip ci]"
+            git push
+            echo "✅ Registry committed and pushed."
+          fi
