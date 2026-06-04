@@ -132,7 +132,7 @@ const ASSAYER_BRIDGE = {
   MIN_EDGE_GRADE: "SILVER",               // minimum edge grade allowed when GOLD_ONLY_MODE=true
   MIN_PURITY_GRADE: "SILVER",             // minimum purity grade allowed when GOLD_ONLY_MODE=true
   UNKNOWN_LEAGUE_ACTION: "BLOCK",       // what to do when no purity row exists: "BLOCK" | "NEUTRAL"
-  UNKNOWN_EDGE_ACTION: "ALLOW",         // what to do when no edge row exists: "ALLOW" | "BLOCK"
+  UNKNOWN_EDGE_ACTION: "BLOCK",         // what to do when no edge row exists: "ALLOW" | "BLOCK"
   REQUIRE_EDGE_RELIABLE: false,          // if true: only edges with reliable===true are match-eligible
   DISALLOW_SMALL_SAMPLE_EDGES: false,    // if true: sample_size==="Small" edges are excluded (hard)
   MIN_EDGE_SPECIFICITY: 1,              // mitigates wildcard/broad-edge risk (0 disables)

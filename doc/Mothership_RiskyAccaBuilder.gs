@@ -35,11 +35,11 @@ const RISKY_ACCA_CONFIG = {
   // ─────────────────────────────────────────────────────────────
   // PATCH: Assayer SILVER floor for risky accas
   // ─────────────────────────────────────────────────────────────
-  ASSAYER_FLOOR_ENABLED: false,
+  ASSAYER_FLOOR_ENABLED: true,
   MIN_EDGE_GRADE: 'SILVER',
   MIN_PURITY_GRADE: 'SILVER',
 
-  UNKNOWN_EDGE_ACTION: 'ALLOW',     // 'BLOCK' | 'ALLOW'
+  UNKNOWN_EDGE_ACTION: 'BLOCK',     // 'BLOCK' | 'ALLOW'
   UNKNOWN_PURITY_ACTION: 'ALLOW',   // 'BLOCK' | 'ALLOW'
 
   REQUIRE_RELIABLE_EDGE: false,     // safe default

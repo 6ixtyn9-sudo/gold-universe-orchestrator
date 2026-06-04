@@ -59,7 +59,7 @@ const ACCA_ENGINE_CONFIG = {
   MIN_EDGE_GRADE: 'SILVER',
   MIN_PURITY_GRADE: 'SILVER',
   UNKNOWN_LEAGUE_ACTION: 'ALLOW',
-  UNKNOWN_EDGE_ACTION: 'ALLOW',
+  UNKNOWN_EDGE_ACTION: 'BLOCK',
   REQUIRE_RELIABLE_EDGE: false,
 
   // ── Optimizer Config ──
@@ -7527,6 +7527,7 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     applyGoldGate: false,
     minEdgeGrade: 'SILVER',
     minPurityGrade: 'SILVER',
+    unknownEdgeAction: 'BLOCK',
     unknownPurityAction: 'ALLOW'
   });
   Logger.log('[' + FUNC + '] ✅ Silver qualified: ' +
