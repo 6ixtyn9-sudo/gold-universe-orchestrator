@@ -3319,7 +3319,8 @@ function buildAccumulatorPortfolio() {
       applyGoldGate: false,
       minEdgeGrade: ACCA_ENGINE_CONFIG.MIN_EDGE_GRADE || 'GOLD',
       minPurityGrade: ACCA_ENGINE_CONFIG.MIN_PURITY_GRADE || 'GOLD',
-      unknownEdgeAction: ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION || 'ALLOW'
+      unknownEdgeAction: ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION || 'ALLOW',
+      unknownPurityAction: 'ALLOW'
     });
 
     Logger.log('[' + FUNC_NAME + '] ✅ GOLD filter: ' + goldBets.length + '/' +
@@ -7525,7 +7526,8 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     skipStandard: true,
     applyGoldGate: false,
     minEdgeGrade: 'SILVER',
-    minPurityGrade: 'SILVER'
+    minPurityGrade: 'SILVER',
+    unknownPurityAction: 'ALLOW'
   });
   Logger.log('[' + FUNC + '] ✅ Silver qualified: ' +
     silQ.length + '/' + enriched.length);

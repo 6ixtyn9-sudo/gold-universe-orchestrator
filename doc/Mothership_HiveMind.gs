@@ -3225,7 +3225,10 @@ function computeVerdict(bet, gateCfg) {
 
   if (minPurity) {
     if (!purityGrade) {
-      reasons.push('NO_PURITY_MATCH');
+      var unknownPurityAction = String(gateCfg.unknownPurityAction || 'ALLOW').trim().toUpperCase();
+      if (unknownPurityAction !== 'ALLOW') {
+        reasons.push('NO_PURITY_MATCH');
+      }
     } else if (rankOf(purityGrade) < rankOf(minPurity)) {
       reasons.push('PURITY_GRADE_FAIL(' + purityGrade + '<' + minPurity + ')');
     }
@@ -3324,7 +3327,8 @@ function _filterBets(bets, opts) {
     minPurityGrade:     (opts.minPurityGrade !== undefined) ? String(opts.minPurityGrade) : '',
     requireReliableEdge: (opts.requireReliableEdge !== undefined) ? !!opts.requireReliableEdge : false,
     unknownLeagueAction: (opts.unknownLeagueAction !== undefined) ? String(opts.unknownLeagueAction) : 'ALLOW',
-    unknownEdgeAction:   (opts.unknownEdgeAction !== undefined) ? String(opts.unknownEdgeAction) : 'ALLOW'
+    unknownEdgeAction:   (opts.unknownEdgeAction !== undefined) ? String(opts.unknownEdgeAction) : 'ALLOW',
+    unknownPurityAction: (opts.unknownPurityAction !== undefined) ? String(opts.unknownPurityAction) : 'ALLOW'
   };
 
   // ── Legacy gold gate config (uses ACCA_ENGINE_CONFIG defaults) ──
