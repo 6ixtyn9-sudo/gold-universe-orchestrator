@@ -95,7 +95,12 @@ var LEFTOVER_CONFIG = {
   MIN_POOL_SIZE:      2,              
   DEFAULT_ODDS:       1.50,          
   FORCE_DOUBLES:      true,          
-  ALLOW_SINGLES:      true           
+  ALLOW_SINGLES:      true,
+
+  // ── Risky tier gate (must match RISKY_ACCA_CONFIG) ──
+  RISKY_MIN_EDGE_GRADE:   'SILVER',
+  RISKY_REQUIRE_RELIABLE: true,
+  RISKY_MIN_EDGE_N:       30
 };
 
 function _getBetId_(b) {
