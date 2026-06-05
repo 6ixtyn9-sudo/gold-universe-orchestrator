@@ -59,7 +59,7 @@ const ACCA_ENGINE_CONFIG = {
   MIN_EDGE_GRADE: 'SILVER',
   MIN_PURITY_GRADE: 'SILVER',
   UNKNOWN_LEAGUE_ACTION: 'ALLOW',
-  UNKNOWN_EDGE_ACTION: 'BLOCK',
+  UNKNOWN_EDGE_ACTION: 'ALLOW',
   REQUIRE_RELIABLE_EDGE: false,
 
   // ── Optimizer Config ──
@@ -79,10 +79,136 @@ const ACCA_ENGINE_CONFIG = {
 
   LOGGING: {
     ENABLED: true,
-    LOG_ACCEPTS: true,
-    LOG_REJECTS: false
   }
 };
+
+// ────────────────────────────────────────────────────────────────────────
+// CANONICAL DATE/TIME PARSING — v2 (single source of truth)
+// All callers MUST go through _kickoffMs(bet) below. No new Date(...) on
+// raw sheet values anywhere else in the expiry pipeline.
+// ────────────────────────────────────────────────────────────────────────
+const EXPIRY_V2_ENABLED = true;
+const EXPIRY_TZ = 'Africa/Johannesburg';
+
+// Per-league grace minutes added to tip-off before a bet is "expired".
+// Default 150 min covers a full basketball game + buffer. Soccer would be 120.
+const EXPIRY_GRACE_MIN_DEFAULT = 150;
+const EXPIRY_GRACE_MIN_BY_LEAGUE = {
+  // Add overrides only if needed. Keys = league code as in Sync_Temp `league` col.
+  // 'WNB': 150, 'NBA': 150, ...
+};
+
+function _v2NormalizeDateOnly(raw) {
+  if (!raw) return null;
+  if (raw instanceof Date) {
+    const s = Utilities.formatDate(raw, EXPIRY_TZ, 'yyyy-MM-dd');
+    const parts = s.split('-');
+    return { y: parseInt(parts[0], 10), m: parseInt(parts[1], 10), d: parseInt(parts[2], 10) };
+  }
+  if (typeof raw === 'number') {
+    const sheetsEpoch = new Date(1899, 11, 30);
+    const d = new Date(sheetsEpoch.getTime() + Math.round(raw) * 86400000);
+    const s = Utilities.formatDate(d, EXPIRY_TZ, 'yyyy-MM-dd');
+    const parts = s.split('-');
+    return { y: parseInt(parts[0], 10), m: parseInt(parts[1], 10), d: parseInt(parts[2], 10) };
+  }
+  const str = String(raw).trim();
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if (isoMatch) {
+    const d = new Date(str);
+    const s = Utilities.formatDate(d, EXPIRY_TZ, 'yyyy-MM-dd');
+    const parts = s.split('-');
+    return { y: parseInt(parts[0], 10), m: parseInt(parts[1], 10), d: parseInt(parts[2], 10) };
+  }
+  const ymdMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymdMatch) return { y: parseInt(ymdMatch[1], 10), m: parseInt(ymdMatch[2], 10), d: parseInt(ymdMatch[3], 10) };
+  const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) return { y: parseInt(dmyMatch[3], 10), m: parseInt(dmyMatch[2], 10), d: parseInt(dmyMatch[1], 10) };
+  return null;
+}
+
+function _v2NormalizeTimeOnly(raw) {
+  if (raw == null || raw === '') return null;
+  if (raw instanceof Date) {
+    const s = Utilities.formatDate(raw, EXPIRY_TZ, 'HH:mm');
+    const parts = s.split(':');
+    return { hh: parseInt(parts[0], 10), mm: parseInt(parts[1], 10) };
+  }
+  if (typeof raw === 'number' && raw >= 0 && raw < 1) {
+    const totalMins = Math.round(raw * 24 * 60);
+    return { hh: Math.floor(totalMins / 60), mm: totalMins % 60 };
+  }
+  const str = String(raw).trim();
+  const isoMatch = str.match(/T\d{2}:\d{2}:\d{2}/);
+  if (isoMatch) {
+    const d = new Date(str);
+    const s = Utilities.formatDate(d, EXPIRY_TZ, 'HH:mm');
+    const parts = s.split(':');
+    return { hh: parseInt(parts[0], 10), mm: parseInt(parts[1], 10) };
+  }
+  const hmMatch = str.match(/^(\d{1,2}):(\d{2})/);
+  if (hmMatch) return { hh: parseInt(hmMatch[1], 10), mm: parseInt(hmMatch[2], 10) };
+  return null;
+}
+
+function _kickoffMs(bet) {
+  if (!bet) return NaN;
+  const dObj = _v2NormalizeDateOnly(bet.date);
+  if (!dObj) return NaN;
+  const tObj = _v2NormalizeTimeOnly(bet.time);
+  if (!tObj) return NaN;
+  const pad = function(n) { return (n < 10 ? '0' + n : n); };
+  const localStr = dObj.y + '-' + pad(dObj.m) + '-' + pad(dObj.d) + ' ' + pad(tObj.hh) + ':' + pad(tObj.mm);
+  const d = Utilities.parseDate(localStr, EXPIRY_TZ, 'yyyy-MM-dd HH:mm');
+  return d ? d.getTime() : NaN;
+}
+
+/**
+ * Shared expiry test used by AccaEngine, HiveMind, RiskyAccaBuilder.
+ * Returns true ONLY if kickoff + per-league grace is in the past.
+ * Fail-open: returns false on parse failure.
+ */
+function isBetExpiredV2(bet, nowDate) {
+  if (!EXPIRY_V2_ENABLED) return false;
+  var now = (nowDate instanceof Date) ? nowDate : new Date();
+  var koMs = _kickoffMs(bet);
+  if (isNaN(koMs)) return false;
+  var league = String((bet && bet.league) || '').toUpperCase();
+  var graceMin = EXPIRY_GRACE_MIN_BY_LEAGUE[league] || EXPIRY_GRACE_MIN_DEFAULT;
+  return now.getTime() > koMs + (graceMin * 60 * 1000);
+}
+
+function diagnoseExpiryV2() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const syncSheet = ss.getSheetByName('Sync_Temp');
+  if (!syncSheet) return;
+  const bets = _loadBetsFromSyncTemp(syncSheet);
+  const now = new Date();
+  let flippedToActive = 0;
+  let flippedToExpired = 0;
+  
+  Logger.log('league, match, dateRaw, timeRaw, parsedLocal, koMs, graceMin, minutesPastTipoff, isExpiredLegacy, isExpiredV2');
+  bets.forEach(function(b) {
+    const t0 = _parseTime(b.time, b.date);
+    const legacyExpired = t0 && t0 < now;
+    
+    const koMs = _kickoffMs(b);
+    const v2Expired = isBetExpiredV2(b, now);
+    
+    const league = String((b && b.league) || '').toUpperCase();
+    const graceMin = EXPIRY_GRACE_MIN_BY_LEAGUE[league] || EXPIRY_GRACE_MIN_DEFAULT;
+    
+    const parsedLocal = !isNaN(koMs) ? Utilities.formatDate(new Date(koMs), EXPIRY_TZ, 'yyyy-MM-dd HH:mm') : 'NaN';
+    const minutesPastTipoff = !isNaN(koMs) ? Math.floor((now.getTime() - koMs) / 60000) : 'NaN';
+    
+    if (legacyExpired && !v2Expired) flippedToActive++;
+    if (!legacyExpired && v2Expired) flippedToExpired++;
+    
+    Logger.log(b.league + ', ' + b.match + ', ' + b.date + ', ' + b.time + ', ' + parsedLocal + ', ' + koMs + ', ' + graceMin + ', ' + minutesPastTipoff + ', ' + legacyExpired + ', ' + v2Expired);
+  });
+  
+  Logger.log('SUMMARY: flipped expired->active: ' + flippedToActive + ', active->expired: ' + flippedToExpired);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEFTOVER BETS SYSTEM - FIXED WITH PICK-INCLUSIVE BET IDs
@@ -95,26 +221,46 @@ var LEFTOVER_CONFIG = {
   MIN_POOL_SIZE:      2,              
   DEFAULT_ODDS:       1.50,          
   FORCE_DOUBLES:      true,          
-  ALLOW_SINGLES:      true,
-
-  // ── Risky tier gate (must match RISKY_ACCA_CONFIG) ──
-  RISKY_MIN_EDGE_GRADE:   'SILVER',
-  RISKY_REQUIRE_RELIABLE: true,
-  RISKY_MIN_EDGE_N:       30
+  ALLOW_SINGLES:      true           
 };
 
 function _getBetId_(b) {
-  if (b && typeof b.betId === 'string' && b.betId.trim() !== '') return b.betId;
-  if (b && typeof b.id === 'string' && b.id.trim() !== '') return b.id;
-  if (b && typeof b.bet_id === 'string' && b.bet_id.trim() !== '') return b.bet_id;
-  
-  const base = [
-    String(b.league || '').trim().toUpperCase(),
-    String(b.match || b.home + ' vs ' + b.away || '').trim().toUpperCase(),
-    String(b.pick || '').trim().toUpperCase(),
-    String(b.type || '').trim().toUpperCase(),
-    (b.time instanceof Date) ? b.time.toISOString() : String(b.time || '')
-  ].join('|');
+  if (!b) return '';
+
+  // Respect existing IDs (Intelligence Core / sheet schema uses BetID/BetId)
+  const existing = (typeof b.betId === 'string' && b.betId.trim() !== '') ? b.betId
+    : (typeof b.BetID === 'string' && b.BetID.trim() !== '') ? b.BetID
+    : (typeof b.BetId === 'string' && b.BetId.trim() !== '') ? b.BetId
+    : (typeof b.id === 'string' && b.id.trim() !== '') ? b.id
+    : (typeof b.bet_id === 'string' && b.bet_id.trim() !== '') ? b.bet_id : '';
+  if (existing) {
+    b.betId = existing;
+    return existing;
+  }
+
+  // Canonical identity parts (safe fallback)
+  const league = String(b.league || '').trim().toUpperCase() || 'UNKNOWN_LEAGUE';
+
+  let matchPart = '';
+  const rawMatch = String(b.match || b.Match || '').trim();
+  if (rawMatch) {
+    matchPart = rawMatch.toUpperCase();
+  } else {
+    const home = String(b.home || b.HomeTeam || '').trim();
+    const away = String(b.away || b.AwayTeam || '').trim();
+    if (home && away) {
+      matchPart = home.toUpperCase() + ' VS ' + away.toUpperCase();
+    } else {
+      matchPart = 'UNKNOWN_MATCH';
+    }
+  }
+
+  const pick    = String(b.pick || b.Pick || b.selection || '').trim().toUpperCase() || 'UNKNOWN_PICK';
+  const type    = String(b.type || b.Type || b.betType || '').trim().toUpperCase() || 'UNKNOWN_TYPE';
+  const timeRaw = (b.time instanceof Date) ? b.time.toISOString()
+               : String(b.time || b.Time || b.matchDate || b.MatchDate || '');
+
+  const base = [league, matchPart, pick, type, timeRaw].join('|');
 
   try {
     const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
@@ -127,11 +273,11 @@ function _getBetId_(b) {
       hex += hexStr;
     }
     const generatedId = 'MD5_' + hex;
-    if (b) b.betId = generatedId;
+    b.betId = generatedId;
     return generatedId;
   } catch (e) {
     const fallbackId = ('BET_' + base).replace(/[^a-z0-9_]/gi, '_');
-    if (b) b.betId = fallbackId;
+    b.betId = fallbackId;
     return fallbackId;
   }
 }
@@ -170,7 +316,7 @@ function _normBet_(b) {
     if (home && away) match = home + ' vs ' + away;
   }
   b._leagueKey = league;
-  b._matchKey = league + '|' + match;
+  b._matchKey = league + '|' + (match ? match : ('__' + b.betId));
   
   // Precompute probabilities
   let p = ACCA_ENGINE_CONFIG.OPT_P_MIN;
@@ -217,24 +363,24 @@ function _normBet_(b) {
     if (!isNaN(t)) b._kickoffEpoch = t;
   }
 
-  // Anchor check
+  // Anchor check — inline grade ranking (replaces nested rankOf)
   b._isAnchor = false;
   if (b.assayer_passed === true || !ACCA_ENGINE_CONFIG.GOLD_ONLY_MODE) {
-    const edge = b.assayer && b.assayer.edge ? b.assayer.edge : {};
-    const pur = b.assayer && b.assayer.purity ? b.assayer.purity : {};
-    
-    // Evaluate strength
-    const isReliableOrLarge = (edge.reliable === true) || (edge.n >= ACCA_ENGINE_CONFIG.ANCHOR_MIN_N) || 
-                              (edge.sample_size === 'L' || edge.sample_size === 'Large' || edge.sample_size === 'XL');
-    
-    const rankOf = function(g) {
-      const n = String(g || '').trim().toUpperCase();
-      const r = { PLATINUM: 5, ELITE: 4, GOLD: 3, SILVER: 2, BRONZE: 1 };
-      return r[n] || 0;
-    };
-    
-    const meetsEdgeGrade = rankOf(edge.grade) >= rankOf(ACCA_ENGINE_CONFIG.ANCHOR_MIN_EDGE_GRADE);
-    const meetsPurityGrade = !pur.grade || rankOf(pur.grade) >= rankOf(ACCA_ENGINE_CONFIG.ANCHOR_MIN_PURITY_GRADE);
+    const ed = (b.assayer && b.assayer.edge) ? b.assayer.edge : {};
+    const pur = (b.assayer && b.assayer.purity) ? b.assayer.purity : {};
+
+    const isReliableOrLarge = (ed.reliable === true) || (ed.n >= ACCA_ENGINE_CONFIG.ANCHOR_MIN_N)
+      || (ed.sample_size === 'L' || ed.sample_size === 'Large' || ed.sample_size === 'XL');
+
+    // Inline grade ranking — no nested function
+    const GRADE_RANK = { PLATINUM: 5, ELITE: 4, GOLD: 3, SILVER: 2, BRONZE: 1, NONE: 0 };
+    const edgeRank = GRADE_RANK[String(ed.grade || '').trim().toUpperCase()] || 0;
+    const minEdgeRank = GRADE_RANK[String(ACCA_ENGINE_CONFIG.ANCHOR_MIN_EDGE_GRADE || '').trim().toUpperCase()] || 0;
+    const purRank = GRADE_RANK[String(pur.grade || '').trim().toUpperCase()] || 0;
+    const minPurRank = GRADE_RANK[String(ACCA_ENGINE_CONFIG.ANCHOR_MIN_PURITY_GRADE || '').trim().toUpperCase()] || 0;
+
+    const meetsEdgeGrade = edgeRank >= minEdgeRank;
+    const meetsPurityGrade = (!pur.grade) || (purRank >= minPurRank);
 
     if (isReliableOrLarge && meetsEdgeGrade && meetsPurityGrade) {
       b._isAnchor = true;
@@ -332,8 +478,8 @@ function _scoreAcca_(legs, mode, cfg) {
   let score = 0;
 
   if (mode === 'FILL') {
-    // Legacy fallback: prefer anchors, then sum of probabilities
-    score = (metrics.anchorCount * 1000) + legs.reduce((s, l) => s + l._p, 0);
+    // Probability-first (log scale) so anchors don't swamp the base EV/prob
+    score = legs.reduce((s, l) => s + Math.log(l._p), 0) + (metrics.ev * 0.1);
   } else if (mode === 'EV_MAX') {
     score = metrics.ev;
   } else if (mode === 'ANCHOR_BOOSTER') {
@@ -370,15 +516,18 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
   
   if (available.length < targetSize) return [];
 
+  const mode = cfg.ALLOCATOR_MODE || 'FILL';
+
   // 2. Pre-filter top K candidates (reduce search space)
   const maxCands = cfg.OPT_MAX_CANDIDATES_PER_POOL || 50;
   if (available.length > maxCands) {
-    // Sort by p as cheap proxy
-    available.sort((a, b) => b._p - a._p);
+    if (mode === 'EV_MAX') {
+      available.sort((a, b) => b._ev - a._ev);
+    } else {
+      available.sort((a, b) => b._p - a._p);
+    }
     available = available.slice(0, maxCands);
   }
-  
-  const mode = cfg.ALLOCATOR_MODE || 'FILL';
   const builtAccas = [];
   
   let loopCount = 0;
@@ -396,34 +545,15 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
     
     // Sort available to ensure determinism
     available.sort((a, b) => {
-      if (a._p !== b._p) return b._p - a._p;
+      if (mode === 'EV_MAX') {
+        if (a._ev !== b._ev) return b._ev - a._ev;
+      } else {
+        if (a._p !== b._p) return b._p - a._p;
+      }
       return String(a.betId).localeCompare(String(b.betId));
     });
 
-    if (mode === 'FILL') {
-      // Greedy legacy parity
-      const current = [];
-      let evals = 0;
-      const maxEvals = Number(cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000);
-      for (let i = 0; i < available.length && current.length < targetSize; i++) {
-        evals++;
-        if (evals > maxEvals) {
-          Logger.log(`[${FUNC_NAME}] CAP HIT size=${targetSize} evals=${evals}`);
-          break;
-        }
-        if (evals % 100 === 0 && Date.now() - startMs > maxTimeMs) {
-          Logger.log(`[${FUNC_NAME}] TIME BUDGET HIT size=${targetSize}`);
-          break;
-        }
-        if (_canAddLegToAcca_(current, available[i], cfg, targetSize)) {
-          current.push(available[i]);
-        }
-      }
-      if (current.length === targetSize) {
-        bestAcca = current;
-        bestScore = _scoreAcca_(current, mode, cfg);
-      }
-    } else if (targetSize <= 3) {
+    if (targetSize <= 3) {
       // Brute force 3-folds
       let evals = 0;
       const maxEvals = Number(cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000);
@@ -517,16 +647,22 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
     // Accept or break
     if (bestAcca && bestScore >= 0) {
       const idx = String(builtAccas.length + 1).padStart(2, '0');
-      const name = `${typePrefix || 'ACCA'} ${idx} (${targetSize}-fold)`;
-      
+
+      // Deterministic acca naming with mode tag (<40 chars)
+      const metrics = _accaMetrics_(bestAcca);
+      const modeTag = (mode === 'EV_MAX') ? 'EV' : (mode === 'ANCHOR_BOOSTER') ? 'ANC'
+                    : (mode === 'DIVERSIFY') ? 'DIV' : (mode === 'TIME_HEDGE') ? 'TIME' : 'FILL';
+      const aTag = metrics.anchorCount ? (' A' + metrics.anchorCount) : '';
+      const name = `${typePrefix || 'ACCA'} ${idx} ${targetSize}F ${modeTag}${aTag}`.trim();
+
       let accaObj = null;
       if (typeof _createAccaObjectEnhanced === 'function') {
         accaObj = _createAccaObjectEnhanced(bestAcca, name);
       } else {
         accaObj = { name: name, size: targetSize, legs: bestAcca };
       }
-      
-      accaObj._metrics = _accaMetrics_(bestAcca);
+
+      accaObj._metrics = metrics; // reuse already-computed metrics (no extra work)
       accaObj._score = bestScore;
       builtAccas.push(accaObj);
       
@@ -3324,8 +3460,7 @@ function buildAccumulatorPortfolio() {
       applyGoldGate: false,
       minEdgeGrade: ACCA_ENGINE_CONFIG.MIN_EDGE_GRADE || 'GOLD',
       minPurityGrade: ACCA_ENGINE_CONFIG.MIN_PURITY_GRADE || 'GOLD',
-      unknownEdgeAction: ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION || 'ALLOW',
-      unknownPurityAction: 'ALLOW'
+      unknownEdgeAction: ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION || 'ALLOW'
     });
 
     Logger.log('[' + FUNC_NAME + '] ✅ GOLD filter: ' + goldBets.length + '/' +
@@ -7138,6 +7273,37 @@ function _loadBetsFromSyncTemp(ss) {
       pastCount + ' past, ' + parseFailCount + ' parse-failed'
     );
 
+    if (typeof isBetExpiredV2 === 'function' && typeof _kickoffMs === 'function') {
+      var nNow = new Date();
+      var legacyExp = 0;
+      var v2Exp = 0;
+      var firstExpired = [];
+      for (var ix=0; ix<bets.length; ix++) {
+        var bb = bets[ix];
+        // For legacy logging estimate, we just check bb.timeMs < nowMs 
+        // because timeMs uses _parseTime under the hood
+        var isLegExp = bb.timeMs < nowMs;
+        var isV2Exp = isBetExpiredV2(bb, nNow);
+        if (isLegExp) legacyExp++;
+        if (isV2Exp) {
+          v2Exp++;
+          if (firstExpired.length < 5) {
+            var koMs = _kickoffMs(bb);
+            var loc = !isNaN(koMs) ? Utilities.formatDate(new Date(koMs), EXPIRY_TZ, 'yyyy-MM-dd HH:mm') : 'NaN';
+            var minsPast = !isNaN(koMs) ? Math.floor((nowMs - koMs)/60000) : 'NaN';
+            firstExpired.push(bb.match + ' (' + bb.league + ') - ' + loc + ' (' + minsPast + 'm past)');
+          }
+        }
+      }
+      Logger.log('[' + FUNC_NAME + '] Expiry V2 Check: ' + legacyExp + ' would expire legacy (grace=0), ' + v2Exp + ' expire with grace');
+      if (firstExpired.length > 0) {
+        Logger.log('[' + FUNC_NAME + '] First 5 expired bets:');
+        for (var fj=0; fj<firstExpired.length; fj++) {
+          Logger.log('  - ' + firstExpired[fj]);
+        }
+      }
+    }
+
     var s = bets[0];
     Logger.log(
       '[' + FUNC_NAME + '] Sample bet: "' + s.match + '" | type="' + s.type + '" | ' +
@@ -7462,8 +7628,16 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
   };
 
   var _isExpired = function(b) {
-    var t = _pt(b && b.time);
-    return (t && t < now);
+    if (!EXPIRY_V2_ENABLED) {
+      var t0 = _pt(b && b.time);
+      return (t0 && t0 < now);
+    }
+    var koMs = _kickoffMs(b);
+    if (isNaN(koMs)) return false; // fail-open: do NOT silently expire parse failures
+    var league = String((b && b.league) || '').toUpperCase();
+    var graceMin = EXPIRY_GRACE_MIN_BY_LEAGUE[league] || EXPIRY_GRACE_MIN_DEFAULT;
+    var expiresAt = koMs + (graceMin * 60 * 1000);
+    return now.getTime() > expiresAt;
   };
 
   // ══════════════════════════════════════════════════
@@ -7531,9 +7705,7 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     skipStandard: true,
     applyGoldGate: false,
     minEdgeGrade: 'SILVER',
-    minPurityGrade: 'SILVER',
-    unknownEdgeAction: 'BLOCK',
-    unknownPurityAction: 'ALLOW'
+    minPurityGrade: 'SILVER'
   });
   Logger.log('[' + FUNC + '] ✅ Silver qualified: ' +
     silQ.length + '/' + enriched.length);

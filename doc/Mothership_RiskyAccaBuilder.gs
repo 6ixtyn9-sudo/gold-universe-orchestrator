@@ -35,11 +35,11 @@ const RISKY_ACCA_CONFIG = {
   // ─────────────────────────────────────────────────────────────
   // PATCH: Assayer SILVER floor for risky accas
   // ─────────────────────────────────────────────────────────────
-  ASSAYER_FLOOR_ENABLED: true,
+  ASSAYER_FLOOR_ENABLED: false,
   MIN_EDGE_GRADE: 'SILVER',
   MIN_PURITY_GRADE: 'SILVER',
 
-  UNKNOWN_EDGE_ACTION: 'BLOCK',     // 'BLOCK' | 'ALLOW'
+  UNKNOWN_EDGE_ACTION: 'ALLOW',     // 'BLOCK' | 'ALLOW'
   UNKNOWN_PURITY_ACTION: 'ALLOW',   // 'BLOCK' | 'ALLOW'
 
   REQUIRE_RELIABLE_EDGE: false,     // safe default
@@ -69,10 +69,10 @@ var LEFTOVER_CONFIG = {
   // ── Risky tier settings ──
   RISKY_ENABLED:          true,
   RISKY_ACCA_SIZES:       [3, 2],         // ◄◄ FIX: smaller — 4-folds at ~60% WR are decorative
-  RISKY_MIN_EDGE_GRADE:   'SILVER',       // Require real edge — no unverified bets in risky
+  RISKY_MIN_EDGE_GRADE:   'NONE',         // Allow bets with no edge into risky leftovers
   RISKY_MIN_POOL_SIZE:    2,
-  RISKY_REQUIRE_RELIABLE: true,           // Risky still needs reliable edge data
-  RISKY_MIN_EDGE_N:       30,             // Minimum edge sample size — no tiny-sample edges
+  RISKY_REQUIRE_RELIABLE: false,          // Risky doesn't need to be reliable
+  RISKY_MIN_EDGE_N:       0,              // Allow small sample sizes for risky
   RISKY_MAX_PER_LEAGUE:   2               // ◄◄ FIX: tighter cap than Silver
 };
 
@@ -93,7 +93,7 @@ var RISKY_ALLOWED_BLOCK_REASONS = new Set([
  * Purity grades that NEVER enter Risky.
  * NOTE: User requested relaxing purity hard blocks, so we don't forbid these anymore.
  */
-var RISKY_FORBIDDEN_PURITY_GRADES = new Set(['CHARCOAL', 'ROCK']);
+var RISKY_FORBIDDEN_PURITY_GRADES = new Set([]);
 
 
 /**
@@ -442,7 +442,7 @@ function _loadPendingRiskyBets(ss) {
           var gameTimeRaw = (timeCol != null) ? gameRow[timeCol] : null;
           if (typeof _parseGameDateTime === 'function') {
             var gameTime = _parseGameDateTime(dateRaw, gameTimeRaw);
-            if (gameTime && gameTime < now) continue;
+            if (gameTime && (typeof isBetExpiredV2 === 'function' ? isBetExpiredV2(bet, now) : (gameTime < now))) continue;
           }
 
           // Forebet prediction
