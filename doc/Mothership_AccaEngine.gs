@@ -210,6 +210,47 @@ function diagnoseExpiryV2() {
   Logger.log('SUMMARY: flipped expired->active: ' + flippedToActive + ', active->expired: ' + flippedToExpired);
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// ACCA / RISKY GATE RESTORATION — v2 (post 2026-06-05 20:42 drift)
+// Re-asserts the gates that produced the 20:14 working build. Each constant
+// is honored ONLY if ACCA_GATES_V2_ENABLED is true. Flip to false to revert.
+// ────────────────────────────────────────────────────────────────────────
+const ACCA_GATES_V2_ENABLED = true;
+
+// Restored values (matched to the 20:14 working run)
+const ACCA_GATES_V2 = {
+  UNKNOWN_EDGE_ACTION:            'BLOCK',       // Assayer bridge: bets with no edge row → blocked from Main pool
+  RISKY_MIN_EDGE_GRADE:           'SILVER',      // Risky tier: edge must be SILVER or better
+  RISKY_REQUIRE_RELIABLE:         true,          // Risky tier: edge must be statistically reliable
+  RISKY_FORBIDDEN_PURITY_GRADES:  ['CHARCOAL', 'ROCK'], // Risky tier: NEVER touch these
+  RISKY_MIN_N:                    30             // Risky tier: minimum sample size
+};
+
+function diagnoseAccaGatesV2() {
+  Logger.log('=== diagnoseAccaGatesV2 ===');
+  Logger.log('ACCA_GATES_V2_ENABLED: ' + ACCA_GATES_V2_ENABLED);
+  Logger.log('V2 enforced values:');
+  Logger.log('  UNKNOWN_EDGE_ACTION: '       + ACCA_GATES_V2.UNKNOWN_EDGE_ACTION);
+  Logger.log('  RISKY_MIN_EDGE_GRADE: '      + ACCA_GATES_V2.RISKY_MIN_EDGE_GRADE);
+  Logger.log('  RISKY_REQUIRE_RELIABLE: '   + ACCA_GATES_V2.RISKY_REQUIRE_RELIABLE);
+  Logger.log('  RISKY_FORBIDDEN_PURITY_GRADES: [' + ACCA_GATES_V2.RISKY_FORBIDDEN_PURITY_GRADES.join(',') + ']');
+  Logger.log('  RISKY_MIN_N: '              + ACCA_GATES_V2.RISKY_MIN_N);
+  Logger.log('ACCA_ENGINE_CONFIG current values:');
+  var aec = (typeof ACCA_ENGINE_CONFIG !== 'undefined') ? ACCA_ENGINE_CONFIG : {};
+  Logger.log('  UNKNOWN_EDGE_ACTION: ' + aec.UNKNOWN_EDGE_ACTION);
+  Logger.log('  MIN_EDGE_GRADE: '      + aec.MIN_EDGE_GRADE);
+  Logger.log('  MIN_PURITY_GRADE: '    + aec.MIN_PURITY_GRADE);
+  Logger.log('  REQUIRE_RELIABLE_EDGE: ' + aec.REQUIRE_RELIABLE_EDGE);
+  Logger.log('LEFTOVER_CONFIG / LCFG current values:');
+  var lc = (typeof LEFTOVER_CONFIG !== 'undefined') ? LEFTOVER_CONFIG : {};
+  Logger.log('  RISKY_MIN_EDGE_GRADE: '   + lc.RISKY_MIN_EDGE_GRADE);
+  Logger.log('  RISKY_REQUIRE_RELIABLE: ' + lc.RISKY_REQUIRE_RELIABLE);
+  Logger.log('  RISKY_MIN_EDGE_N: '       + lc.RISKY_MIN_EDGE_N);
+  Logger.log('RISKY_FORBIDDEN_PURITY_GRADES set (from RiskyAccaBuilder):');
+  var rfpg = (typeof RISKY_FORBIDDEN_PURITY_GRADES !== 'undefined') ? RISKY_FORBIDDEN_PURITY_GRADES : new Set([]);
+  Logger.log('  [' + Array.from(rfpg).join(',') + '] (size=' + rfpg.size + ')');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEFTOVER BETS SYSTEM - FIXED WITH PICK-INCLUSIVE BET IDs
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7678,9 +7719,9 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     UNKNOWN_LEAGUE_ACTION: (typeof ACCA_ENGINE_CONFIG !== 'undefined' &&
                             ACCA_ENGINE_CONFIG.UNKNOWN_LEAGUE_ACTION)
                             ? ACCA_ENGINE_CONFIG.UNKNOWN_LEAGUE_ACTION : 'BLOCK',
-    UNKNOWN_EDGE_ACTION:   (typeof ACCA_ENGINE_CONFIG !== 'undefined' &&
-                            ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION)
-                            ? ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION : 'ALLOW',
+    UNKNOWN_EDGE_ACTION:   ACCA_GATES_V2_ENABLED
+      ? ACCA_GATES_V2.UNKNOWN_EDGE_ACTION
+      : (((typeof ACCA_ENGINE_CONFIG !== 'undefined') && ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION) || 'ALLOW'),
     REQUIRE_RELIABLE_EDGE: false
   }, FUNC);
 
@@ -7788,6 +7829,22 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
       ' allowedReasons=[' + Array.from(RISKY_ALLOWED_BLOCK_REASONS).join(',') + ']' +
       ' forbiddenGrades=[' + Array.from(RISKY_FORBIDDEN_PURITY_GRADES).join(',') + ']');
 
+    // V2 gate overrides (ACCA_GATES_V2_ENABLED=true restores 20:14 working config)
+    var riskyEdgeFloor   = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_MIN_EDGE_GRADE    : (LCFG.RISKY_MIN_EDGE_GRADE || 'SILVER');
+    var riskyReqReliable = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_REQUIRE_RELIABLE  : (LCFG.RISKY_REQUIRE_RELIABLE !== false);
+    var riskyMinN        = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_MIN_N             : (LCFG.RISKY_MIN_EDGE_N || 30);
+    var riskyForbidden   = ACCA_GATES_V2_ENABLED ? new Set(ACCA_GATES_V2.RISKY_FORBIDDEN_PURITY_GRADES) : RISKY_FORBIDDEN_PURITY_GRADES;
+    Logger.log('[' + FUNC + '] V2 gates applied: edgeFloor=' + riskyEdgeFloor +
+      ' reqReliable=' + riskyReqReliable + ' minN=' + riskyMinN +
+      ' forbiddenGrades=[' + Array.from(riskyForbidden).join(',') + ']');
+
+    // Build a V2-overridden LCFG view to pass into _isRiskyCandidate
+    var lcfgV2 = {};
+    for (var lcfgK in LCFG) { if (Object.prototype.hasOwnProperty.call(LCFG, lcfgK)) lcfgV2[lcfgK] = LCFG[lcfgK]; }
+    lcfgV2.RISKY_MIN_EDGE_GRADE   = riskyEdgeFloor;
+    lcfgV2.RISKY_REQUIRE_RELIABLE = riskyReqReliable;
+    lcfgV2.RISKY_MIN_EDGE_N       = riskyMinN;
+
     // 6a. Identify candidates using the gated helper
     var riskyQ = [];
     for (var ri = 0; ri < enriched.length; ri++) {
@@ -7799,7 +7856,7 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
       if (!stdIdSet.has(rbid)) { riskyRejectedCounts.notStandard++; continue; }
 
       // ◄◄ FIX: use the gated helper instead of raw grade check
-      if (_isRiskyCandidate(rb, LCFG, GRADE_RANK)) {
+      if (_isRiskyCandidate(rb, lcfgV2, GRADE_RANK)) {
         riskyQ.push(rb);
         riskyRejectedCounts.qualified++;
       } else {
@@ -7808,15 +7865,15 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
         var pg = _riskyPurityGrade(rb);
         var br = _riskyBlockReason(rb);
 
-        if (_rank(eg) < _rank(LCFG.RISKY_MIN_EDGE_GRADE || 'SILVER'))
+        if (_rank(eg) < _rank(riskyEdgeFloor))
           riskyRejectedCounts.edgeTooWeak++;
-        else if (LCFG.RISKY_REQUIRE_RELIABLE !== false && !_riskyEdgeReliable(rb))
+        else if (riskyReqReliable && !_riskyEdgeReliable(rb))
           riskyRejectedCounts.edgeUnreliable++;
-        else if (_riskyEdgeN(rb) !== null && _riskyEdgeN(rb) < (LCFG.RISKY_MIN_EDGE_N || 30))
+        else if (_riskyEdgeN(rb) !== null && _riskyEdgeN(rb) < riskyMinN)
           riskyRejectedCounts.edgeTooSmall++;
         else if (br === 'PURITY_HARD_BLOCK')
           riskyRejectedCounts.purityHardBlock++;
-        else if (RISKY_FORBIDDEN_PURITY_GRADES.has(pg))
+        else if (riskyForbidden.has(pg))
           riskyRejectedCounts.purityForbiddenGrade++;
         else
           riskyRejectedCounts.notPurityFailure++;
@@ -7959,7 +8016,7 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
           // Edge itself is too weak
           note = 'EDGE_INSUFFICIENT' + (dropEdge ? ' (' + dropEdge + ')' : ' (NO_EDGE)');
 
-        } else if (RISKY_FORBIDDEN_PURITY_GRADES.has(dropPurity)) {
+        } else if (riskyForbidden.has(dropPurity)) {
           // Purity is an active avoid signal — correct to drop
           note = 'PURITY_HARD_AVOID (' + dropPurity + ') — CORRECT_DROP';
 

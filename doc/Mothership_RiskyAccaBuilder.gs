@@ -39,7 +39,7 @@ const RISKY_ACCA_CONFIG = {
   MIN_EDGE_GRADE: 'SILVER',
   MIN_PURITY_GRADE: 'SILVER',
 
-  UNKNOWN_EDGE_ACTION: 'ALLOW',     // 'BLOCK' | 'ALLOW'
+  UNKNOWN_EDGE_ACTION: 'BLOCK',     // restored to 20:14 default; was ALLOW during 20:42 drift
   UNKNOWN_PURITY_ACTION: 'ALLOW',   // 'BLOCK' | 'ALLOW'
 
   REQUIRE_RELIABLE_EDGE: false,     // safe default
