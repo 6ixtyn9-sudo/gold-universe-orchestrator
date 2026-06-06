@@ -2736,7 +2736,7 @@ function fetchLeagueAccuracyMetrics() {
       }
 
       // Store file URL + identity on metricData for team-map builder
-      metricData._fileUrl     = url;
+      metricData._fileUrl     = fileUrl;
       metricData._leagueName  = leagueName;
       metricData._leagueCode  = leagueCode;
 

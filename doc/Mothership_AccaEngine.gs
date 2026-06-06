@@ -7468,8 +7468,8 @@ function _loadBetsFromSyncTemp(ss) {
       isSniper:      type.toUpperCase().indexOf('SNIPER') >= 0,
       isDirectional: type.toUpperCase().indexOf('DIR') >= 0,
       sourcesheet:   String(getCell(row, 30) || '').trim(),
-      home:          match.indexOf(' vs ') >= 0 ? match.split(' vs ')[0].trim() : '',
-      away:          match.indexOf(' vs ') >= 0 ? match.split(' vs ')[1].trim() : ''
+      home:          String(getCell(row, 3) || '').trim(),
+      away:          String(getCell(row, 4) || '').trim()
     });
   }
 
