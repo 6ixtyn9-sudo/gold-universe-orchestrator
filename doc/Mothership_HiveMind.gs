@@ -2845,21 +2845,36 @@ function fetchLeagueAccuracyMetrics() {
           var _cData = _cSheet.getDataRange().getValues();
           if (_cData.length < 2) continue;
 
-          // Scan header row for home / away columns
+          // Scan header row for home / away / match columns
           var _hdrs   = _cData[0];
-          var _homeIdx = -1, _awayIdx = -1;
+          var _homeIdx = -1, _awayIdx = -1, _matchIdx = -1;
           for (var _h = 0; _h < _hdrs.length; _h++) {
             var _hdr = String(_hdrs[_h] || '').toLowerCase().trim();
             if (_hdr === 'home') _homeIdx = _h;
             if (_hdr === 'away') _awayIdx = _h;
+            if (_hdr === 'match' || _hdr === 'game') _matchIdx = _h;
           }
-          // Fallback to known Sync_Temp column positions
-          if (_homeIdx === -1) _homeIdx = 3;
-          if (_awayIdx === -1) _awayIdx = 4;
 
           for (var _rr = 1; _rr < _cData.length; _rr++) {
-            var _homeTeam = String(_cData[_rr][_homeIdx] || '').trim().toLowerCase();
-            var _awayTeam = String(_cData[_rr][_awayIdx] || '').trim().toLowerCase();
+            var _homeTeam = '';
+            var _awayTeam = '';
+            
+            if (_homeIdx !== -1 && _awayIdx !== -1) {
+              _homeTeam = String(_cData[_rr][_homeIdx] || '').trim().toLowerCase();
+              _awayTeam = String(_cData[_rr][_awayIdx] || '').trim().toLowerCase();
+            } else if (_matchIdx !== -1) {
+              var _matchStr = String(_cData[_rr][_matchIdx] || '').toLowerCase();
+              if (_matchStr.indexOf(' vs ') >= 0) {
+                var _parts = _matchStr.split(' vs ');
+                _homeTeam = _parts[0].trim();
+                _awayTeam = _parts[1].trim();
+              }
+            } else {
+              // Extreme fallback (assumes position 3 and 4 are home/away, like Sync_Temp)
+              _homeTeam = String(_cData[_rr][3] || '').trim().toLowerCase();
+              _awayTeam = String(_cData[_rr][4] || '').trim().toLowerCase();
+            }
+            
             if (_homeTeam) leagueMetrics._teamToLeague[_homeTeam] = _cName;
             if (_awayTeam) leagueMetrics._teamToLeague[_awayTeam] = _cName;
           }
