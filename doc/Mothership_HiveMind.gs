@@ -2852,7 +2852,17 @@ function fetchLeagueAccuracyMetrics() {
             var _hdr = String(_hdrs[_h] || '').toLowerCase().trim();
             if (_hdr === 'home') _homeIdx = _h;
             if (_hdr === 'away') _awayIdx = _h;
-            if (_hdr === 'match' || _hdr === 'game') _matchIdx = _h;
+            if (_hdr === 'match' || _hdr === 'game' || _hdr === 'fixture' || _hdr === 'event') _matchIdx = _h;
+          }
+
+          // Sniff first data row if headers didn't reveal the match column
+          if (_homeIdx === -1 && _matchIdx === -1 && _cData.length > 1) {
+            for (var _c = 0; _c < _cData[1].length; _c++) {
+              if (String(_cData[1][_c] || '').indexOf(' vs ') >= 0) {
+                _matchIdx = _c;
+                break;
+              }
+            }
           }
 
           for (var _rr = 1; _rr < _cData.length; _rr++) {
@@ -2870,13 +2880,20 @@ function fetchLeagueAccuracyMetrics() {
                 _awayTeam = _parts[1].trim();
               }
             } else {
-              // Extreme fallback (assumes position 3 and 4 are home/away, like Sync_Temp)
-              _homeTeam = String(_cData[_rr][3] || '').trim().toLowerCase();
-              _awayTeam = String(_cData[_rr][4] || '').trim().toLowerCase();
+              // Last resort: blindly look for " vs " in ANY column of this row
+              for (var _c = 0; _c < _cData[_rr].length; _c++) {
+                var _cellStr = String(_cData[_rr][_c] || '').toLowerCase();
+                if (_cellStr.indexOf(' vs ') >= 0) {
+                  var _parts = _cellStr.split(' vs ');
+                  _homeTeam = _parts[0].trim();
+                  _awayTeam = _parts[1].trim();
+                  break;
+                }
+              }
             }
             
-            if (_homeTeam) leagueMetrics._teamToLeague[_homeTeam] = _cName;
-            if (_awayTeam) leagueMetrics._teamToLeague[_awayTeam] = _cName;
+            if (_homeTeam && _homeTeam !== 'na' && _homeTeam !== '-') leagueMetrics._teamToLeague[_homeTeam] = _cName;
+            if (_awayTeam && _awayTeam !== 'na' && _awayTeam !== '-') leagueMetrics._teamToLeague[_awayTeam] = _cName;
           }
           Logger.log('[' + FUNC_NAME + '] Mapped ' + (_cData.length - 1) + ' rows of teams from ' + _cName);
         } catch (e) {
