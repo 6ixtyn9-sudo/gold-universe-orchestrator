@@ -828,18 +828,19 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
       }
     }
 
-  // ── SourceSheet disambiguation (exact league name match) ──
-  if (!leagueMeta && bet.sourcesheet) {
-    var sourceKeys = [bet.sourcesheet, bet.sourcesheet.toLowerCase(), bet.sourcesheet.toUpperCase()];
-    for (var ski = 0; ski < sourceKeys.length; ski++) {
-      if (sourceKeys[ski] && metrics[sourceKeys[ski]]) {
-        leagueMeta = metrics[sourceKeys[ski]];
+  // --- Sourcesheet disambiguation via Config sheet File URL bridge ---
+  if (!leagueMeta && bet.sourcesheet && metrics._sheetNameToLeagueName) {
+    var resolvedLeagueName = metrics._sheetNameToLeagueName[bet.sourcesheet];
+    if (resolvedLeagueName) {
+      leagueMeta = metrics[resolvedLeagueName];
+      if (leagueMeta) {
         matchedCount++;
-        Logger.log('[' + FUNC_NAME + '] SourceSheet match for ' + league + ' -> ' + sourceKeys[ski]);
-        break;
+        Logger.log("[_enrichBetsWithAccuracy] SourceSheet match for %s -> %s (Tier1: %s, Tier2: %s)", 
+                   league, resolvedLeagueName, leagueMeta.bankerAccuracy, leagueMeta.sniperAccuracy);
       }
     }
   }
+  // --- End sourcesheet disambiguation ---
 
   // ── Collision-resolution fallback (averaged, self-documenting) ──
   if (!leagueMeta && metrics._collisionResolution) {
@@ -2918,16 +2919,18 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
             }
           }
           
-          // ── SourceSheet disambiguation ──
-          if (!foundMeta && leg.sourcesheet) {
-            var sourceKeys2 = [leg.sourcesheet, leg.sourcesheet.toLowerCase(), leg.sourcesheet.toUpperCase()];
-            for (var ski2 = 0; ski2 < sourceKeys2.length; ski2++) {
-              if (sourceKeys2[ski2] && metrics[sourceKeys2[ski2]]) {
-                foundMeta = metrics[sourceKeys2[ski2]];
-                break;
+          // --- Sourcesheet disambiguation via Config sheet File URL bridge ---
+          if (!foundMeta && leg.sourcesheet && metrics._sheetNameToLeagueName) {
+            var resolvedLeagueName = metrics._sheetNameToLeagueName[leg.sourcesheet];
+            if (resolvedLeagueName) {
+              foundMeta = metrics[resolvedLeagueName];
+              if (foundMeta) {
+                Logger.log("[_writePortfolioWithAccuracy] SourceSheet match for %s -> %s (Tier1: %s, Tier2: %s)", 
+                           leg.league, resolvedLeagueName, foundMeta.bankerAccuracy, foundMeta.sniperAccuracy);
               }
             }
           }
+          // --- End sourcesheet disambiguation ---
 
           // ── Collision-resolution fallback ──
           if (!foundMeta && metrics._collisionResolution) {

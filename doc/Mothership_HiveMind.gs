@@ -2735,6 +2735,19 @@ function fetchLeagueAccuracyMetrics() {
         storeKey(fusedNormSep.toLowerCase(), metricData);
       }
 
+      // Build spreadsheet name → League Name map for sourcesheet disambiguation
+      leagueMetrics._sheetNameToLeagueName = leagueMetrics._sheetNameToLeagueName || {};
+      try {
+        var sheetName = ss.getName();
+        if (sheetName) {
+          leagueMetrics._sheetNameToLeagueName[sheetName] = leagueName;
+          // Also store by spreadsheet ID for robustness
+          leagueMetrics._sheetNameToLeagueName[ss.getId()] = leagueName;
+        }
+      } catch (e) {
+        // Ignore; name not critical for metrics
+      }
+
       Logger.log(
         '[' + FUNC_NAME + ']   🔑 Stored as: "' + leagueName +
         '", "' + leagueCode +
