@@ -2710,13 +2710,13 @@ function fetchLeagueAccuracyMetrics() {
 
       // Raw fused: "United StatesNBA"
       var fusedRaw = leagueName + leagueCode;
+      storeKey(fusedRaw, metricData);
+      storeKey(fusedRaw.toLowerCase(), metricData);
 
+      // Track fused-key collisions (LNB fix)
       if (!_codeToFusedSet[leagueCode]) _codeToFusedSet[leagueCode] = new Set();
       _codeToFusedSet[leagueCode].add(fusedRaw);
       _codeToFusedCount[leagueCode] = _codeToFusedSet[leagueCode].size;
-
-      storeKey(fusedRaw, metricData);
-      storeKey(fusedRaw.toLowerCase(), metricData);
 
       // Spaced fused: "United States NBA"
       var fusedSpaced = leagueName + ' ' + leagueCode;
@@ -2744,23 +2744,17 @@ function fetchLeagueAccuracyMetrics() {
     }
   }
 
-  // v4.4.0: Remove bare-code entries for collision codes.
-  // If "LNB" maps to both "FranceLNB" and "Dominican RepublicLNB",
-  // the bare "LNB" key is ambiguous. Remove it so AssayerBridge
-  // must resolve via fused key or return NO_PURITY (safe).
-  for (const [code, count] of Object.entries(_codeToFusedCount)) {
-    if (count > 1) {
-      delete leagueMetrics[code];
-      delete leagueMetrics[code.toLowerCase()];
-      delete leagueMetrics[code.toUpperCase()];
-      Logger.log(
-        '[' + FUNC_NAME + '] COLLISION — removed bare key "' + code +
-        '" (' + count + ' fused keys). AssayerBridge must resolve via fused key.'
-      );
+  Logger.log('[' + FUNC_NAME + '] ═══════════════════════════════════════');
+  // Remove bare-code keys that collide across multiple leagues (e.g., LNB)
+  for (var _colCode in _codeToFusedCount) {
+    if (_codeToFusedCount[_colCode] > 1) {
+      delete leagueMetrics[_colCode];
+      delete leagueMetrics[_colCode.toLowerCase()];
+      delete leagueMetrics[_colCode.toUpperCase()];
+      Logger.log('[' + FUNC_NAME + '] COLLISION — removed bare key "' + _colCode + '" (shared by ' + _codeToFusedCount[_colCode] + ' leagues)');
     }
   }
 
-  Logger.log('[' + FUNC_NAME + '] ═══════════════════════════════════════');
   Logger.log('[' + FUNC_NAME + '] ✅ Total metric keys: ' + Object.keys(leagueMetrics).length);
 
   return leagueMetrics;
@@ -3248,7 +3242,10 @@ function computeVerdict(bet, gateCfg) {
 
   if (minPurity) {
     if (!purityGrade) {
-      reasons.push('NO_PURITY_MATCH');
+      var unknownPurityAction = String(gateCfg.unknownPurityAction || 'ALLOW').trim().toUpperCase();
+      if (unknownPurityAction !== 'ALLOW') {
+        reasons.push('NO_PURITY_MATCH');
+      }
     } else if (rankOf(purityGrade) < rankOf(minPurity)) {
       reasons.push('PURITY_GRADE_FAIL(' + purityGrade + '<' + minPurity + ')');
     }
@@ -3347,7 +3344,8 @@ function _filterBets(bets, opts) {
     minPurityGrade:     (opts.minPurityGrade !== undefined) ? String(opts.minPurityGrade) : '',
     requireReliableEdge: (opts.requireReliableEdge !== undefined) ? !!opts.requireReliableEdge : false,
     unknownLeagueAction: (opts.unknownLeagueAction !== undefined) ? String(opts.unknownLeagueAction) : 'ALLOW',
-    unknownEdgeAction:   (opts.unknownEdgeAction !== undefined) ? String(opts.unknownEdgeAction) : 'ALLOW'
+    unknownEdgeAction:   (opts.unknownEdgeAction !== undefined) ? String(opts.unknownEdgeAction) : 'ALLOW',
+    unknownPurityAction: (opts.unknownPurityAction !== undefined) ? String(opts.unknownPurityAction) : 'ALLOW'
   };
 
   // ── Legacy gold gate config (uses ACCA_ENGINE_CONFIG defaults) ──

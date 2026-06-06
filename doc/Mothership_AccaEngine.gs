@@ -59,7 +59,7 @@ const ACCA_ENGINE_CONFIG = {
   MIN_EDGE_GRADE: 'SILVER',
   MIN_PURITY_GRADE: 'SILVER',
   UNKNOWN_LEAGUE_ACTION: 'ALLOW',
-  UNKNOWN_EDGE_ACTION: 'ALLOW',
+  UNKNOWN_EDGE_ACTION: 'BLOCK',
   REQUIRE_RELIABLE_EDGE: false,
 
   // ── Optimizer Config ──
@@ -79,6 +79,8 @@ const ACCA_ENGINE_CONFIG = {
 
   LOGGING: {
     ENABLED: true,
+    LOG_ACCEPTS: true,
+    LOG_REJECTS: false
   }
 };
 
@@ -87,79 +89,106 @@ const ACCA_ENGINE_CONFIG = {
 // All callers MUST go through _kickoffMs(bet) below. No new Date(...) on
 // raw sheet values anywhere else in the expiry pipeline.
 // ────────────────────────────────────────────────────────────────────────
-const EXPIRY_V2_ENABLED = true;
-const EXPIRY_TZ = 'Africa/Johannesburg';
+var EXPIRY_V2_ENABLED = true;
+var EXPIRY_TZ = 'Africa/Johannesburg';
 
 // Per-league grace minutes added to tip-off before a bet is "expired".
 // Default 150 min covers a full basketball game + buffer. Soccer would be 120.
-const EXPIRY_GRACE_MIN_DEFAULT = 150;
-const EXPIRY_GRACE_MIN_BY_LEAGUE = {
-  // Add overrides only if needed. Keys = league code as in Sync_Temp `league` col.
+var EXPIRY_GRACE_MIN_DEFAULT = 150;
+var EXPIRY_GRACE_MIN_BY_LEAGUE = {
+  // Add overrides only if needed. Keys = league code as in Sync_Temp league col.
   // 'WNB': 150, 'NBA': 150, ...
 };
 
+/**
+ * _v2NormalizeDateOnly — extracts calendar {y, m, d} from any raw value.
+ * Accepts: Date, Sheets serial number, DD/MM/YYYY, YYYY-MM-DD, ISO+Z.
+ * Always returns calendar date in LOCAL TZ (Africa/Johannesburg).
+ */
 function _v2NormalizeDateOnly(raw) {
   if (!raw) return null;
   if (raw instanceof Date) {
-    const s = Utilities.formatDate(raw, EXPIRY_TZ, 'yyyy-MM-dd');
-    const parts = s.split('-');
+    if (isNaN(raw.getTime())) return null;
+    var s = Utilities.formatDate(raw, EXPIRY_TZ, 'yyyy-MM-dd');
+    var parts = s.split('-');
     return { y: parseInt(parts[0], 10), m: parseInt(parts[1], 10), d: parseInt(parts[2], 10) };
   }
   if (typeof raw === 'number') {
-    const sheetsEpoch = new Date(1899, 11, 30);
-    const d = new Date(sheetsEpoch.getTime() + Math.round(raw) * 86400000);
-    const s = Utilities.formatDate(d, EXPIRY_TZ, 'yyyy-MM-dd');
-    const parts = s.split('-');
-    return { y: parseInt(parts[0], 10), m: parseInt(parts[1], 10), d: parseInt(parts[2], 10) };
+    if (raw > 40000 && raw < 60000) {
+      var sheetsEpoch = new Date(1899, 11, 30);
+      var d = new Date(sheetsEpoch.getTime() + Math.round(raw) * 86400000);
+      var s2 = Utilities.formatDate(d, EXPIRY_TZ, 'yyyy-MM-dd');
+      var parts2 = s2.split('-');
+      return { y: parseInt(parts2[0], 10), m: parseInt(parts2[1], 10), d: parseInt(parts2[2], 10) };
+    }
+    return null;
   }
-  const str = String(raw).trim();
-  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  var str = String(raw).trim();
+  // ISO with time component — parse to Date then format in local TZ
+  var isoMatch = str.match(/^\d{4}-\d{2}-\d{2}T/);
   if (isoMatch) {
-    const d = new Date(str);
-    const s = Utilities.formatDate(d, EXPIRY_TZ, 'yyyy-MM-dd');
-    const parts = s.split('-');
-    return { y: parseInt(parts[0], 10), m: parseInt(parts[1], 10), d: parseInt(parts[2], 10) };
+    var d2 = new Date(str);
+    if (isNaN(d2.getTime())) return null;
+    var s3 = Utilities.formatDate(d2, EXPIRY_TZ, 'yyyy-MM-dd');
+    var parts3 = s3.split('-');
+    return { y: parseInt(parts3[0], 10), m: parseInt(parts3[1], 10), d: parseInt(parts3[2], 10) };
   }
-  const ymdMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  // YYYY-MM-DD (date only, no TZ conversion needed)
+  var ymdMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (ymdMatch) return { y: parseInt(ymdMatch[1], 10), m: parseInt(ymdMatch[2], 10), d: parseInt(ymdMatch[3], 10) };
-  const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  // DD/MM/YYYY
+  var dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (dmyMatch) return { y: parseInt(dmyMatch[3], 10), m: parseInt(dmyMatch[2], 10), d: parseInt(dmyMatch[1], 10) };
   return null;
 }
 
+/**
+ * _v2NormalizeTimeOnly — extracts {hh, mm} from any raw time value.
+ * Accepts: Date, Sheets fractional serial (< 1), HH:MM, ISO+Z.
+ * For ISO+Z, converts to local TZ first.
+ */
 function _v2NormalizeTimeOnly(raw) {
   if (raw == null || raw === '') return null;
   if (raw instanceof Date) {
-    const s = Utilities.formatDate(raw, EXPIRY_TZ, 'HH:mm');
-    const parts = s.split(':');
+    if (isNaN(raw.getTime())) return null;
+    var s = Utilities.formatDate(raw, EXPIRY_TZ, 'HH:mm');
+    var parts = s.split(':');
     return { hh: parseInt(parts[0], 10), mm: parseInt(parts[1], 10) };
   }
   if (typeof raw === 'number' && raw >= 0 && raw < 1) {
-    const totalMins = Math.round(raw * 24 * 60);
+    var totalMins = Math.round(raw * 24 * 60);
     return { hh: Math.floor(totalMins / 60), mm: totalMins % 60 };
   }
-  const str = String(raw).trim();
-  const isoMatch = str.match(/T\d{2}:\d{2}:\d{2}/);
+  var str = String(raw).trim();
+  // ISO with time — parse to Date then extract local time
+  var isoMatch = str.match(/T\d{2}:\d{2}:\d{2}/);
   if (isoMatch) {
-    const d = new Date(str);
-    const s = Utilities.formatDate(d, EXPIRY_TZ, 'HH:mm');
-    const parts = s.split(':');
-    return { hh: parseInt(parts[0], 10), mm: parseInt(parts[1], 10) };
+    var d = new Date(str);
+    if (isNaN(d.getTime())) return null;
+    var s2 = Utilities.formatDate(d, EXPIRY_TZ, 'HH:mm');
+    var parts2 = s2.split(':');
+    return { hh: parseInt(parts2[0], 10), mm: parseInt(parts2[1], 10) };
   }
-  const hmMatch = str.match(/^(\d{1,2}):(\d{2})/);
+  // HH:MM or HH:MM:SS
+  var hmMatch = str.match(/^(\d{1,2}):(\d{2})/);
   if (hmMatch) return { hh: parseInt(hmMatch[1], 10), mm: parseInt(hmMatch[2], 10) };
   return null;
 }
 
+/**
+ * _kickoffMs — THE ONLY function the expiry pipeline should call for kickoff time.
+ * Combines date + time using the LOCAL TZ via Utilities.parseDate.
+ * Returns epoch ms or NaN.
+ */
 function _kickoffMs(bet) {
   if (!bet) return NaN;
-  const dObj = _v2NormalizeDateOnly(bet.date);
+  var dObj = _v2NormalizeDateOnly(bet.date);
   if (!dObj) return NaN;
-  const tObj = _v2NormalizeTimeOnly(bet.time);
+  var tObj = _v2NormalizeTimeOnly(bet.time);
   if (!tObj) return NaN;
-  const pad = function(n) { return (n < 10 ? '0' + n : n); };
-  const localStr = dObj.y + '-' + pad(dObj.m) + '-' + pad(dObj.d) + ' ' + pad(tObj.hh) + ':' + pad(tObj.mm);
-  const d = Utilities.parseDate(localStr, EXPIRY_TZ, 'yyyy-MM-dd HH:mm');
+  var pad = function(n) { return (n < 10 ? '0' + n : '' + n); };
+  var localStr = dObj.y + '-' + pad(dObj.m) + '-' + pad(dObj.d) + ' ' + pad(tObj.hh) + ':' + pad(tObj.mm);
+  var d = Utilities.parseDate(localStr, EXPIRY_TZ, 'yyyy-MM-dd HH:mm');
   return d ? d.getTime() : NaN;
 }
 
@@ -178,77 +207,68 @@ function isBetExpiredV2(bet, nowDate) {
   return now.getTime() > koMs + (graceMin * 60 * 1000);
 }
 
+/**
+ * diagnoseExpiryV2 — one-call verification of the expiry fix.
+ * Run from script editor to compare legacy vs v2 for all Sync_Temp bets.
+ */
 function diagnoseExpiryV2() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const syncSheet = ss.getSheetByName('Sync_Temp');
-  if (!syncSheet) return;
-  const bets = _loadBetsFromSyncTemp(syncSheet);
-  const now = new Date();
-  let flippedToActive = 0;
-  let flippedToExpired = 0;
-  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var bets = _loadBetsFromSyncTemp(ss);
+  var now = new Date();
+  var flippedToActive = 0;
+  var flippedToExpired = 0;
+
   Logger.log('league, match, dateRaw, timeRaw, parsedLocal, koMs, graceMin, minutesPastTipoff, isExpiredLegacy, isExpiredV2');
-  bets.forEach(function(b) {
-    const t0 = _parseTime(b.time, b.date);
-    const legacyExpired = t0 && t0 < now;
-    
-    const koMs = _kickoffMs(b);
-    const v2Expired = isBetExpiredV2(b, now);
-    
-    const league = String((b && b.league) || '').toUpperCase();
-    const graceMin = EXPIRY_GRACE_MIN_BY_LEAGUE[league] || EXPIRY_GRACE_MIN_DEFAULT;
-    
-    const parsedLocal = !isNaN(koMs) ? Utilities.formatDate(new Date(koMs), EXPIRY_TZ, 'yyyy-MM-dd HH:mm') : 'NaN';
-    const minutesPastTipoff = !isNaN(koMs) ? Math.floor((now.getTime() - koMs) / 60000) : 'NaN';
-    
+  for (var i = 0; i < bets.length; i++) {
+    var b = bets[i];
+    var t0 = (b.time instanceof Date && !isNaN(b.time)) ? b.time : null;
+    var legacyExpired = t0 && t0 < now;
+
+    var koMs = _kickoffMs(b);
+    var v2Expired = isBetExpiredV2(b, now);
+
+    var league = String((b && b.league) || '').toUpperCase();
+    var graceMin = EXPIRY_GRACE_MIN_BY_LEAGUE[league] || EXPIRY_GRACE_MIN_DEFAULT;
+
+    var parsedLocal = !isNaN(koMs) ? Utilities.formatDate(new Date(koMs), EXPIRY_TZ, 'yyyy-MM-dd HH:mm') : 'NaN';
+    var minutesPastTipoff = !isNaN(koMs) ? Math.floor((now.getTime() - koMs) / 60000) : 'NaN';
+
     if (legacyExpired && !v2Expired) flippedToActive++;
     if (!legacyExpired && v2Expired) flippedToExpired++;
-    
+
     Logger.log(b.league + ', ' + b.match + ', ' + b.date + ', ' + b.time + ', ' + parsedLocal + ', ' + koMs + ', ' + graceMin + ', ' + minutesPastTipoff + ', ' + legacyExpired + ', ' + v2Expired);
-  });
-  
+  }
+
   Logger.log('SUMMARY: flipped expired->active: ' + flippedToActive + ', active->expired: ' + flippedToExpired);
 }
 
 // ────────────────────────────────────────────────────────────────────────
 // ACCA / RISKY GATE RESTORATION — v2 (post 2026-06-05 20:42 drift)
-// Re-asserts the gates that produced the 20:14 working build. Each constant
-// is honored ONLY if ACCA_GATES_V2_ENABLED is true. Flip to false to revert.
+// Re-asserts the gates that produced the 20:14 working build.
+// Flip ACCA_GATES_V2_ENABLED to false to fully revert.
 // ────────────────────────────────────────────────────────────────────────
-const ACCA_GATES_V2_ENABLED = true;
+var ACCA_GATES_V2_ENABLED = true;
 
-// Restored values (matched to the 20:14 working run)
-const ACCA_GATES_V2 = {
-  UNKNOWN_EDGE_ACTION:            'BLOCK',       // Assayer bridge: bets with no edge row → blocked from Main pool
-  RISKY_MIN_EDGE_GRADE:           'SILVER',      // Risky tier: edge must be SILVER or better
-  RISKY_REQUIRE_RELIABLE:         true,          // Risky tier: edge must be statistically reliable
-  RISKY_FORBIDDEN_PURITY_GRADES:  ['CHARCOAL', 'ROCK'], // Risky tier: NEVER touch these
-  RISKY_MIN_N:                    30             // Risky tier: minimum sample size
+var ACCA_GATES_V2 = {
+  UNKNOWN_EDGE_ACTION:            'BLOCK',
+  RISKY_MIN_EDGE_GRADE:           'SILVER',
+  RISKY_REQUIRE_RELIABLE:         true,
+  RISKY_FORBIDDEN_PURITY_GRADES:  ['CHARCOAL', 'ROCK'],
+  RISKY_MIN_N:                    30
 };
 
 function diagnoseAccaGatesV2() {
   Logger.log('=== diagnoseAccaGatesV2 ===');
   Logger.log('ACCA_GATES_V2_ENABLED: ' + ACCA_GATES_V2_ENABLED);
   Logger.log('V2 enforced values:');
-  Logger.log('  UNKNOWN_EDGE_ACTION: '       + ACCA_GATES_V2.UNKNOWN_EDGE_ACTION);
-  Logger.log('  RISKY_MIN_EDGE_GRADE: '      + ACCA_GATES_V2.RISKY_MIN_EDGE_GRADE);
-  Logger.log('  RISKY_REQUIRE_RELIABLE: '   + ACCA_GATES_V2.RISKY_REQUIRE_RELIABLE);
+  Logger.log('  UNKNOWN_EDGE_ACTION: '      + ACCA_GATES_V2.UNKNOWN_EDGE_ACTION);
+  Logger.log('  RISKY_MIN_EDGE_GRADE: '     + ACCA_GATES_V2.RISKY_MIN_EDGE_GRADE);
+  Logger.log('  RISKY_REQUIRE_RELIABLE: '  + ACCA_GATES_V2.RISKY_REQUIRE_RELIABLE);
   Logger.log('  RISKY_FORBIDDEN_PURITY_GRADES: [' + ACCA_GATES_V2.RISKY_FORBIDDEN_PURITY_GRADES.join(',') + ']');
-  Logger.log('  RISKY_MIN_N: '              + ACCA_GATES_V2.RISKY_MIN_N);
-  Logger.log('ACCA_ENGINE_CONFIG current values:');
-  var aec = (typeof ACCA_ENGINE_CONFIG !== 'undefined') ? ACCA_ENGINE_CONFIG : {};
-  Logger.log('  UNKNOWN_EDGE_ACTION: ' + aec.UNKNOWN_EDGE_ACTION);
-  Logger.log('  MIN_EDGE_GRADE: '      + aec.MIN_EDGE_GRADE);
-  Logger.log('  MIN_PURITY_GRADE: '    + aec.MIN_PURITY_GRADE);
-  Logger.log('  REQUIRE_RELIABLE_EDGE: ' + aec.REQUIRE_RELIABLE_EDGE);
-  Logger.log('LEFTOVER_CONFIG / LCFG current values:');
-  var lc = (typeof LEFTOVER_CONFIG !== 'undefined') ? LEFTOVER_CONFIG : {};
-  Logger.log('  RISKY_MIN_EDGE_GRADE: '   + lc.RISKY_MIN_EDGE_GRADE);
-  Logger.log('  RISKY_REQUIRE_RELIABLE: ' + lc.RISKY_REQUIRE_RELIABLE);
-  Logger.log('  RISKY_MIN_EDGE_N: '       + lc.RISKY_MIN_EDGE_N);
-  Logger.log('RISKY_FORBIDDEN_PURITY_GRADES set (from RiskyAccaBuilder):');
-  var rfpg = (typeof RISKY_FORBIDDEN_PURITY_GRADES !== 'undefined') ? RISKY_FORBIDDEN_PURITY_GRADES : new Set([]);
-  Logger.log('  [' + Array.from(rfpg).join(',') + '] (size=' + rfpg.size + ')');
+  Logger.log('  RISKY_MIN_N: '             + ACCA_GATES_V2.RISKY_MIN_N);
+  Logger.log('ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION: ' + ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION);
+  Logger.log('EXPIRY_V2_ENABLED: ' + EXPIRY_V2_ENABLED);
+  Logger.log('EXPIRY_GRACE_MIN_DEFAULT: ' + EXPIRY_GRACE_MIN_DEFAULT);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -262,46 +282,26 @@ var LEFTOVER_CONFIG = {
   MIN_POOL_SIZE:      2,              
   DEFAULT_ODDS:       1.50,          
   FORCE_DOUBLES:      true,          
-  ALLOW_SINGLES:      true           
+  ALLOW_SINGLES:      true,
+
+  // ── Risky tier gate (must match RISKY_ACCA_CONFIG) ──
+  RISKY_MIN_EDGE_GRADE:   'SILVER',
+  RISKY_REQUIRE_RELIABLE: true,
+  RISKY_MIN_EDGE_N:       30
 };
 
 function _getBetId_(b) {
-  if (!b) return '';
-
-  // Respect existing IDs (Intelligence Core / sheet schema uses BetID/BetId)
-  const existing = (typeof b.betId === 'string' && b.betId.trim() !== '') ? b.betId
-    : (typeof b.BetID === 'string' && b.BetID.trim() !== '') ? b.BetID
-    : (typeof b.BetId === 'string' && b.BetId.trim() !== '') ? b.BetId
-    : (typeof b.id === 'string' && b.id.trim() !== '') ? b.id
-    : (typeof b.bet_id === 'string' && b.bet_id.trim() !== '') ? b.bet_id : '';
-  if (existing) {
-    b.betId = existing;
-    return existing;
-  }
-
-  // Canonical identity parts (safe fallback)
-  const league = String(b.league || '').trim().toUpperCase() || 'UNKNOWN_LEAGUE';
-
-  let matchPart = '';
-  const rawMatch = String(b.match || b.Match || '').trim();
-  if (rawMatch) {
-    matchPart = rawMatch.toUpperCase();
-  } else {
-    const home = String(b.home || b.HomeTeam || '').trim();
-    const away = String(b.away || b.AwayTeam || '').trim();
-    if (home && away) {
-      matchPart = home.toUpperCase() + ' VS ' + away.toUpperCase();
-    } else {
-      matchPart = 'UNKNOWN_MATCH';
-    }
-  }
-
-  const pick    = String(b.pick || b.Pick || b.selection || '').trim().toUpperCase() || 'UNKNOWN_PICK';
-  const type    = String(b.type || b.Type || b.betType || '').trim().toUpperCase() || 'UNKNOWN_TYPE';
-  const timeRaw = (b.time instanceof Date) ? b.time.toISOString()
-               : String(b.time || b.Time || b.matchDate || b.MatchDate || '');
-
-  const base = [league, matchPart, pick, type, timeRaw].join('|');
+  if (b && typeof b.betId === 'string' && b.betId.trim() !== '') return b.betId;
+  if (b && typeof b.id === 'string' && b.id.trim() !== '') return b.id;
+  if (b && typeof b.bet_id === 'string' && b.bet_id.trim() !== '') return b.bet_id;
+  
+  const base = [
+    String(b.league || '').trim().toUpperCase(),
+    String(b.match || b.home + ' vs ' + b.away || '').trim().toUpperCase(),
+    String(b.pick || '').trim().toUpperCase(),
+    String(b.type || '').trim().toUpperCase(),
+    (b.time instanceof Date) ? b.time.toISOString() : String(b.time || '')
+  ].join('|');
 
   try {
     const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
@@ -314,11 +314,11 @@ function _getBetId_(b) {
       hex += hexStr;
     }
     const generatedId = 'MD5_' + hex;
-    b.betId = generatedId;
+    if (b) b.betId = generatedId;
     return generatedId;
   } catch (e) {
     const fallbackId = ('BET_' + base).replace(/[^a-z0-9_]/gi, '_');
-    b.betId = fallbackId;
+    if (b) b.betId = fallbackId;
     return fallbackId;
   }
 }
@@ -357,7 +357,7 @@ function _normBet_(b) {
     if (home && away) match = home + ' vs ' + away;
   }
   b._leagueKey = league;
-  b._matchKey = league + '|' + (match ? match : ('__' + b.betId));
+  b._matchKey = league + '|' + match;
   
   // Precompute probabilities
   let p = ACCA_ENGINE_CONFIG.OPT_P_MIN;
@@ -404,24 +404,24 @@ function _normBet_(b) {
     if (!isNaN(t)) b._kickoffEpoch = t;
   }
 
-  // Anchor check — inline grade ranking (replaces nested rankOf)
+  // Anchor check
   b._isAnchor = false;
   if (b.assayer_passed === true || !ACCA_ENGINE_CONFIG.GOLD_ONLY_MODE) {
-    const ed = (b.assayer && b.assayer.edge) ? b.assayer.edge : {};
-    const pur = (b.assayer && b.assayer.purity) ? b.assayer.purity : {};
-
-    const isReliableOrLarge = (ed.reliable === true) || (ed.n >= ACCA_ENGINE_CONFIG.ANCHOR_MIN_N)
-      || (ed.sample_size === 'L' || ed.sample_size === 'Large' || ed.sample_size === 'XL');
-
-    // Inline grade ranking — no nested function
-    const GRADE_RANK = { PLATINUM: 5, ELITE: 4, GOLD: 3, SILVER: 2, BRONZE: 1, NONE: 0 };
-    const edgeRank = GRADE_RANK[String(ed.grade || '').trim().toUpperCase()] || 0;
-    const minEdgeRank = GRADE_RANK[String(ACCA_ENGINE_CONFIG.ANCHOR_MIN_EDGE_GRADE || '').trim().toUpperCase()] || 0;
-    const purRank = GRADE_RANK[String(pur.grade || '').trim().toUpperCase()] || 0;
-    const minPurRank = GRADE_RANK[String(ACCA_ENGINE_CONFIG.ANCHOR_MIN_PURITY_GRADE || '').trim().toUpperCase()] || 0;
-
-    const meetsEdgeGrade = edgeRank >= minEdgeRank;
-    const meetsPurityGrade = (!pur.grade) || (purRank >= minPurRank);
+    const edge = b.assayer && b.assayer.edge ? b.assayer.edge : {};
+    const pur = b.assayer && b.assayer.purity ? b.assayer.purity : {};
+    
+    // Evaluate strength
+    const isReliableOrLarge = (edge.reliable === true) || (edge.n >= ACCA_ENGINE_CONFIG.ANCHOR_MIN_N) || 
+                              (edge.sample_size === 'L' || edge.sample_size === 'Large' || edge.sample_size === 'XL');
+    
+    const rankOf = function(g) {
+      const n = String(g || '').trim().toUpperCase();
+      const r = { PLATINUM: 5, ELITE: 4, GOLD: 3, SILVER: 2, BRONZE: 1 };
+      return r[n] || 0;
+    };
+    
+    const meetsEdgeGrade = rankOf(edge.grade) >= rankOf(ACCA_ENGINE_CONFIG.ANCHOR_MIN_EDGE_GRADE);
+    const meetsPurityGrade = !pur.grade || rankOf(pur.grade) >= rankOf(ACCA_ENGINE_CONFIG.ANCHOR_MIN_PURITY_GRADE);
 
     if (isReliableOrLarge && meetsEdgeGrade && meetsPurityGrade) {
       b._isAnchor = true;
@@ -519,8 +519,8 @@ function _scoreAcca_(legs, mode, cfg) {
   let score = 0;
 
   if (mode === 'FILL') {
-    // Probability-first (log scale) so anchors don't swamp the base EV/prob
-    score = legs.reduce((s, l) => s + Math.log(l._p), 0) + (metrics.ev * 0.1);
+    // Legacy fallback: prefer anchors, then sum of probabilities
+    score = (metrics.anchorCount * 1000) + legs.reduce((s, l) => s + l._p, 0);
   } else if (mode === 'EV_MAX') {
     score = metrics.ev;
   } else if (mode === 'ANCHOR_BOOSTER') {
@@ -557,18 +557,15 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
   
   if (available.length < targetSize) return [];
 
-  const mode = cfg.ALLOCATOR_MODE || 'FILL';
-
   // 2. Pre-filter top K candidates (reduce search space)
   const maxCands = cfg.OPT_MAX_CANDIDATES_PER_POOL || 50;
   if (available.length > maxCands) {
-    if (mode === 'EV_MAX') {
-      available.sort((a, b) => b._ev - a._ev);
-    } else {
-      available.sort((a, b) => b._p - a._p);
-    }
+    // Sort by p as cheap proxy
+    available.sort((a, b) => b._p - a._p);
     available = available.slice(0, maxCands);
   }
+  
+  const mode = cfg.ALLOCATOR_MODE || 'FILL';
   const builtAccas = [];
   
   let loopCount = 0;
@@ -586,15 +583,34 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
     
     // Sort available to ensure determinism
     available.sort((a, b) => {
-      if (mode === 'EV_MAX') {
-        if (a._ev !== b._ev) return b._ev - a._ev;
-      } else {
-        if (a._p !== b._p) return b._p - a._p;
-      }
+      if (a._p !== b._p) return b._p - a._p;
       return String(a.betId).localeCompare(String(b.betId));
     });
 
-    if (targetSize <= 3) {
+    if (mode === 'FILL') {
+      // Greedy legacy parity
+      const current = [];
+      let evals = 0;
+      const maxEvals = Number(cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000);
+      for (let i = 0; i < available.length && current.length < targetSize; i++) {
+        evals++;
+        if (evals > maxEvals) {
+          Logger.log(`[${FUNC_NAME}] CAP HIT size=${targetSize} evals=${evals}`);
+          break;
+        }
+        if (evals % 100 === 0 && Date.now() - startMs > maxTimeMs) {
+          Logger.log(`[${FUNC_NAME}] TIME BUDGET HIT size=${targetSize}`);
+          break;
+        }
+        if (_canAddLegToAcca_(current, available[i], cfg, targetSize)) {
+          current.push(available[i]);
+        }
+      }
+      if (current.length === targetSize) {
+        bestAcca = current;
+        bestScore = _scoreAcca_(current, mode, cfg);
+      }
+    } else if (targetSize <= 3) {
       // Brute force 3-folds
       let evals = 0;
       const maxEvals = Number(cfg.OPT_MAX_EVALS_PER_ACCA_SIZE || 5000);
@@ -688,22 +704,16 @@ function _buildAccas_(pool, usedBetIds, targetSize, cfg, typePrefix) {
     // Accept or break
     if (bestAcca && bestScore >= 0) {
       const idx = String(builtAccas.length + 1).padStart(2, '0');
-
-      // Deterministic acca naming with mode tag (<40 chars)
-      const metrics = _accaMetrics_(bestAcca);
-      const modeTag = (mode === 'EV_MAX') ? 'EV' : (mode === 'ANCHOR_BOOSTER') ? 'ANC'
-                    : (mode === 'DIVERSIFY') ? 'DIV' : (mode === 'TIME_HEDGE') ? 'TIME' : 'FILL';
-      const aTag = metrics.anchorCount ? (' A' + metrics.anchorCount) : '';
-      const name = `${typePrefix || 'ACCA'} ${idx} ${targetSize}F ${modeTag}${aTag}`.trim();
-
+      const name = `${typePrefix || 'ACCA'} ${idx} (${targetSize}-fold)`;
+      
       let accaObj = null;
       if (typeof _createAccaObjectEnhanced === 'function') {
         accaObj = _createAccaObjectEnhanced(bestAcca, name);
       } else {
         accaObj = { name: name, size: targetSize, legs: bestAcca };
       }
-
-      accaObj._metrics = metrics; // reuse already-computed metrics (no extra work)
+      
+      accaObj._metrics = _accaMetrics_(bestAcca);
       accaObj._score = bestScore;
       builtAccas.push(accaObj);
       
@@ -3501,7 +3511,8 @@ function buildAccumulatorPortfolio() {
       applyGoldGate: false,
       minEdgeGrade: ACCA_ENGINE_CONFIG.MIN_EDGE_GRADE || 'GOLD',
       minPurityGrade: ACCA_ENGINE_CONFIG.MIN_PURITY_GRADE || 'GOLD',
-      unknownEdgeAction: ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION || 'ALLOW'
+      unknownEdgeAction: ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION || 'ALLOW',
+      unknownPurityAction: 'ALLOW'
     });
 
     Logger.log('[' + FUNC_NAME + '] ✅ GOLD filter: ' + goldBets.length + '/' +
@@ -3551,45 +3562,77 @@ function buildAccumulatorPortfolio() {
     Logger.log('[' + FUNC_NAME + '] ✅ Written to Acca_Portfolio sheet');
 
     // ---------------------------------------------------------
-    // 👑 THE BIG BANG EXTRACTOR (TOP 10% BY ODDS)
+    // 👑 BLOCKBUSTER BUILDER — purpose-built high-odds monster
+    //
+    // NOT a clone of a regular acca. Instead:
+    //   1. Takes ALL qualifying goldBets
+    //   2. Sorts by individual odds DESCENDING (highest odds first)
+    //   3. Picks top 12-15 legs with no same-game duplicates
+    //   4. Builds a single mega-accumulator
     // ---------------------------------------------------------
     try {
-      if (portfolios && portfolios.length) {
+      if (goldBets && goldBets.length >= 12) {
 
-        // 1) Sort by TOTAL ODDS descending (massive payouts first)
-        //    Tie-break: prefer more unique leagues (diversity bonus)
-        var rankedAccas = portfolios.slice().sort(function(a, b) {
-          var oddsA = _getTotalOdds(a);
-          var oddsB = _getTotalOdds(b);
-          if (oddsB !== oddsA) return oddsB - oddsA;
-          // tie-break: more leagues = more diverse = preferred
-          return _uniqueLeagueCount(b) - _uniqueLeagueCount(a);
+        // 1) Sort all qualifying bets by individual odds — highest first
+        var bbCandidates = goldBets.slice().sort(function(a, b) {
+          var oA = parseFloat(a.odds) || 1.0;
+          var oB = parseFloat(b.odds) || 1.0;
+          if (oB !== oA) return oB - oA;
+          // tie-break: prefer different leagues for diversity
+          return 0;
         });
 
-        // 2) Take the top 10% (always at least 1)
-        var top10Count = Math.max(1, Math.floor(rankedAccas.length * 0.10));
-        var bigBangAccas = rankedAccas.slice(0, top10Count);
+        // 2) Greedily pick top legs, skipping same-game duplicates
+        var BLOCKBUSTER_TARGET = Math.min(15, goldBets.length); // 15 legs max, 12 min
+        if (BLOCKBUSTER_TARGET < 12) BLOCKBUSTER_TARGET = goldBets.length;
 
-        // 3) Clone and add VIP flair
-        var blockbusterClones = [];
-        for (var bb = 0; bb < bigBangAccas.length; bb++) {
-          var clone = Object.assign({}, bigBangAccas[bb]);
-          // Preserve legs array reference (shallow clone is fine, we only change top-level fields)
-          var legsCount = (clone.legs && clone.legs.length) ? clone.legs.length : 0;
-          var cloneOdds = _getTotalOdds(clone);
+        var bbLegs = [];
+        var bbMatchKeys = {};
+        var bbLeagueCounts = {};
 
-          clone.type = 'BLOCKBUSTER';
-          clone.name = '👑 BIG BANG ' + legsCount + '-Fold (' +
-            cloneOdds.toFixed(2) + 'x | ' +
-            _uniqueLeagueCount(clone) + ' leagues)';
+        for (var bci = 0; bci < bbCandidates.length && bbLegs.length < BLOCKBUSTER_TARGET; bci++) {
+          var bcb = bbCandidates[bci];
+          var mk = _matchKey(bcb);
+          if (bbMatchKeys[mk]) continue; // skip same-game picks
 
-          // Stamp computed totalOdds so the writer always has it
-          clone.totalOdds = cloneOdds;
-
-          blockbusterClones.push(clone);
+          bbLegs.push(bcb);
+          bbMatchKeys[mk] = true;
+          var lgKey = String(bcb.league || '').trim().toUpperCase();
+          bbLeagueCounts[lgKey] = (bbLeagueCounts[lgKey] || 0) + 1;
         }
 
-        // 4) Write to dedicated VIP sheet (clear old data first)
+        // 3) Build the blockbuster acca object
+        var bbTotalOdds = 1.0;
+        var bbSumAcc = 0;
+        for (var bli = 0; bli < bbLegs.length; bli++) {
+          bbTotalOdds *= (parseFloat(bbLegs[bli].odds) || 1.0);
+          bbSumAcc += (bbLegs[bli].accuracyScore || ACCA_ENGINE_CONFIG.PENALTY_ACCURACY);
+        }
+        var bbAvgAcc = bbLegs.length > 0 ? bbSumAcc / bbLegs.length : 0;
+        var bbUniqueLeagues = Object.keys(bbLeagueCounts).length;
+
+        var blockbuster = _createAccaObjectEnhanced(bbLegs,
+          '👑 BLOCKBUSTER ' + bbLegs.length + '-Fold');
+        blockbuster.type = 'BLOCKBUSTER';
+        blockbuster.name = '👑 BLOCKBUSTER ' + bbLegs.length + '-Fold (' +
+          bbTotalOdds.toFixed(2) + 'x | ' +
+          bbUniqueLeagues + ' leagues | ' +
+          bbAvgAcc.toFixed(1) + '% avg)';
+
+        // Log individual leg odds for verification
+        Logger.log('[' + FUNC_NAME + '] 🔥 BLOCKBUSTER legs (sorted by odds desc):');
+        for (var bloi = 0; bloi < bbLegs.length; bloi++) {
+          Logger.log('[' + FUNC_NAME + ']   #' + (bloi + 1) + ' ' +
+            (bbLegs[bloi].league || '') + ' | ' +
+            String(bbLegs[bloi].pick || '').substring(0, 35) + ' | ' +
+            'odds=' + bbLegs[bloi].odds + ' | ' +
+            (bbLegs[bloi].type || '') + ' | ' +
+            'edge=' + (bbLegs[bloi].assayer_edge_grade || 'NONE'));
+        }
+
+        var blockbusterList = [blockbuster];
+
+        // 4) Write to dedicated sheet
         var bbSheet = _getSheet(ss, 'Blockbuster_Accas');
         if (!bbSheet) {
           bbSheet = ss.insertSheet('Blockbuster_Accas');
@@ -3597,18 +3640,38 @@ function buildAccumulatorPortfolio() {
           bbSheet.clearContents();
         }
 
-        _writePortfolioWithAccuracy(bbSheet, blockbusterClones, leagueMetrics);
+        _writePortfolioWithAccuracy(bbSheet, blockbusterList, leagueMetrics);
 
-        Logger.log('[' + FUNC_NAME + '] ✅ Extracted ' + top10Count +
-          ' Big Bang Accas to Blockbuster_Accas');
-        Logger.log('[' + FUNC_NAME + ']   Top entry: ' +
-          (blockbusterClones[0] ? blockbusterClones[0].name : 'none'));
+        Logger.log('[' + FUNC_NAME + '] ✅ BLOCKBUSTER built: ' +
+          bbLegs.length + '-Fold @ ' + bbTotalOdds.toFixed(2) + 'x | ' +
+          bbUniqueLeagues + ' unique leagues');
 
+      } else if (portfolios && portfolios.length) {
+        // Fallback: not enough qualifying bets for a proper blockbuster (need 12+)
+        // Use old logic — clone the highest-odds regular acca
+        var rankedAccas = portfolios.slice().sort(function(a, b) {
+          return _getTotalOdds(b) - _getTotalOdds(a);
+        });
+        var fallbackClone = Object.assign({}, rankedAccas[0]);
+        fallbackClone.type = 'BLOCKBUSTER';
+        fallbackClone.totalOdds = _getTotalOdds(fallbackClone);
+        var fLegs = (fallbackClone.legs && fallbackClone.legs.length) || 0;
+        fallbackClone.name = '👑 BIG BANG ' + fLegs + '-Fold (' +
+          fallbackClone.totalOdds.toFixed(2) + 'x)';
+
+        var bbSheet2 = _getSheet(ss, 'Blockbuster_Accas');
+        if (!bbSheet2) bbSheet2 = ss.insertSheet('Blockbuster_Accas');
+        else bbSheet2.clearContents();
+        _writePortfolioWithAccuracy(bbSheet2, [fallbackClone], leagueMetrics);
+
+        Logger.log('[' + FUNC_NAME + '] ⚠️ Not enough bets for 12+ leg blockbuster (' +
+          (goldBets ? goldBets.length : 0) + ' available). Used fallback: ' + fLegs + '-Fold @ ' +
+          fallbackClone.totalOdds.toFixed(2) + 'x');
       } else {
-        Logger.log('[' + FUNC_NAME + '] ℹ️ Big Bang extraction skipped: no portfolios built.');
+        Logger.log('[' + FUNC_NAME + '] ℹ️ Blockbuster skipped: no bets or portfolios.');
       }
     } catch (bbErr) {
-      Logger.log('[' + FUNC_NAME + '] ⚠️ Big Bang extraction skipped: ' + bbErr.message);
+      Logger.log('[' + FUNC_NAME + '] ⚠️ Blockbuster builder error: ' + bbErr.message);
     }
     // ---------------------------------------------------------
 
@@ -7314,34 +7377,31 @@ function _loadBetsFromSyncTemp(ss) {
       pastCount + ' past, ' + parseFailCount + ' parse-failed'
     );
 
+    // V2 expiry breakdown logging
     if (typeof isBetExpiredV2 === 'function' && typeof _kickoffMs === 'function') {
       var nNow = new Date();
       var legacyExp = 0;
       var v2Exp = 0;
       var firstExpired = [];
-      for (var ix=0; ix<bets.length; ix++) {
+      for (var ix = 0; ix < bets.length; ix++) {
         var bb = bets[ix];
-        // For legacy logging estimate, we just check bb.timeMs < nowMs 
-        // because timeMs uses _parseTime under the hood
         var isLegExp = bb.timeMs < nowMs;
         var isV2Exp = isBetExpiredV2(bb, nNow);
         if (isLegExp) legacyExp++;
         if (isV2Exp) {
           v2Exp++;
           if (firstExpired.length < 5) {
-            var koMs = _kickoffMs(bb);
-            var loc = !isNaN(koMs) ? Utilities.formatDate(new Date(koMs), EXPIRY_TZ, 'yyyy-MM-dd HH:mm') : 'NaN';
-            var minsPast = !isNaN(koMs) ? Math.floor((nowMs - koMs)/60000) : 'NaN';
+            var koMsL = _kickoffMs(bb);
+            var loc = !isNaN(koMsL) ? Utilities.formatDate(new Date(koMsL), EXPIRY_TZ, 'yyyy-MM-dd HH:mm') : 'NaN';
+            var minsPast = !isNaN(koMsL) ? Math.floor((nowMs - koMsL) / 60000) : 'NaN';
             firstExpired.push(bb.match + ' (' + bb.league + ') - ' + loc + ' (' + minsPast + 'm past)');
           }
         }
       }
-      Logger.log('[' + FUNC_NAME + '] Expiry V2 Check: ' + legacyExp + ' would expire legacy (grace=0), ' + v2Exp + ' expire with grace');
+      Logger.log('[' + FUNC_NAME + '] Expiry V2: ' + legacyExp + ' expire legacy (grace=0), ' + v2Exp + ' expire with grace (' + EXPIRY_GRACE_MIN_DEFAULT + 'min default)');
       if (firstExpired.length > 0) {
-        Logger.log('[' + FUNC_NAME + '] First 5 expired bets:');
-        for (var fj=0; fj<firstExpired.length; fj++) {
-          Logger.log('  - ' + firstExpired[fj]);
-        }
+        Logger.log('[' + FUNC_NAME + '] First expired bets (V2):');
+        for (var fj = 0; fj < firstExpired.length; fj++) Logger.log('  - ' + firstExpired[fj]);
       }
     }
 
@@ -7719,9 +7779,9 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     UNKNOWN_LEAGUE_ACTION: (typeof ACCA_ENGINE_CONFIG !== 'undefined' &&
                             ACCA_ENGINE_CONFIG.UNKNOWN_LEAGUE_ACTION)
                             ? ACCA_ENGINE_CONFIG.UNKNOWN_LEAGUE_ACTION : 'BLOCK',
-    UNKNOWN_EDGE_ACTION:   ACCA_GATES_V2_ENABLED
-      ? ACCA_GATES_V2.UNKNOWN_EDGE_ACTION
-      : (((typeof ACCA_ENGINE_CONFIG !== 'undefined') && ACCA_ENGINE_CONFIG.UNKNOWN_EDGE_ACTION) || 'ALLOW'),
+    // UNKNOWN_EDGE_ACTION intentionally omitted — the function boundary override
+    // in accaEngineSyncAssayerBridgeConfig_ (AssayerBridge.gs) injects
+    // ACCA_GATES_V2.UNKNOWN_EDGE_ACTION=BLOCK for all callers when V2 is enabled.
     REQUIRE_RELIABLE_EDGE: false
   }, FUNC);
 
@@ -7746,7 +7806,9 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
     skipStandard: true,
     applyGoldGate: false,
     minEdgeGrade: 'SILVER',
-    minPurityGrade: 'SILVER'
+    minPurityGrade: 'SILVER',
+    unknownEdgeAction: 'BLOCK',
+    unknownPurityAction: 'ALLOW'
   });
   Logger.log('[' + FUNC + '] ✅ Silver qualified: ' +
     silQ.length + '/' + enriched.length);
@@ -7823,27 +7885,25 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
 
   if (RISKY_ENABLED) {
     Logger.log('[' + FUNC + '] ── RISKY TIER (reason-whitelisted) ──');
-    Logger.log('[' + FUNC + '] Gates: edgeFloor=' + (LCFG.RISKY_MIN_EDGE_GRADE || 'SILVER') +
-      ' reqReliable=' + (LCFG.RISKY_REQUIRE_RELIABLE !== false) +
-      ' minN=' + (LCFG.RISKY_MIN_EDGE_N || 30) +
-      ' allowedReasons=[' + Array.from(RISKY_ALLOWED_BLOCK_REASONS).join(',') + ']' +
-      ' forbiddenGrades=[' + Array.from(RISKY_FORBIDDEN_PURITY_GRADES).join(',') + ']');
 
-    // V2 gate overrides (ACCA_GATES_V2_ENABLED=true restores 20:14 working config)
-    var riskyEdgeFloor   = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_MIN_EDGE_GRADE    : (LCFG.RISKY_MIN_EDGE_GRADE || 'SILVER');
+    // V2 gate overrides — ACCA_GATES_V2_ENABLED=true restores 20:14 working config
+    var riskyEdgeFloor   = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_MIN_EDGE_GRADE    : (LCFG.RISKY_MIN_EDGE_GRADE   || 'SILVER');
     var riskyReqReliable = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_REQUIRE_RELIABLE  : (LCFG.RISKY_REQUIRE_RELIABLE !== false);
-    var riskyMinN        = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_MIN_N             : (LCFG.RISKY_MIN_EDGE_N || 30);
+    var riskyMinN        = ACCA_GATES_V2_ENABLED ? ACCA_GATES_V2.RISKY_MIN_N             : (LCFG.RISKY_MIN_EDGE_N        || 30);
     var riskyForbidden   = ACCA_GATES_V2_ENABLED ? new Set(ACCA_GATES_V2.RISKY_FORBIDDEN_PURITY_GRADES) : RISKY_FORBIDDEN_PURITY_GRADES;
-    Logger.log('[' + FUNC + '] V2 gates applied: edgeFloor=' + riskyEdgeFloor +
-      ' reqReliable=' + riskyReqReliable + ' minN=' + riskyMinN +
-      ' forbiddenGrades=[' + Array.from(riskyForbidden).join(',') + ']');
 
-    // Build a V2-overridden LCFG view to pass into _isRiskyCandidate
+    // Build a V2-overridden LCFG view for _isRiskyCandidate — does NOT mutate LCFG
     var lcfgV2 = {};
     for (var lcfgK in LCFG) { if (Object.prototype.hasOwnProperty.call(LCFG, lcfgK)) lcfgV2[lcfgK] = LCFG[lcfgK]; }
     lcfgV2.RISKY_MIN_EDGE_GRADE   = riskyEdgeFloor;
     lcfgV2.RISKY_REQUIRE_RELIABLE = riskyReqReliable;
     lcfgV2.RISKY_MIN_EDGE_N       = riskyMinN;
+
+    Logger.log('[' + FUNC + '] Gates (V2): edgeFloor=' + riskyEdgeFloor +
+      ' reqReliable=' + riskyReqReliable +
+      ' minN=' + riskyMinN +
+      ' allowedReasons=[' + Array.from(RISKY_ALLOWED_BLOCK_REASONS).join(',') + ']' +
+      ' forbiddenGrades=[' + Array.from(riskyForbidden).join(',') + ']');
 
     // 6a. Identify candidates using the gated helper
     var riskyQ = [];
@@ -7855,7 +7915,7 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
       if (silIdSet.has(rbid)) { riskyRejectedCounts.alreadySilver++; continue; }
       if (!stdIdSet.has(rbid)) { riskyRejectedCounts.notStandard++; continue; }
 
-      // ◄◄ FIX: use the gated helper instead of raw grade check
+      // ◄◄ FIX: use the V2-gated lcfgV2 instead of raw LCFG
       if (_isRiskyCandidate(rb, lcfgV2, GRADE_RANK)) {
         riskyQ.push(rb);
         riskyRejectedCounts.qualified++;
@@ -8029,7 +8089,7 @@ function processLeftoverBets(ss, allBets, usedBetIds, leagueMetrics, assayerData
 
         } else {
           var enrN = _riskyEdgeN(enr);
-          if (enrN !== null && enrN < (LCFG.RISKY_MIN_EDGE_N || 30)) {
+          if (enrN !== null && enrN < riskyMinN) {
             note = 'EDGE_SMALL_SAMPLE (n=' + enrN + ') — RISKY_REJECTED';
           } else if (RISKY_ENABLED) {
             note = 'PURITY_SOFT_FAIL_RISKY_POOL_UNUSED';

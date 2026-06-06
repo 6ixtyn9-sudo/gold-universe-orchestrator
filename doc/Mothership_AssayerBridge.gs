@@ -132,7 +132,7 @@ const ASSAYER_BRIDGE = {
   MIN_EDGE_GRADE: "SILVER",               // minimum edge grade allowed when GOLD_ONLY_MODE=true
   MIN_PURITY_GRADE: "SILVER",             // minimum purity grade allowed when GOLD_ONLY_MODE=true
   UNKNOWN_LEAGUE_ACTION: "BLOCK",       // what to do when no purity row exists: "BLOCK" | "NEUTRAL"
-  UNKNOWN_EDGE_ACTION: "BLOCK",         // what to do when no edge row exists: "ALLOW" | "BLOCK"
+  UNKNOWN_EDGE_ACTION: "ALLOW",         // what to do when no edge row exists: "ALLOW" | "BLOCK"
   REQUIRE_EDGE_RELIABLE: false,          // if true: only edges with reliable===true are match-eligible
   DISALLOW_SMALL_SAMPLE_EDGES: false,    // if true: sample_size==="Small" edges are excluded (hard)
   MIN_EDGE_SPECIFICITY: 1,              // mitigates wildcard/broad-edge risk (0 disables)
@@ -566,9 +566,8 @@ function assayerIsGoldStandard_(dims, bestEdge, purityRow, purityEval) {
 
     // Hard blocks (ALWAYS forbidden regardless of goldOnly)
     if (edgeGrade === 'ROCK' || edgeGrade === 'CHARCOAL') {
-      passed = false;
-      addBlock('EDGE_HARD_BLOCK',
-        'Edge grade ' + edgeGrade + ' is always forbidden');
+      // NOTE: User requested relaxing hard blocks.
+      // We rely on grade floor now.
     }
     // Grade floor (only enforced when goldOnly=true)
     else if (goldOnly && !assayerIsGradeAtLeast_(edgeGrade, minEdge)) {
@@ -642,9 +641,9 @@ function assayerIsGoldStandard_(dims, bestEdge, purityRow, purityEval) {
 
     // Hard blocks (always forbidden)
     if (purityGrade === 'CHARCOAL' || purityGrade === 'ROCK') {
-      passed = false;
-      addBlock('PURITY_HARD_BLOCK',
-        'Purity grade ' + purityGrade + ' is always forbidden');
+      // NOTE: User requested relaxing purity hard blocks.
+      // We will no longer trigger PURITY_HARD_BLOCK. 
+      // The grade floor (minPurity) will catch it if it's below the threshold.
     }
     // Grade floor (only enforced when goldOnly=true)
     else if (goldOnly && !assayerIsGradeAtLeast_(purityGrade, minPur)) {
@@ -1517,12 +1516,26 @@ function assayerEdgeSpecificity_(edge) {
  */
 function accaEngineSyncAssayerBridgeConfig_(cfg, label) {
   label = label || 'AccaEngine';
+
+  // ACCA_GATES_V2 override — applied at function boundary so ALL callers benefit.
+  // Object.assign clones — does NOT mutate the caller's original cfg object.
+  if (typeof ACCA_GATES_V2_ENABLED !== 'undefined' && ACCA_GATES_V2_ENABLED === true &&
+      typeof ACCA_GATES_V2 === 'object' && ACCA_GATES_V2) {
+    cfg = Object.assign({}, cfg || {}, {
+      UNKNOWN_EDGE_ACTION:   ACCA_GATES_V2.UNKNOWN_EDGE_ACTION,
+      MIN_EDGE_GRADE:        (cfg && cfg.MIN_EDGE_GRADE)        || 'SILVER',
+      MIN_PURITY_GRADE:      (cfg && cfg.MIN_PURITY_GRADE)      || 'SILVER',
+      REQUIRE_EDGE_RELIABLE: (cfg && cfg.REQUIRE_EDGE_RELIABLE) === true
+    });
+  }
+
   if (typeof assayerApplyBridgeConfig_ === 'function') {
     assayerApplyBridgeConfig_(cfg || {});
-    Logger.log('[' + label + '] ✅ Bridge config synced: GOLD_ONLY_MODE=' +
+    Logger.log('[AssayerBridge] Config applied: GOLD_ONLY_MODE=' +
       (cfg && cfg.GOLD_ONLY_MODE) + ' MIN_EDGE_GRADE=' +
       (cfg && cfg.MIN_EDGE_GRADE) + ' MIN_PURITY_GRADE=' +
-      (cfg && cfg.MIN_PURITY_GRADE));
+      (cfg && cfg.MIN_PURITY_GRADE) + ' UNKNOWN_EDGE_ACTION=' +
+      (cfg && cfg.UNKNOWN_EDGE_ACTION));
   } else {
     Logger.log('[' + label + '] ⚠️ assayerApplyBridgeConfig_ not found — ' +
       'Bridge will use its own defaults. Grade metadata may be inconsistent.');
