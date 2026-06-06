@@ -2735,6 +2735,11 @@ function fetchLeagueAccuracyMetrics() {
         storeKey(fusedNormSep.toLowerCase(), metricData);
       }
 
+      // Store file URL + identity on metricData for team-map builder
+      metricData._fileUrl     = url;
+      metricData._leagueName  = leagueName;
+      metricData._leagueCode  = leagueCode;
+
       // Build spreadsheet name → League Name map for sourcesheet disambiguation
       leagueMetrics._sheetNameToLeagueName = leagueMetrics._sheetNameToLeagueName || {};
       try {
@@ -2806,6 +2811,66 @@ function fetchLeagueAccuracyMetrics() {
   }
   leagueMetrics._collisionResolution = collisionResolution;
   // ── END COLLISION RESOLUTION ──
+
+  // ── Build team→league disambiguation map for colliding codes ──
+  leagueMetrics._teamToLeague = leagueMetrics._teamToLeague || {};
+
+  // First pass: identify which league codes have > 1 candidate league
+  var codeOccurrences = {};
+  for (var _mk in leagueMetrics) {
+    if (_mk.charAt(0) === '_') continue;
+    var _md = leagueMetrics[_mk];
+    if (_md && _md._leagueCode && _md._leagueName) {
+      codeOccurrences[_md._leagueCode] = codeOccurrences[_md._leagueCode] || [];
+      if (codeOccurrences[_md._leagueCode].indexOf(_md._leagueName) === -1) {
+        codeOccurrences[_md._leagueCode].push(_md._leagueName);
+      }
+    }
+  }
+
+  // Second pass: for each collision open candidate satellites and map team names
+  for (var _collCode in codeOccurrences) {
+    var _candidates = codeOccurrences[_collCode];
+    if (_candidates.length > 1) {
+      Logger.log('[' + FUNC_NAME + '] Building team map for collision: ' + _collCode + ' -> ' + _candidates.join(' + '));
+      for (var _ci = 0; _ci < _candidates.length; _ci++) {
+        var _cName = _candidates[_ci];
+        var _cMeta = leagueMetrics[_cName];
+        var _cUrl  = _cMeta && _cMeta._fileUrl;
+        if (!_cUrl) continue;
+        try {
+          var _cSS    = SpreadsheetApp.openByUrl(_cUrl);
+          var _cSheet = _cSS.getSheetByName('Bet_Slips') || _cSS.getSheets()[0];
+          if (!_cSheet) continue;
+          var _cData = _cSheet.getDataRange().getValues();
+          if (_cData.length < 2) continue;
+
+          // Scan header row for home / away columns
+          var _hdrs   = _cData[0];
+          var _homeIdx = -1, _awayIdx = -1;
+          for (var _h = 0; _h < _hdrs.length; _h++) {
+            var _hdr = String(_hdrs[_h] || '').toLowerCase().trim();
+            if (_hdr === 'home') _homeIdx = _h;
+            if (_hdr === 'away') _awayIdx = _h;
+          }
+          // Fallback to known Sync_Temp column positions
+          if (_homeIdx === -1) _homeIdx = 3;
+          if (_awayIdx === -1) _awayIdx = 4;
+
+          for (var _rr = 1; _rr < _cData.length; _rr++) {
+            var _homeTeam = String(_cData[_rr][_homeIdx] || '').trim().toLowerCase();
+            var _awayTeam = String(_cData[_rr][_awayIdx] || '').trim().toLowerCase();
+            if (_homeTeam) leagueMetrics._teamToLeague[_homeTeam] = _cName;
+            if (_awayTeam) leagueMetrics._teamToLeague[_awayTeam] = _cName;
+          }
+          Logger.log('[' + FUNC_NAME + '] Mapped ' + (_cData.length - 1) + ' rows of teams from ' + _cName);
+        } catch (e) {
+          Logger.log('[' + FUNC_NAME + '] Failed to read teams for ' + _cName + ': ' + e.message);
+        }
+      }
+    }
+  }
+  // ── End team map build ──
 
   Logger.log('[' + FUNC_NAME + '] ✅ Total metric keys: ' + Object.keys(leagueMetrics).length);
 

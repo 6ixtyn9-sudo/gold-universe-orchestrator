@@ -842,6 +842,22 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
   }
   // --- End sourcesheet disambiguation ---
 
+  // --- Team-based disambiguation for colliding league codes ---
+  if (!leagueMeta && bet.league && metrics._teamToLeague) {
+    var teamKey = String(bet.home || '').trim().toLowerCase();
+    if (!teamKey) teamKey = String(bet.away || '').trim().toLowerCase();
+    if (teamKey) {
+      var resolvedByTeam = metrics._teamToLeague[teamKey];
+      if (resolvedByTeam && metrics[resolvedByTeam]) {
+        leagueMeta = metrics[resolvedByTeam];
+        matchedCount++;
+        Logger.log("[_enrichBetsWithAccuracy] Team match for %s -> %s (resolved via team: %s)",
+                   bet.league, resolvedByTeam, teamKey);
+      }
+    }
+  }
+  // --- End team disambiguation ---
+
   // ── Collision-resolution fallback (averaged, self-documenting) ──
   if (!leagueMeta && metrics._collisionResolution) {
     var colKey = String(league || '').trim();
@@ -2931,6 +2947,21 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
             }
           }
           // --- End sourcesheet disambiguation ---
+
+          // --- Team-based disambiguation for colliding league codes ---
+          if (!foundMeta && leg.league && metrics._teamToLeague) {
+            var teamKey = String(leg.home || '').trim().toLowerCase();
+            if (!teamKey) teamKey = String(leg.away || '').trim().toLowerCase();
+            if (teamKey) {
+              var resolvedLeagueName = metrics._teamToLeague[teamKey];
+              if (resolvedLeagueName && metrics[resolvedLeagueName]) {
+                foundMeta = metrics[resolvedLeagueName];
+                Logger.log("[_writePortfolioWithAccuracy] Team match for %s -> %s (resolved via team: %s)", 
+                           leg.league, resolvedLeagueName, teamKey);
+              }
+            }
+          }
+          // --- End team disambiguation ---
 
           // ── Collision-resolution fallback ──
           if (!foundMeta && metrics._collisionResolution) {
@@ -7436,7 +7467,9 @@ function _loadBetsFromSyncTemp(ss) {
       isBanker:      type.toUpperCase().indexOf('BANKER') >= 0,
       isSniper:      type.toUpperCase().indexOf('SNIPER') >= 0,
       isDirectional: type.toUpperCase().indexOf('DIR') >= 0,
-      sourcesheet:   String(getCell(row, 30) || '').trim()
+      sourcesheet:   String(getCell(row, 30) || '').trim(),
+      home:          match.indexOf(' vs ') >= 0 ? match.split(' vs ')[0].trim() : '',
+      away:          match.indexOf(' vs ') >= 0 ? match.split(' vs ')[1].trim() : ''
     });
   }
 
