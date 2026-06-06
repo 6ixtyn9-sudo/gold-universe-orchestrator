@@ -828,6 +828,17 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
       }
     }
 
+    // ── Collision-resolution fallback (averages colliding leagues) ──
+    if (!leagueMeta && metrics._collisionResolution) {
+      var colKey = String(league || '').trim();
+      if (metrics._collisionResolution[colKey]) {
+        leagueMeta = metrics._collisionResolution[colKey];
+        matchedCount++;
+        Logger.log('[' + FUNC_NAME + '] Collision resolution used for ' + league + ': ' + leagueMeta.tier1Source);
+      }
+    }
+    // ── END collision-resolution fallback ──
+
     // Dynamic unique-prefix fallback (no static collision list).
     // Example: bet.league="LNB" can match metrics["LNB_FRA"] if it is the only LNB_* key.
     if (!leagueMeta) {
@@ -2894,6 +2905,15 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
               break;
             }
           }
+          
+          // ── Collision-resolution fallback ──
+          if (!foundMeta && metrics._collisionResolution) {
+            const colKey2 = String(leg.league || '').trim();
+            if (metrics._collisionResolution[colKey2]) {
+              foundMeta = metrics._collisionResolution[colKey2];
+            }
+          }
+          // ── END collision-resolution fallback ──
           
           if (foundMeta) {
             if (isBanker && foundMeta.hasTier1) {
