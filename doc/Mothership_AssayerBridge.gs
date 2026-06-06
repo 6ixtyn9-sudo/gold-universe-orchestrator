@@ -1583,6 +1583,71 @@ function assayerStampBetEdgeRefs_(bet) {
    LEAGUE PURITY LOOKUP + ACTION
    ═══════════════════════════════════════════ */
 
+function assayerLeagueBareCode_(league) {
+  var s = assayerCanonUpper_(league);
+  if (!s) return '';
+  return s.indexOf('_') >= 0 ? s.split('_')[0] : s;
+}
+
+function assayerCollectCompatiblePurityRows_(league, purityRows) {
+  var want = assayerCanonUpper_(league);
+  if (!want || !purityRows || purityRows.length === 0) return [];
+
+  var exactRows = [];
+  for (var i = 0; i < purityRows.length; i++) {
+    var r0 = purityRows[i];
+    if (!r0 || !r0.league) continue;
+    if (assayerCanonUpper_(r0.league) === want) exactRows.push(r0);
+  }
+
+  if (exactRows.length > 0) return exactRows;
+
+  var bare = assayerLeagueBareCode_(want);
+  if (!bare) return [];
+
+  // Compound bet with no exact row: allow matching old stale bare rows only.
+  // Do not match a different compound sharing the same bare code.
+  if (want.indexOf('_') >= 0) {
+    var staleBareRows = [];
+    for (var sb = 0; sb < purityRows.length; sb++) {
+      var rb = purityRows[sb];
+      if (!rb || !rb.league) continue;
+      if (assayerCanonUpper_(rb.league) === bare) staleBareRows.push(rb);
+    }
+    return staleBareRows;
+  }
+
+  // Bare bet: match CODE_* only when exactly one distinct compound exists.
+  var byCompound = {};
+  for (var j = 0; j < purityRows.length; j++) {
+    var r = purityRows[j];
+    if (!r || !r.league) continue;
+
+    var rowLeague = assayerCanonUpper_(r.league);
+    if (rowLeague.indexOf(bare + '_') === 0) {
+      byCompound[rowLeague] = true;
+    }
+  }
+
+  var compounds = Object.keys(byCompound);
+  if (compounds.length !== 1) {
+    if (compounds.length > 1) {
+      Logger.log('[AssayerBridge] Ambiguous league prefix for purity lookup: ' + bare + ' -> ' + compounds.join(', '));
+    }
+    return [];
+  }
+
+  var chosen = compounds[0];
+  var out = [];
+  for (var k = 0; k < purityRows.length; k++) {
+    var rr = purityRows[k];
+    if (!rr || !rr.league) continue;
+    if (assayerCanonUpper_(rr.league) === chosen) out.push(rr);
+  }
+
+  return out;
+}
+
 function assayerLookupLeaguePurity_(dims, purityRows) {
   if (!dims || !purityRows || purityRows.length === 0) return null;
 
@@ -1594,41 +1659,11 @@ function assayerLookupLeaguePurity_(dims, purityRows) {
   var tier   = assayerCanonTier_(dims.tierPurity);
   var qBet   = assayerCanonQuarter_(dims.quarterPurity);
 
-  // 1) Collect league rows once
-  var leagueRows = [];
-
-  // EXACT MATCH FIRST
-  for (var i = 0; i < purityRows.length; i++) {
-    var r0 = purityRows[i];
-    if (!r0 || !r0.league) continue;
-    if (assayerCanonUpper_(r0.league) === league) leagueRows.push(r0);
-  }
-
-  // UNIQUE PREFIX FALLBACK (If exact match fails)
-  if (leagueRows.length === 0) {
-    var parts = league.split('_');
-    if (parts.length > 0) {
-      var prefix = parts[0] + '_';
-      var fallbackRows = [];
-      var matchedPrefixes = {};
-
-      for (var i = 0; i < purityRows.length; i++) {
-        var r0 = purityRows[i];
-        if (!r0 || !r0.league) continue;
-        var purLeague = assayerCanonUpper_(r0.league);
-        if (purLeague && purLeague.indexOf(prefix) === 0) {
-          fallbackRows.push(r0);
-          matchedPrefixes[purLeague] = true;
-        }
-      }
-
-      var uniquePrefixMatches = Object.keys(matchedPrefixes);
-      if (uniquePrefixMatches.length === 1) {
-        leagueRows = fallbackRows;
-      }
-    }
-  }
-
+  // 1) Collect league rows once.
+  // Exact match first; otherwise use safe dynamic bare/CODE_SLUG transition fallback.
+  // Bare CODE only maps to CODE_* when exactly one compound exists.
+  // Compound CODE_X never maps to a different compound CODE_Y sharing the same bare code.
+  var leagueRows = assayerCollectCompatiblePurityRows_(league, purityRows);
   if (leagueRows.length === 0) return null;
 
   // 2) Parameterized filter
