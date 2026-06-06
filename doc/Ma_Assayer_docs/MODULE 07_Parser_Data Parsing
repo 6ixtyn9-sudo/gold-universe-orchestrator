@@ -1,0 +1,1116 @@
+/******************************************************************************
+ * MA ASSAYER — Complete Production Module
+ * 
+ * "Testing the purity of predictions - separating Gold from Charcoal"
+ * 
+ * COMPLETE ROBUST IMPLEMENTATION
+ * 
+ * ARCHITECTURE:
+ * ├── M1_Output_          Sheet Writers
+ * ├── M2_Main_            Controller/Orchestrator
+ * ├── M3_Flagger_         Apply Flags to Source
+ * ├── M4_Discovery_       Edge Discovery Engine
+ * ├── M5_Config_          Configuration & Constants
+ * ├── M6_ColResolver_     Fuzzy Column Matching (case-insensitive)
+ * ├── M7_Parser_          Data Parsing
+ * ├── M8_Stats_           Statistical Calculations
+ * ├── M9_Utils_           Utility Functions
+ * └── M10_Log_            Logging System
+ ******************************************************************************/
+ 
+// ============================================================================
+// MODULE: Parser_ — Data Parsing
+// ============================================================================
+const Parser_ = {
+  log: null,
+
+  init() {
+    this.log = Log_.module("PARSER");
+  },
+
+  parseOutcome(val) {
+    if (val === null || val === undefined || val === "") return null;
+
+    const s = String(val).toUpperCase().trim();
+
+    const winPatterns = Config_.outcomeMappings.win;
+    for (const pattern of winPatterns) {
+      if (s === pattern.toUpperCase() || s.includes(pattern.toUpperCase())) {
+        return 1;
+      }
+    }
+
+    const lossPatterns = Config_.outcomeMappings.loss;
+    for (const pattern of lossPatterns) {
+      if (s === pattern.toUpperCase() || s.includes(pattern.toUpperCase())) {
+        return 0;
+      }
+    }
+
+    const pushPatterns = Config_.outcomeMappings.push;
+    for (const pattern of pushPatterns) {
+      if (s === pattern.toUpperCase() || s.includes(pattern.toUpperCase())) {
+        return -1;
+      }
+    }
+
+    if (s === "1" || s === "1.0") return 1;
+    if (s === "0" || s === "0.0") return 0;
+    if (s === "-1" || s === "0.5") return -1;
+
+    return null;
+  },
+
+  parseConfidence(val) {
+    if (val === null || val === undefined || val === "") return null;
+
+    if (typeof val === "number") {
+      return val > 1 ? val / 100 : val;
+    }
+
+    let str = String(val).trim();
+    str = str.replace(/[%\s,]/g, "");
+
+    const num = parseFloat(str);
+    if (isNaN(num)) return null;
+
+    return num > 1 ? num / 100 : num;
+  },
+
+  parseTier(val) {
+    if (val === null || val === undefined || val === "") return "EVEN";
+
+    const t = String(val).toUpperCase().trim();
+
+    // ── ELITE must be checked first — before generic "strong" mappings absorb it ──
+    // Satellites write "ELITE" for confidence >= 70%. It must surface as its own tier.
+    if (t === "ELITE" || t === "ELITE TIER" || t === "T_ELITE" || t === "TIER_ELITE") {
+      return "ELITE";
+    }
+
+    for (const pattern of Config_.tierMappings.strong) {
+      if (t === pattern.toUpperCase() || t.includes(pattern.toUpperCase())) {
+        return "STRONG";
+      }
+    }
+
+    for (const pattern of Config_.tierMappings.medium) {
+      if (t === pattern.toUpperCase() || t.includes(pattern.toUpperCase())) {
+        return "MEDIUM";
+      }
+    }
+
+    for (const pattern of Config_.tierMappings.weak) {
+      if (t === pattern.toUpperCase() || t.includes(pattern.toUpperCase())) {
+        return "WEAK";
+      }
+    }
+
+    return "EVEN";
+  },
+
+  parseQuarter(val) {
+    if (val === null || val === undefined || val === "") return null;
+
+    const str = String(val).toUpperCase().trim();
+
+    // Explicitly reject Halves — they are not Quarters!
+    if (str.includes("1H") || str.includes("1ST HALF") || str.includes("FIRST HALF") || str.includes("HT") || str.includes("HALF TIME")) return null;
+    if (str.includes("2H") || str.includes("2ND HALF") || str.includes("SECOND HALF")) return null;
+
+    const qMatch = str.match(/Q\s*([1-4])/);
+    if (qMatch) return parseInt(qMatch[1], 10);
+
+    const numMatch = str.match(/^([1-4])$/);
+    if (numMatch) return parseInt(numMatch[1], 10);
+
+    const pMatch = str.match(/P\s*([1-3])/);
+    if (pMatch) return parseInt(pMatch[1], 10);
+
+    if (str.includes("1ST Q") || str.includes("FIRST Q")) return 1;
+    if (str.includes("2ND Q") || str.includes("SECOND Q")) return 2;
+    if (str.includes("3RD Q") || str.includes("THIRD Q")) return 3;
+    if (str.includes("4TH Q") || str.includes("FOURTH Q")) return 4;
+
+    if (str.includes("FULL") || str.includes("GAME") || str.includes("FG")) return 0;
+
+    return null;
+  },
+
+    parseSide(pick, sideCol) {
+  var rawPick = String(pick || "");
+  var rawSide = String(sideCol || "");
+
+  // ── LOSSY sanitizer ──
+  // Aggressively strip ALL metadata noise so regex only sees structural tokens.
+  // Addresses critique: bare percentages, brackets, spread digits, sniper tags.
+  function clean(x) {
+    return String(x || "")
+      .toUpperCase()
+      .replace(/[−–—]/g, "-")           // normalize dashes
+      .replace(/[●•·]/g, " ")           // bullets
+      .replace(/\([^)]*\)/g, " ")       // parentheticals: "(63%)", "(SNIPER)"
+      .replace(/\[[^\]]*\]/g, " ")      // bracketed metadata: "[Q1]", "[LOCK]"
+      .replace(/\d+\.?\d*\s*%/g, " ")   // bare percentages: "63%", "72.5%"
+      .replace(/[+-]\s*\d+\.?\d*/g, " ") // spread/margin tokens: "+5.0", "-3.5"
+      .replace(/\b\d{3,}\b/g, " ")      // odds-like numbers: "110", "-150"
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  var p = clean(rawPick);
+  var s = clean(rawSide);
+
+  // STRICT regex: captures H or A only when it appears as a standalone token.
+  // After clean(), spread digits are already gone, so "Q1: H +5.0" becomes "Q1: H"
+  // and this regex safely matches the H.
+  var STRICT_RE = /(?:^|[\s:,;])(H|A)(?:\s|$|[,;:])/;
+
+  // --- 1) Derive from PICK (source of truth) ---
+  var pickSide = null;
+
+  var mPick = p.match(STRICT_RE);
+  if (mPick) {
+    pickSide = mPick[1];
+  }
+
+  // Word-boundary fallback for explicit labels only (no single-char ambiguity)
+  if (!pickSide) {
+    if (/\bHOME\b/.test(p))                          pickSide = "H";
+    else if (/\b(?:AWAY|ROAD|VISITOR)\b/.test(p))    pickSide = "A";
+  }
+
+  // NOTE: parseBetSide() deliberately NOT called here.
+  // Critique addressed: its looser patterns can mis-detect H/A in edge formats
+  // that the strict extractor would correctly drop.
+
+  // --- 2) Derive from sideCol (fallback only) ---
+  var colSide = null;
+
+  var mCol = s.match(STRICT_RE);
+  if (mCol) {
+    colSide = mCol[1];
+  }
+
+  // Legacy exact-match mappings (only if strict token not found)
+  if (!colSide) {
+    if (s === "H" || s === "HOME" || s === "HM")                                        colSide = "H";
+    else if (s === "A" || s === "AWAY" || s === "AW" || s === "V" || s === "VISITOR" || s === "ROAD") colSide = "A";
+  }
+
+  // --- 3) Contradiction guard ---
+  if (pickSide && colSide && pickSide !== colSide) {
+    if (this.log && typeof this.log.warn === "function") {
+      this.log.warn(
+        "Side contradiction: pick implies " + pickSide +
+        " but sideCol says " + colSide + ". Using pick.",
+        { pick: rawPick, sideCol: rawSide }
+      );
+    }
+    return pickSide;
+  }
+
+  return pickSide || colSide || null;
+},
+
+  parseSpread(pick) {
+    if (!pick) return null;
+
+    const str = String(pick)
+      .replace(/−/g, "-")
+      .replace(/–/g, "-")
+      .replace(/—/g, "-");
+
+    const match = str.match(/[+-]?\s*(\d+\.?\d*)/);
+    if (match) {
+      return Math.abs(parseFloat(match[1]));
+    }
+
+    return null;
+  },
+
+  parseDirection(val) {
+    if (!val) return null;
+
+    const s = String(val).toUpperCase().trim();
+
+    // Exact matches
+    if (s === "O" || s === "OV" || s === "OVER") return "Over";
+    if (s === "U" || s === "UN" || s === "UNDER") return "Under";
+    if (s === "H" || s === "HOME") return "HOME";
+    if (s === "A" || s === "AWAY") return "AWAY";
+
+    // Word boundary matches for full words
+    if (/\bOVER\b/.test(s)) return "Over";
+    if (/\bUNDER\b/.test(s)) return "Under";
+    if (/\bHOME\b/.test(s)) return "HOME";
+    if (/\bAWAY\b/.test(s)) return "AWAY";
+
+    // Prefix matches for abbreviations (must be followed by space or number)
+    if (/^OV[\s\d]/.test(s) || /^O[\s\d]/.test(s)) return "Over";
+    if (/^UN[\s\d]/.test(s) || /^U[\s\d]/.test(s)) return "Under";
+    
+    // Strict prefix for home/away in spreads (e.g. H -4.5 or A +2)
+    if (/^H[\s+-]/.test(s)) return "HOME";
+    if (/^A[\s+-]/.test(s)) return "AWAY";
+
+    return null;
+  },
+
+  parseLine(val) {
+    if (val === null || val === undefined || val === "") return null;
+
+    const str = String(val).replace(/[^0-9.\-]/g, "");
+    const num = parseFloat(str);
+
+    return isNaN(num) ? null : num;
+  },
+
+  parseOdds(val) {
+    if (val === null || val === undefined || val === "") return null;
+
+    const str = String(val).trim();
+    const num = parseFloat(str.replace(/[^0-9.\-+]/g, ""));
+
+    if (isNaN(num)) return null;
+
+    if (str.includes("+") || str.includes("-")) {
+      if (num > 0) {
+        return (num / 100) + 1;
+      } else {
+        return (100 / Math.abs(num)) + 1;
+      }
+    }
+
+    return num;
+  },
+
+  isWomenLeague(league, match) {
+    const l = String(league || "").toUpperCase();
+    const m = String(match || "").toLowerCase();
+
+    if (l.endsWith("W") && l.length > 1 && !l.endsWith("MW")) return true;
+    if (l.includes("WOMEN") || l.includes("WNBA") || l.includes("WBB") || l.includes("LPGA")) return true;
+    if (m.includes("women") || m.includes(" w ") || m.includes("(w)") || m.includes("ladies")) return true;
+    if (l.match(/W$/)) return true;
+
+    return false;
+  },
+
+  getSpreadBucket(spread) {
+    if (spread === null || spread === undefined) return null;
+
+    for (const b of Config_.spreadBuckets) {
+      if (spread >= b.min && spread <= b.max) return b.name;
+    }
+    return null;
+  },
+
+  getLineBucket(line) {
+    if (line === null || line === undefined) return null;
+
+    for (const b of Config_.lineBuckets) {
+      if (line >= b.min && line <= b.max) return b.name;
+    }
+    return null;
+  },
+
+  getConfBucket(conf) {
+    if (conf === null || conf === undefined) return null;
+
+    for (const b of Config_.confBuckets) {
+      if (conf >= b.min && conf <= b.max) return b.name;
+    }
+    return null;
+  },
+
+  getValue(row, colMap, colName, defaultVal = null) {
+    if (!colMap || !colMap.hasOwnProperty(colName)) return defaultVal;
+
+    const idx = colMap[colName];
+    if (idx === undefined || idx === null || idx < 0 || idx >= row.length) {
+      return defaultVal;
+    }
+
+    const val = row[idx];
+    return (val === "" || val === null || val === undefined) ? defaultVal : val;
+  },
+
+  // =========================================================================
+  // v4.3.0 PATCH: Canonical typeKey derivation for totals bets
+  // =========================================================================
+
+  _deriveTotalsTypeKey(bet) {
+    if (!bet) return "UNKNOWN";
+    if (bet.typeKey) return bet.typeKey;
+
+    const raw = String(bet.type || "").trim().toUpperCase().replace(/\s+/g, " ");
+    if (!raw) return "UNKNOWN";
+
+    const hasSniper = raw.indexOf("SNIPER") !== -1;
+    const hasOU = raw.indexOf("O/U") !== -1 ||
+                  raw.indexOf("OU") !== -1 ||
+                  raw.indexOf("OVER/UNDER") !== -1 ||
+                  raw.indexOf("OVER UNDER") !== -1 ||
+                  raw.indexOf("TOTAL") !== -1;
+
+    if (hasSniper && hasOU) {
+      if (raw.indexOf("DIR") !== -1) return "SNIPER_OU_DIR";
+      if (raw.indexOf("STAR") !== -1) return "SNIPER_OU_STAR";
+      return "SNIPER_OU";
+    }
+
+    if (hasOU) {
+      if (raw.indexOf("DIR") !== -1) return "OU_DIR";
+      if (raw.indexOf("STAR") !== -1) return "OU_STAR";
+      return "OU";
+    }
+
+    return "OTHER";
+  },
+
+  // =========================================================================
+  // Team extraction + normalization helpers
+  // =========================================================================
+
+  parseBetSide(pick) {
+    if (!pick) return null;
+    const p = String(pick).trim();
+    if (!p) return null;
+
+    let m = p.match(/:\s*(H|A)\b/i);
+    if (m) return m[1].toUpperCase();
+
+    m = p.match(/\b(H|A)\b(?=\s*[+-]?\d)/i);
+    if (m) return m[1].toUpperCase();
+
+    if (/\bHOME\b/i.test(p)) return "H";
+    if (/\bAWAY\b/i.test(p)) return "A";
+
+    return null;
+  },
+
+  normalizeTeamName(name) {
+    if (name == null) return null;
+    let s = String(name).trim();
+    if (!s) return null;
+
+    s = s.replace(/\([^)]*\)/g, " ");
+
+    s = s.replace(/\b[QP][1-4]\b/gi, " ")
+         .replace(/\b[1-4][HQ]\b/gi, " ")
+         .replace(/\b(?:1st|2nd|3rd|4th)\s*(?:Half|Qtr|Quarter|Period)?\b/gi, " ")
+         .replace(/\b(?:HALF|FULL|QUARTER|PERIOD|QTR)\b/gi, " ");
+
+    s = s.replace(/[•·@–—]/g, " ")
+         .replace(/[^\w\s&.-]/g, " ")
+         .replace(/\s+/g, " ")
+         .trim()
+         .toUpperCase();
+
+    if (!s) return null;
+
+    const BLOCKLIST = [
+      "H", "A", "V", "VS",
+      "HOME", "AWAY", "HM", "AW",
+      "OVER", "UNDER", "TOTAL", "TOTALS",
+      "DRAW", "TIE", "PUSH",
+      "Q", "Q H", "Q A",
+      "Q1", "Q2", "Q3", "Q4",
+      "1H", "2H", "1Q", "2Q", "3Q", "4Q"
+    ];
+    if (s.length < 3 || BLOCKLIST.includes(s)) return null;
+
+    const aliasMap =
+      (typeof Config_ !== "undefined" && Config_.teamAliases)
+        ? Config_.teamAliases : null;
+    if (aliasMap && aliasMap[s]) return String(aliasMap[s]).trim().toUpperCase();
+
+    return s;
+  },
+
+  extractTeamsFromMatch(match) {
+    if (!match) return { home: null, away: null };
+    const s = String(match).trim().replace(/\s+/g, " ");
+    if (!s) return { home: null, away: null };
+
+    let m = s.match(/^(.*?)\s+(?:@|at)\s+(.*)$/i);
+    if (m) {
+      return {
+        away: this.normalizeTeamName(m[1]),
+        home: this.normalizeTeamName(m[2])
+      };
+    }
+
+    m = s.match(/^(.*?)\s+(?:vs\.?|v\.?)\s+(.*)$/i);
+    if (m) {
+      return {
+        home: this.normalizeTeamName(m[1]),
+        away: this.normalizeTeamName(m[2])
+      };
+    }
+
+    m = s.match(/^(.*?)\s+-\s+(.*)$/);
+    if (m) {
+      return {
+        home: this.normalizeTeamName(m[1]),
+        away: this.normalizeTeamName(m[2])
+      };
+    }
+
+    return { home: null, away: null };
+  },
+
+  extractTeamFromPick(pick) {
+    if (!pick) return null;
+    let s = String(pick).trim();
+    if (!s) return null;
+
+    s = s.replace(/\b[QP][1-4]\b/gi, " ")
+         .replace(/\b[1-4][HQ]\b/gi, " ")
+         .replace(/\b(?:1st|2nd|3rd|4th)\s*(?:Half|Qtr|Quarter|Period)?\b/gi, " ")
+         .replace(/\b(?:HALF|FULL|QUARTER|PERIOD|QTR)\b/gi, " ");
+
+    s = s.replace(/^\s*:\s*/, "");
+    s = s.replace(/^(HOME|AWAY|H|A)\b/i, "").trim();
+    s = s.split(/[+-]\s*\d/)[0].trim();
+    s = s.replace(/\d+(\.\d+)?/g, " ").replace(/\s+/g, " ").trim();
+
+    return this.normalizeTeamName(s);
+  },
+
+  deriveBackedTeam(opts) {
+    const side = opts.side;
+    const home = opts.home;
+    const away = opts.away;
+    const pick = opts.pick;
+    const match = opts.match;
+
+    const betSide = this.parseBetSide(pick) || side;
+
+    if (!betSide || (betSide !== "H" && betSide !== "A")) {
+      return this.extractTeamFromPick(pick);
+    }
+
+    let h = home || null;
+    let a = away || null;
+
+    if ((!h || !a) && match) {
+      const parsed = this.extractTeamsFromMatch(match);
+      h = h || parsed.home;
+      a = a || parsed.away;
+    }
+
+    if (betSide === "H" && h) return h;
+    if (betSide === "A" && a) return a;
+
+    return this.extractTeamFromPick(pick);
+  },
+
+  deriveOpponentTeam(opts) {
+    const side = opts.side;
+    const home = opts.home;
+    const away = opts.away;
+    const pick = opts.pick;
+    const match = opts.match;
+
+    const betSide = this.parseBetSide(pick) || side;
+
+    if (!betSide || (betSide !== "H" && betSide !== "A")) return null;
+
+    let h = home || null;
+    let a = away || null;
+
+    if ((!h || !a) && match) {
+      const parsed = this.extractTeamsFromMatch(match);
+      h = h || parsed.home;
+      a = a || parsed.away;
+    }
+
+    if (betSide === "H" && a) return a;
+    if (betSide === "A" && h) return h;
+
+    return null;
+  },
+
+  enrichSideBetWithTeams_(bet, row, resolved) {
+    try {
+      const match = bet.match || String(this.getValue(row, resolved, "match", "") || "");
+      const pick = bet.pick || String(this.getValue(row, resolved, "pick", "") || "");
+
+      const homeCol = this.getValue(row, resolved, "home", "");
+      const awayCol = this.getValue(row, resolved, "away", "");
+
+      let home = this.normalizeTeamName(homeCol);
+      let away = this.normalizeTeamName(awayCol);
+
+      if (!home || !away) {
+        const parsed = this.extractTeamsFromMatch(match);
+        home = home || parsed.home;
+        away = away || parsed.away;
+      }
+
+      const backedTeam = this.deriveBackedTeam({
+        side: bet.side,
+        home: home,
+        away: away,
+        pick: pick,
+        match: match
+      });
+
+      let opponentTeam = null;
+      if (backedTeam && home && away) {
+        opponentTeam = (backedTeam === home) ? away : ((backedTeam === away) ? home : null);
+      }
+
+      const matchupKey = (backedTeam && opponentTeam) ? `${backedTeam}__VS__${opponentTeam}` : null;
+
+      bet.home = home || "";
+      bet.away = away || "";
+      bet.backedTeam = backedTeam || null;
+      bet.opponentTeam = opponentTeam || null;
+      bet.matchupKey = matchupKey || null;
+
+    } catch (e) {
+      bet.backedTeam = bet.backedTeam || null;
+      bet.opponentTeam = bet.opponentTeam || null;
+      bet.matchupKey = bet.matchupKey || null;
+    }
+
+    return bet;
+  },
+
+  parseScore(raw) {
+    if (raw === null || raw === undefined || raw === "") return null;
+
+    var s = String(raw)
+      .trim()
+      .toUpperCase()
+      .replace(/[−–—]/g, "-")
+      .replace(/\s+/g, " ");
+
+    if (!s) return null;
+
+    // (A) Labeled: "HOME:22 AWAY:20", "H 22 A 20", "H=22, A=20"
+    var hLab = s.match(/\bH(?:OME)?\b\s*[:=]?\s*(\d{1,4})\b/);
+    var aLab = s.match(/\bA(?:WAY)?\b\s*[:=]?\s*(\d{1,4})\b/);
+    if (hLab && aLab) {
+      var home = parseInt(hLab[1], 10);
+      var away = parseInt(aLab[1], 10);
+      if (isFinite(home) && isFinite(away)) {
+        return {
+          home: home,
+          away: away,
+          winner: home === away ? "T" : (home > away ? "H" : "A"),
+          marker: null,
+          markerContradiction: false,
+          raw: s
+        };
+      }
+    }
+
+    // (B) Trailing marker: "22-20H" or "22 - 20 A"
+    // POSITIONAL: first number = Home score, second = Away score
+    // Marker is metadata only — we log contradictions but do NOT swap
+    var mTrail = s.match(/\b(\d{1,4})\s*-\s*(\d{1,4})\s*([HA])\b/);
+    if (mTrail) {
+      var homeT = parseInt(mTrail[1], 10);
+      var awayT = parseInt(mTrail[2], 10);
+      var marker = mTrail[3];
+      if (isFinite(homeT) && isFinite(awayT)) {
+        var winnerFromScores = homeT === awayT ? "T" : (homeT > awayT ? "H" : "A");
+        var contradiction = (winnerFromScores !== "T" && marker !== winnerFromScores);
+
+        if (contradiction && this.log && typeof this.log.warn === "function") {
+          this.log.warn(
+            "Score marker contradiction: positional winner is " + winnerFromScores +
+            " but marker says " + marker + ". Keeping positional order.",
+            { raw: String(raw) }
+          );
+        }
+
+        return {
+          home: homeT,
+          away: awayT,
+          winner: winnerFromScores,
+          marker: marker,
+          markerContradiction: contradiction,
+          raw: s
+        };
+      }
+    }
+
+    // (C) Plain "N-N" — assume home-away order
+    var mPlain = s.match(/\b(\d{1,4})\s*-\s*(\d{1,4})\b/);
+    if (mPlain) {
+      var homeP = parseInt(mPlain[1], 10);
+      var awayP = parseInt(mPlain[2], 10);
+      if (isFinite(homeP) && isFinite(awayP)) {
+        return {
+          home: homeP,
+          away: awayP,
+          winner: homeP === awayP ? "T" : (homeP > awayP ? "H" : "A"),
+          marker: null,
+          markerContradiction: false,
+          raw: s
+        };
+      }
+    }
+
+    return null;
+  },
+
+    parseSpreadSigned(pick) {
+    if (!pick) return null;
+
+    var s = String(pick)
+      .toUpperCase()
+      .replace(/[−–—]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!s) return null;
+
+    // Pick'em
+    if (/\bPK\b|\bPICK\b|\bPICKEM\b/.test(s)) return 0;
+
+    // If we can detect H/A, prefer the signed number closest to that marker
+    var side = (typeof this.parseBetSide === "function") ? this.parseBetSide(s) : null;
+
+    if (side === "H" || side === "A") {
+      var idx = s.indexOf(side);
+      if (idx >= 0) {
+        var window = s.slice(idx, idx + 20);
+        var mNear = window.match(/([+-])\s*(\d+(?:\.\d+)?)/);
+        if (mNear) {
+          var val = parseFloat(mNear[1] + mNear[2]);
+          if (isFinite(val)) return val;
+        }
+      }
+    }
+
+    // Fallback: first plausible signed number (skip odds-like values >60)
+    var re = /([+-])\s*(\d+(?:\.\d+)?)/g;
+    var m = null;
+    while ((m = re.exec(s)) !== null) {
+      var fallbackVal = parseFloat(m[1] + m[2]);
+      if (!isFinite(fallbackVal)) continue;
+      if (Math.abs(fallbackVal) > 60) continue;
+      return fallbackVal;
+    }
+
+    return null;
+  },
+
+
+    gradeSideFromScore(scoreVal, pick, sideCol) {
+  var side = this.parseSide(pick, sideCol);
+  if (side !== "H" && side !== "A") return null;
+
+  var score = this.parseScore(scoreVal);
+  if (!score || !isFinite(score.home) || !isFinite(score.away)) return null;
+
+  // ── PURE OUTRIGHT (1X2) ──
+  // HIT (1)  = backed side scores strictly more
+  // MISS (0) = backed side does NOT win (includes ties/draws)
+  // No PUSH semantics. No spread math. Ever.
+  if (side === "H") {
+    return (score.home > score.away) ? 1 : 0;
+  } else {
+    return (score.away > score.home) ? 1 : 0;
+  }
+},
+
+  
+  // =========================================================================
+  // Sheet parsers
+  // =========================================================================
+
+  // =========================================================================
+  // parseIntakeMarketSheets — reads legacy INTAKE__* AND FleetImport type tabs
+  // v5.0.0: captures config_profile; sets bet.source='Fleet' for managed tabs.
+  // =========================================================================
+  parseIntakeMarketSheets(ss) {
+    if (!this.log) this.init();
+    Log_.section('Parsing Intake Markets');
+
+    // ── Sheet detection ─────────────────────────────────────────────────────
+    // (a) Legacy INTAKE__* prefix sheets
+    // (b) FleetImport-managed ALL_CAPS type tabs (MANAGED_RE)
+    // Exclude: PROTECTED sheets + classic Side / Totals
+    const MANAGED_RE = /^[A-Z0-9][A-Z0-9_]{2,}$/;
+    const PROTECTED  = (typeof FleetImport_ !== 'undefined' && FleetImport_.PROTECTED_SHEETS)
+                         ? FleetImport_.PROTECTED_SHEETS
+                         : new Set([
+                             'ASSAYER_EDGES', 'ASSAYER_LEAGUE_PURITY',
+                             'MA_LOGS', 'MA_DISCOVERY', 'MA_VAULT',
+                             'MA_SUMMARY', 'MA_CONFIG', 'MA_CHARTS',
+                             'MA_IMPORT_REPORT'
+                           ]);
+    const CLASSIC    = new Set(['SIDE', 'TOTALS']);
+
+    const intakeSheets = ss.getSheets().filter(sh => {
+      const n = sh.getName();
+      if (n.startsWith('INTAKE__')) return true;               // legacy
+      if (MANAGED_RE.test(n) && !PROTECTED.has(n) &&
+          !CLASSIC.has(n.toUpperCase())) return true;          // FleetImport type tabs
+      return false;
+    });
+
+    if (intakeSheets.length === 0) {
+      this.log.info('No intake sheets found (INTAKE__* or FleetImport type tabs).');
+      Log_.sectionEnd('Parsing Intake Markets');
+      return { bets: [], sheetSummaries: [], skippedSheets: [], skippedRows: 0 };
+    }
+
+    ColResolver_.init();
+
+    // Merge side + totals aliases
+    const FLEET_ALIASES = {};
+    for (const k in Config_.sideColumnAliases) {
+      FLEET_ALIASES[k] = [...Config_.sideColumnAliases[k]];
+    }
+    for (const k in Config_.totalsColumnAliases) {
+      if (FLEET_ALIASES[k]) {
+        FLEET_ALIASES[k] = Array.from(new Set([...FLEET_ALIASES[k], ...Config_.totalsColumnAliases[k]]));
+      } else {
+        FLEET_ALIASES[k] = [...Config_.totalsColumnAliases[k]];
+      }
+    }
+
+    // Intake-specific aliases
+    FLEET_ALIASES['market']         = FLEET_ALIASES['type'] || ['market', 'type', 'bet type'];
+    FLEET_ALIASES['result']         = FLEET_ALIASES['outcome'] || ['result', 'outcome'];
+    FLEET_ALIASES['config_profile'] = ['config_profile', 'configprofile', 'config profile', 'configuration', 'config_snapshot'];
+    FLEET_ALIASES['imported_at']    = ['imported_at', 'importedat', 'import date', 'imported date'];
+    
+    // A) Prevent MA_Status from hijacking result or outcome
+    if (FLEET_ALIASES['result']) {
+      FLEET_ALIASES['result'] = FLEET_ALIASES['result'].filter(a => !String(a).toLowerCase().includes('status'));
+    }
+    if (FLEET_ALIASES['outcome']) {
+      FLEET_ALIASES['outcome'] = FLEET_ALIASES['outcome'].filter(a => !String(a).toLowerCase().includes('status'));
+    }
+    // Map MA_Status separately
+    FLEET_ALIASES['ma_status'] = ['ma_status', 'status', 'edge status', 'mastatus'];
+
+    // Prevent 'satellite_id' from being matched to 'side'
+    delete FLEET_ALIASES['side'];
+    
+    // C) Diagnostics state
+    let diagOutcomeCount = 0;
+    let diagMaStatusCount = 0;
+    let diagMismatches = [];
+    let diagComputedPushes = 0;
+
+    const allBets = [];
+    const sheetSummaries = [];
+    const skippedSheets = [];
+    let totalSkippedRows = 0;
+    let womenIntakeCount = 0;
+    let menIntakeCount = 0;
+
+    // Is this sheet a FleetImport-managed tab (not a legacy INTAKE__ sheet)?
+    const isFleetTab = (name) => MANAGED_RE.test(name) && !name.startsWith('INTAKE__');
+
+    for (const sheet of intakeSheets) {
+      const sheetName = sheet.getName();
+      const isFleet   = isFleetTab(sheetName);
+      const data = sheet.getDataRange().getValues();
+      if (data.length < 2) { skippedSheets.push(sheetName); continue; }
+
+      const headers = data[0];
+      const resolveResult = ColResolver_.resolve(headers, FLEET_ALIASES, sheetName);
+      const resolved = resolveResult.resolved;
+
+      // A) Parsing guardrail: locate true outcome column and MA_Status column
+      const maStatusColName = headers.find(h => String(h).toLowerCase().includes('ma_status') || String(h).toLowerCase() === 'status');
+      const maStatusIdx = maStatusColName ? headers.indexOf(maStatusColName) : -1;
+      
+      const outcomeColName = headers.find(h => {
+        const hn = String(h).toLowerCase().trim();
+        return hn === 'outcome' || hn === 'result' || hn === 'outcomes' || hn === 'results';
+      });
+      const trueOutcomeIdx = outcomeColName ? headers.indexOf(outcomeColName) : -1;
+
+      // A) UNCONDITIONALLY pin resolved['outcome'] and resolved['result'] to the true outcome column.
+      // This prevents ColResolver's fuzzy pass from landing on MA_Grade/MA_Status when the real
+      // Outcome/Result column exists.
+      if (trueOutcomeIdx !== -1) {
+        resolved['outcome'] = trueOutcomeIdx;
+        resolved['result']  = trueOutcomeIdx;
+      }
+      if (maStatusIdx !== -1) {
+        resolved['ma_status'] = maStatusIdx;
+      }
+      // Diagnostic: log the column indices being used for transparency
+      this.log.info('[COL-PIN] ' + sheetName + ': trueOutcomeIdx=' + trueOutcomeIdx + ' ("' + (outcomeColName || 'none') + '") | resolved.result=' + resolved['result'] + ' | resolved.outcome=' + resolved['outcome'] + ' | headers[trueOutcomeIdx]="' + (trueOutcomeIdx !== -1 ? headers[trueOutcomeIdx] : 'N/A') + '"');
+
+      // Ensure satellite_id is mapped if present
+      const satColName = headers.find(h => String(h).toLowerCase() === 'satellite_id');
+      if (satColName) resolved['satellite_id'] = headers.indexOf(satColName);
+
+      const hasLeague  = resolved['league']  !== undefined;
+      const hasMarket  = resolved['market']  !== undefined || resolved['type'] !== undefined;
+      const hasOutcome = resolved['result']  !== undefined || resolved['outcome'] !== undefined;
+      const hasMatch   = resolved['match']   !== undefined || (resolved['home'] !== undefined && resolved['away'] !== undefined);
+
+      if (!hasLeague || !hasMarket || !hasOutcome || !hasMatch) {
+        const missing = [];
+        if (!hasLeague)  missing.push('league');
+        if (!hasMarket)  missing.push('market/type');
+        if (!hasOutcome) missing.push('outcome/result');
+        if (!hasMatch)   missing.push('match OR (home+away)');
+        this.log.warn(`Skipping sheet ${sheetName}: missing required columns: ${missing.join(', ')}`);
+        this.log.warn(`Headers: [${headers.slice(0, 20).join(', ')}]`);
+        skippedSheets.push(sheetName);
+        continue;
+      }
+
+      let parsed = 0, skipped = 0;
+
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (row.every(cell => cell === '' || cell === null || cell === undefined)) { skipped++; continue; }
+
+        const leagueRaw = this.getValue(row, resolved, 'league');
+        if (!leagueRaw || String(leagueRaw).trim() === '') { skipped++; continue; }
+
+        const rawMarket  = String(this.getValue(row, resolved, 'market') || this.getValue(row, resolved, 'type') || '');
+        // B) Prefer 'outcome' first; fall back to 'result' (both are pinned to trueOutcomeIdx, this is a double-safety)
+        const rawOutcome = this.getValue(row, resolved, 'outcome') || this.getValue(row, resolved, 'result');
+        const rawMaStatus = this.getValue(row, resolved, 'ma_status');
+        
+        const rawTrueOutcome = trueOutcomeIdx !== -1 ? row[trueOutcomeIdx] : null;
+        const resultFromOutcome = this.parseOutcome(rawTrueOutcome !== null ? rawTrueOutcome : rawOutcome);
+        const resultUsed = this.parseOutcome(rawOutcome);
+
+        if (rawTrueOutcome !== null && rawTrueOutcome !== '' && rawTrueOutcome !== undefined) diagOutcomeCount++;
+        if (rawMaStatus !== null && rawMaStatus !== '' && rawMaStatus !== undefined) diagMaStatusCount++;
+
+        if (resultFromOutcome !== resultUsed) {
+           diagMismatches.push({
+             satellite_id: this.getValue(row, resolved, 'satellite_id') || 'UNKNOWN',
+             league: leagueRaw,
+             match: this.getValue(row, resolved, 'match'),
+             outcome: rawTrueOutcome,
+             ma_status: rawMaStatus,
+             resultUsed: resultUsed
+           });
+        }
+
+        const sanitizedMarket = (rawMarket || 'UNKNOWN')
+          .replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').toUpperCase().slice(0, 25);
+
+        const bet = {
+          // source: 'Fleet' for managed type tabs; 'Other' for legacy INTAKE__ sheets
+          source:          isFleet ? 'Fleet' : 'Other',
+          league:          String(leagueRaw).trim().toUpperCase(),
+          type:            isFleet ? sanitizedMarket : rawMarket,
+          typeKey:         sanitizedMarket,
+          tier:            this.parseTier(this.getValue(row, resolved, 'tier')),
+          result:          resultUsed,
+          ma_status:       rawMaStatus,
+          match:           this.getValue(row, resolved, 'match')  || '',
+          home:            this.getValue(row, resolved, 'home')   || '',
+          away:            this.getValue(row, resolved, 'away')   || '',
+          date:            this.getValue(row, resolved, 'date'),
+          time:            this.getValue(row, resolved, 'time'),
+          pick:            this.getValue(row, resolved, 'pick'),
+          line:            this.parseLine(this.getValue(row, resolved, 'line')),
+          direction:       this.parseDirection(this.getValue(row, resolved, 'direction')),
+          quarter:         this.parseQuarter(this.getValue(row, resolved, 'quarter')),
+          confidence:      this.parseConfidence(this.getValue(row, resolved, 'confidence')),
+          odds:            this.parseOdds(this.getValue(row, resolved, 'odds')),
+          units:           this.getValue(row, resolved, 'units'),
+          ev:              this.getValue(row, resolved, 'ev'),
+          notes:           this.getValue(row, resolved, 'notes'),
+          // Fleet-specific fields
+          config_profile:  String(this.getValue(row, resolved, 'config_profile') || '{}'),
+          imported_at:     this.getValue(row, resolved, 'imported_at') || ''
+        };
+
+        bet.confBucket = this.getConfBucket(bet.confidence);
+
+        if (bet.result === 1)  bet.win  = 1;
+        else if (bet.result === 0)  bet.loss = 1;
+        else if (bet.result === -1) { bet.push = 1; diagComputedPushes++; }
+
+        bet.isWomen = this.isWomenLeague(bet.league, bet.match);
+        if (bet.isWomen) womenIntakeCount++; else menIntakeCount++;
+
+        const isOU = bet.direction === 'O' || bet.direction === 'U' || 
+                     (bet.typeKey && bet.typeKey.includes('O_U')) || 
+                     (bet.typeKey && bet.typeKey.includes('_OU'));
+        if (!isOU) {
+          this.enrichSideBetWithTeams_(bet, row, resolved);
+        }
+
+        allBets.push(bet);
+        parsed++;
+      }
+
+      sheetSummaries.push({ sheetName, isFleet, rowsRead: data.length - 1, rowsParsed: parsed, rowsSkipped: skipped });
+      totalSkippedRows += skipped;
+      this.log.info(`Parsed ${sheetName} [${isFleet ? 'Fleet' : 'Other'}]: ${parsed} bets, ${skipped} skipped`);
+    }
+
+    // C) Proof / diagnostics logging
+    this.log.info('--- INTEGRITY PROOF: OUTCOME VS MA_STATUS ---');
+    this.log.info(`Rows with explicit Outcome: ${diagOutcomeCount}`);
+    this.log.info(`Rows with MA_Status: ${diagMaStatusCount}`);
+    this.log.info(`Computed Pushes explicitly tracked: ${diagComputedPushes}`);
+    this.log.info(`Mismatches (resultFromOutcome vs resultUsed): ${diagMismatches.length}`);
+    
+    if (diagMismatches.length > 0) {
+      this.log.warn(`WARNING: ${diagMismatches.length} mismatches found between true outcome and used result. Samples:`);
+      diagMismatches.slice(0, 5).forEach(m => {
+        this.log.warn(`  [${m.satellite_id}] ${m.league} | ${m.match} | Outcome: ${m.outcome} | MA_Status: ${m.ma_status} | Used: ${m.resultUsed}`);
+      });
+      // C) HARD GATE: abort the run — do not write any contract with bad data.
+      Log_.sectionEnd('Parsing Intake Markets');
+      throw new Error(`[ABORT] parseIntakeMarketSheets: ${diagMismatches.length} outcome mismatches detected. Fix source data or column mapping before running.`);
+    } else {
+      this.log.success('SUCCESS: mismatch count == 0. All results properly mapped from true game outcome.');
+    }
+
+    this.log.info(`Integrated Other markets into league purity: intakeSheets=${sheetSummaries.length} intakeBets=${allBets.length}`);
+    this.log.info(`Intake gender classification: ${womenIntakeCount} Women, ${menIntakeCount} Men`);
+    Log_.sectionEnd("Parsing Intake Markets");
+    
+    return { bets: allBets, sheetSummaries, skippedSheets, skippedRows: totalSkippedRows };
+  }
+};
+
+function auditSideOutcomes() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(Config_.sheets.side);
+  if (!sheet) {
+    Logger.log("Side sheet not found.");
+    return [];
+  }
+
+  var data = sheet.getDataRange().getValues();
+  if (!data || data.length < 2) {
+    Logger.log("No data rows.");
+    return [];
+  }
+
+  ColResolver_.init();
+  var resolveResult = ColResolver_.resolve(data[0], Config_.sideColumnAliases, "Side");
+  var resolved = resolveResult.resolved;
+
+  if (!resolved || resolved.actual === undefined || resolved.actual === null) {
+    Logger.log("ERROR: No 'actual' / 'score' column resolved for Side sheet.");
+    Logger.log("Ensure Config_.sideColumnAliases.actual is configured.");
+    return [];
+  }
+
+  var hasOutcomeCol = (resolved.outcome !== undefined && resolved.outcome !== null);
+
+  var mismatches = [];
+  var checked    = 0;
+  var skipped    = 0;
+  var matched    = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+
+    var pick    = String(Parser_.getValue(row, resolved, "pick", "")  || "");
+    var actual  = Parser_.getValue(row, resolved, "actual", "");
+    var sideCol = String(Parser_.getValue(row, resolved, "side", "")  || "");
+
+    if (!pick || actual === "" || actual === null || actual === undefined) {
+      skipped++;
+      continue;
+    }
+
+    // Strict side extraction (lossy clean + STRICT regex)
+    var sideParsed = Parser_.parseSide(pick, sideCol);
+    if (sideParsed !== "H" && sideParsed !== "A") {
+      skipped++;
+      continue;
+    }
+
+    // Grade using PURE OUTRIGHT (1X2): tie = LOSS, no spread math
+    var calculated = Parser_.gradeSideFromScore(actual, pick, sideCol);
+
+    if (calculated === null) {
+      skipped++;
+      continue;
+    }
+
+    if (!hasOutcomeCol) {
+      // Can compute but nothing to compare against — just count
+      checked++;
+      continue;
+    }
+
+    var outcomeRaw = Parser_.getValue(row, resolved, "outcome", "");
+    var recorded   = Parser_.parseOutcome(outcomeRaw);
+
+    if (recorded === null) {
+      skipped++;
+      continue;
+    }
+
+    checked++;
+
+    if (calculated === recorded) {
+      matched++;
+    } else {
+      // Recorded may carry handicap semantics (HIT/MISS/PUSH).
+      // Computed is strict 1X2 (HIT or MISS only — no push exists).
+      var recLabel = recorded === 1 ? "HIT"
+                   : (recorded === 0 ? "MISS" : "PUSH");
+      var calLabel = calculated === 1 ? "HIT" : "MISS";
+
+      mismatches.push({
+        row:         i + 1,
+        pick:        pick,
+        actual:      String(actual),
+        sideCol:     sideCol,
+        sideParsed:  sideParsed,
+        recorded:    recLabel,
+        calculated:  calLabel,
+        outcomeRaw:  String(outcomeRaw || "")
+      });
+    }
+  }
+
+  // ── Report ──
+  Logger.log("===== SIDE OUTCOME AUDIT (PURE OUTRIGHT 1X2; TIE = LOSS) =====");
+  Logger.log(
+    "Checked: " + checked + " | Matched: " + matched +
+    " | Mismatches: " + mismatches.length + " | Skipped: " + skipped
+  );
+
+  if (checked > 0 && mismatches.length === 0) {
+    Logger.log(
+      "✅ All " + checked +
+      " outcomes match strict 1X2 outright-win logic. Source data is clean."
+    );
+  }
+
+  if (mismatches.length > 0) {
+    var errorRate = ((mismatches.length / checked) * 100).toFixed(1);
+    Logger.log("ERROR RATE: " + errorRate + "%");
+    Logger.log("");
+    Logger.log("Mismatches (first 25):");
+
+    for (var k = 0; k < Math.min(25, mismatches.length); k++) {
+      var m = mismatches[k];
+      Logger.log(
+        "  Row " + m.row +
+        ": " + m.pick +
+        " | Side: " + m.sideParsed +
+        " | Score: " + m.actual +
+        " | Recorded: " + m.recorded + " (" + m.outcomeRaw + ")" +
+        " | 1X2 check: " + m.calculated
+      );
+    }
+  }
+
+  return mismatches;
+}
+

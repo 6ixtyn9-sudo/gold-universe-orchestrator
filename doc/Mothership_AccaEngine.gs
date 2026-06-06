@@ -809,22 +809,32 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
 
     // ── League metrics lookup ──
     var leagueMeta = null;
-    var keysToTry = [
-      league,
-      league.toLowerCase(),
-      league.toUpperCase(),
-      league.replace(/\s+/g, ''),
-      league.replace(/\s+/g, '_'),
-      league.split(' ')[0],
-      league.split(' ').pop()
-    ];
+    var rawLeague = String(league).toUpperCase();
 
-    for (var ki = 0; ki < keysToTry.length; ki++) {
-      var key = keysToTry[ki];
-      if (key && metrics[key]) {
-        leagueMeta = metrics[key];
-        matchedCount++;
-        break;
+    // 1. Exact canonical match first (CODE_SLUG -> CODE_SLUG)
+    if (metrics[rawLeague]) {
+      leagueMeta = metrics[rawLeague];
+      matchedCount++;
+    } else {
+      // 2. Dynamic Unique-Prefix Fallback
+      // If LNB_FRA isn't in metrics, look for keys starting with LNB_.
+      // If exactly ONE matches, use it. If 2+ match, it's ambiguous, so leave unmatched.
+      var parts = rawLeague.split('_');
+      if (parts.length > 0) {
+        var prefix = parts[0] + '_';
+        var candidates = [];
+        var metricKeys = Object.keys(metrics);
+
+        for (var ki = 0; ki < metricKeys.length; ki++) {
+          if (metricKeys[ki].toUpperCase().indexOf(prefix) === 0) {
+            candidates.push(metrics[metricKeys[ki]]);
+          }
+        }
+
+        if (candidates.length === 1) {
+          leagueMeta = candidates[0];
+          matchedCount++;
+        }
       }
     }
 

@@ -1,0 +1,377 @@
+/******************************************************************************
+ * MA ASSAYER — Complete Production Module
+ * 
+ * "Testing the purity of predictions - separating Gold from Charcoal"
+ * 
+ * COMPLETE ROBUST IMPLEMENTATION
+ * 
+ * ARCHITECTURE:
+ * ├── M1_Output_          Sheet Writers
+ * ├── M2_Main_            Controller/Orchestrator
+ * ├── M3_Flagger_         Apply Flags to Source
+ * ├── M4_Discovery_       Edge Discovery Engine
+ * ├── M5_Config_          Configuration & Constants
+ * ├── M6_ColResolver_     Fuzzy Column Matching (case-insensitive)
+ * ├── M7_Parser_          Data Parsing
+ * ├── M8_Stats_           Statistical Calculations
+ * ├── M9_Utils_           Utility Functions
+ * └── M10_Log_            Logging System
+ ******************************************************************************/
+ 
+// ============================================================================
+// MODULE: ColResolver_ — Case-Insensitive Fuzzy Column Matching
+// ============================================================================
+
+const ColResolver_ = {
+  log: null,
+  
+  /**
+   * Initialize module
+   */
+  init() {
+    this.log = Log_.module("COL_RESOLVE");
+  },
+  
+  /**
+   * Normalize string for comparison - CASE INSENSITIVE
+   */
+  normalize(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_\-\.\/\\]+/g, " ")
+      .replace(/[^a-z0-9% ]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  },
+  
+  /**
+   * Calculate Levenshtein distance
+   */
+  levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a || !a.length) return b ? b.length : 0;
+    if (!b || !b.length) return a.length;
+    
+    const matrix = [];
+    
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    
+    return matrix[b.length][a.length];
+  },
+  
+  /**
+   * Calculate string similarity (0 to 1)
+   */
+  similarity(s1, s2) {
+    const n1 = this.normalize(s1);
+    const n2 = this.normalize(s2);
+    
+    // Exact match
+    if (n1 === n2) return 1.0;
+    
+    // Empty strings
+    if (!n1 || !n2) return 0;
+    
+    // One contains the other completely
+    if (n1.includes(n2) || n2.includes(n1)) {
+      const shorter = Math.min(n1.length, n2.length);
+      // Require >= 3 chars to award substring boost, preventing 2-char tokens from false matching
+      if (shorter >= 3) {
+        const ratio = shorter / Math.max(n1.length, n2.length);
+        return 0.85 + (ratio * 0.15);
+      }
+    }
+    
+    // Word-based matching
+    const words1 = n1.split(" ").filter(w => w.length > 0);
+    const words2 = n2.split(" ").filter(w => w.length > 0);
+    
+    if (words1.length > 0 && words2.length > 0) {
+      // Check if all words from shorter are in longer
+      const shorter = words1.length <= words2.length ? words1 : words2;
+      const longer = words1.length <= words2.length ? words2 : words1;
+      
+      const matchedWords = shorter.filter(sw => 
+        longer.some(lw => {
+          if (lw === sw || this.levenshtein(sw, lw) <= 1) return true;
+          // For substring matches inside words, require the shorter word to be >= 3 chars
+          const minLen = Math.min(sw.length, lw.length);
+          if (minLen >= 3 && (lw.includes(sw) || sw.includes(lw))) return true;
+          return false;
+        })
+      );
+      
+      const wordMatchRatio = matchedWords.length / shorter.length;
+      if (wordMatchRatio >= 0.8) {
+        return 0.75 + (wordMatchRatio * 0.15);
+      }
+    }
+    
+    // Levenshtein-based similarity
+    const maxLen = Math.max(n1.length, n2.length);
+    const distance = this.levenshtein(n1, n2);
+    const similarity = 1 - (distance / maxLen);
+    
+    return similarity;
+  },
+  
+  /**
+   * Resolve columns from header row using aliases
+   */
+  resolve(headerRow, aliasMap, sheetType) {
+    if (!this.log) this.init();
+    
+    const resolved = {};
+    const missing = [];
+    const found = [];
+    const usedIndices = new Set();
+    
+    this.log.info(`Resolving columns for ${sheetType}`);
+    this.log.debug(`Header row has ${headerRow.length} columns`);
+    
+    // Normalize and index all headers
+    const normalizedHeaders = headerRow.map((h, i) => ({
+      original: h,
+      normalized: this.normalize(h),
+      index: i
+    }));
+    
+    // Log non-empty headers
+    const nonEmpty = normalizedHeaders
+      .filter(h => h.original && String(h.original).trim())
+      .map(h => `"${h.original}"`);
+    this.log.debug(`Headers found: ${nonEmpty.slice(0, 15).join(", ")}${nonEmpty.length > 15 ? "..." : ""}`);
+    
+    // Pass 1: Exact matches only
+    for (const [canonical, aliases] of Object.entries(aliasMap)) {
+      for (const header of normalizedHeaders) {
+        if (!header.normalized || usedIndices.has(header.index)) continue;
+        
+        // Intake safeguard: prevent 'satellite_id' from ever matching 'side'
+        if (canonical === 'side' && header.normalized.includes('satellite')) continue;
+        
+        let exactMatchedAlias = null;
+        for (const alias of aliases) {
+          if (header.normalized === this.normalize(alias)) {
+            exactMatchedAlias = alias;
+            break;
+          }
+        }
+        
+        if (exactMatchedAlias) {
+          resolved[canonical] = header.index;
+          usedIndices.add(header.index);
+          found.push({
+            canonical,
+            matched: header.original,
+            normalized: header.normalized,
+            index: header.index,
+            score: 1.0,
+            matchType: "exact",
+            matchedAlias: exactMatchedAlias
+          });
+          break; // move to next canonical
+        }
+      }
+    }
+    
+    // Pass 2: Fuzzy matches for remaining canonicals
+    for (const [canonical, aliases] of Object.entries(aliasMap)) {
+      if (resolved[canonical] !== undefined) continue;
+      
+      let bestMatch = null;
+      let bestScore = 0;
+      let matchType = "";
+      let matchedAlias = "";
+      
+      // Check each header against each alias
+      for (const header of normalizedHeaders) {
+        if (!header.normalized || usedIndices.has(header.index)) continue;
+        
+        // Intake safeguard: prevent 'satellite_id' from ever matching 'side'
+        if (canonical === 'side' && header.normalized.includes('satellite')) continue;
+        
+        for (const alias of aliases) {
+          const normalizedAlias = this.normalize(alias);
+          
+          // Calculate similarity for fuzzy matching
+          const sim = this.similarity(header.normalized, normalizedAlias);
+          
+          if (sim > bestScore && sim >= Config_.thresholds.minSimilarity) {
+            bestMatch = header;
+            bestScore = sim;
+            matchType = sim >= Config_.thresholds.highSimilarity ? "strong" : "fuzzy";
+            matchedAlias = alias;
+          }
+        }
+      }
+      
+      // Record result
+      if (bestMatch && bestScore >= Config_.thresholds.minSimilarity) {
+        resolved[canonical] = bestMatch.index;
+        usedIndices.add(bestMatch.index);
+        
+        found.push({
+          canonical,
+          matched: bestMatch.original,
+          normalized: bestMatch.normalized,
+          index: bestMatch.index,
+          score: bestScore,
+          matchType,
+          matchedAlias
+        });
+      } else {
+        missing.push(canonical);
+      }
+    }
+    
+    // Log resolution results
+    this.log.info(`Column resolution for ${sheetType}: ${found.length} found, ${missing.length} missing`);
+    
+    found.forEach(f => {
+      const icon = f.matchType === "exact" ? "✅" : 
+                   f.matchType === "strong" ? "🔶" : "🔷";
+      this.log.debug(`  ${icon} ${f.canonical} → "${f.matched}" [col ${f.index + 1}] (${f.matchType}, ${(f.score * 100).toFixed(0)}%)`);
+    });
+    
+    if (missing.length > 0) {
+      this.log.debug(`Missing columns for ${sheetType}: ${missing.join(", ")}`);
+    }
+    
+    return { resolved, missing, found };
+  },
+  
+  /**
+   * Validate critical columns exist
+   */
+  validateCritical(resolved, criticalColumns, sheetType) {
+    if (!this.log) this.init();
+    
+    const missing = criticalColumns.filter(c => resolved[c] === undefined);
+    
+    if (missing.length > 0) {
+      this.log.error(`CRITICAL: Missing required columns in ${sheetType}: ${missing.join(", ")}`);
+      return { valid: false, missing };
+    }
+    
+    this.log.success(`All ${criticalColumns.length} critical columns found for ${sheetType}`);
+    return { valid: true, missing: [] };
+  },
+  
+  /**
+   * Get column index safely
+   */
+  getIndex(resolved, colName) {
+    return resolved.hasOwnProperty(colName) ? resolved[colName] : -1;
+  },
+  
+  /**
+   * Check if column exists
+   */
+  hasColumn(resolved, colName) {
+    return resolved.hasOwnProperty(colName) && resolved[colName] >= 0;
+  },
+  // ─── Self-test harness ────────────────────────────────────────────────────
+  //
+  // Verifies the two canonical collision bugs are not regressed:
+  //   1. time  must NOT resolve to "EV"
+  //   2. direction must NOT resolve to "Outcome"
+  //   3. ev    MUST resolve to "EV"
+  //   4. outcome MUST resolve to "Outcome"
+  //   5. result MUST resolve to "Result"
+  //
+  // Run from the Apps Script editor: select "runColResolverSelfTest" from the
+  // function dropdown and click Run. All results appear in the Execution Log.
+  //
+  selfTest_() {
+    if (!this.log) this.init();
+    const log = this.log;
+
+    log.info('═══ ColResolver_.selfTest_() ═══');
+
+    // Canonical test header row matching the acceptance criteria
+    const headerRow = [
+      'League','Date','Match','Pick','Type','Odds',
+      'Confidence','EV','Tier','Result','Score','Winner','Outcome'
+    ];
+    // Expected 0-based indices: EV=7, Result=9, Outcome=12
+
+    // Merge side + totals aliases exactly as FleetImport_ does
+    const ALIASES = {};
+    for (const k in Config_.sideColumnAliases) {
+      ALIASES[k] = [...Config_.sideColumnAliases[k]];
+    }
+    for (const k in Config_.totalsColumnAliases) {
+      if (ALIASES[k]) {
+        ALIASES[k] = Array.from(new Set([...ALIASES[k], ...Config_.totalsColumnAliases[k]]));
+      } else {
+        ALIASES[k] = [...Config_.totalsColumnAliases[k]];
+      }
+    }
+
+    const { resolved, missing, found } = ColResolver_.resolve(headerRow, ALIASES, 'SELF_TEST');
+
+    log.info('── Resolved map ──');
+    for (const [canon, idx] of Object.entries(resolved)) {
+      log.info(`  ${canon} → col ${idx + 1} ("${headerRow[idx]}")`);
+    }
+    if (missing.length) log.warn('Missing: ' + missing.join(', '));
+
+    // Assertions
+    const PASS = '✅ PASS';
+    const FAIL = '❌ FAIL';
+    let allPassed = true;
+
+    function assert(label, condition) {
+      const result = condition ? PASS : FAIL;
+      if (!condition) allPassed = false;
+      log.info(`  ${result}  ${label}`);
+    }
+
+    log.info('── Assertions ──');
+    assert('ev resolves to "EV" (col 8)',            resolved['ev'] === 7);
+    assert('time does NOT steal "EV"',               resolved['time'] !== 7);
+    assert('outcome resolves to "Outcome" (col 13)', resolved['outcome'] === 12);
+    assert('direction does NOT steal "Outcome"',     resolved['direction'] !== 12);
+    assert('result resolves to "Result" (col 10)',   resolved['result'] === 9);
+
+    log.info(allPassed
+      ? '═══ ALL TESTS PASSED ✅ ═══'
+      : '═══ SOME TESTS FAILED — review log above ❌ ═══');
+
+    return allPassed;
+  }
+
+};
+
+// ─── Menu-callable self-test wrapper ─────────────────────────────────────────
+function runColResolverSelfTest() {
+  Log_.init();
+  ColResolver_.init();
+  const passed = ColResolver_.selfTest_();
+  Log_.writeToSheet(SpreadsheetApp.getActiveSpreadsheet());
+  if (!passed) throw new Error('ColResolver self-test FAILED — check MA_Logs for details.');
+}
+

@@ -1596,11 +1596,39 @@ function assayerLookupLeaguePurity_(dims, purityRows) {
 
   // 1) Collect league rows once
   var leagueRows = [];
+
+  // EXACT MATCH FIRST
   for (var i = 0; i < purityRows.length; i++) {
     var r0 = purityRows[i];
     if (!r0 || !r0.league) continue;
     if (assayerCanonUpper_(r0.league) === league) leagueRows.push(r0);
   }
+
+  // UNIQUE PREFIX FALLBACK (If exact match fails)
+  if (leagueRows.length === 0) {
+    var parts = league.split('_');
+    if (parts.length > 0) {
+      var prefix = parts[0] + '_';
+      var fallbackRows = [];
+      var matchedPrefixes = {};
+
+      for (var i = 0; i < purityRows.length; i++) {
+        var r0 = purityRows[i];
+        if (!r0 || !r0.league) continue;
+        var purLeague = assayerCanonUpper_(r0.league);
+        if (purLeague && purLeague.indexOf(prefix) === 0) {
+          fallbackRows.push(r0);
+          matchedPrefixes[purLeague] = true;
+        }
+      }
+
+      var uniquePrefixMatches = Object.keys(matchedPrefixes);
+      if (uniquePrefixMatches.length === 1) {
+        leagueRows = fallbackRows;
+      }
+    }
+  }
+
   if (leagueRows.length === 0) return null;
 
   // 2) Parameterized filter

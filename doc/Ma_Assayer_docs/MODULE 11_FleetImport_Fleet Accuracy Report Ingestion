@@ -1,0 +1,2228 @@
+// ============================================================================
+// MODULE: FleetImport_ — Fleet-wide Accuracy_Report Ingestion
+// VERSION: 2.0.0
+// ============================================================================
+//
+// DESIGN: Every bet type gets its own sheet — BANKER, SNIPER_OU,
+//         SNIPER_MARGIN, FT_O_U, ROBBER, etc. No Side/Totals routing. One universal schema.
+//
+// ENTRY POINTS:
+//   runFleetImportOnly()   — import all satellites
+//   runFleetImportTest()   — test run: first 3 satellites
+//   runFleetImportResume() — resume a paused run
+//   resetFleetImport()     — clear resume state
+//   purgeSatellite(id)     — explicitly remove a satellite's data from all intake sheets
+//
+// ============================================================================
+
+const FleetImport_ = {
+
+  // ─── Constants ─────────────────────────────────────────────────────────────
+
+  REGISTRY_URL: 'https://raw.githubusercontent.com/6ixtyn9-sudo/gold-universe-orchestrator/main/registry/registry.json',
+  FOLDER_ID:    '1fZYPWLG1OKTnML0Yil82y4cAI-ioli0K',
+  // Regex that identifies sheets we own (ALL_CAPS_WITH_UNDERSCORES, ≥3 chars)
+  MANAGED_SHEET_RE: /^[A-Z0-9][A-Z0-9_]{2,}$/,
+
+  // Sheets that must never be cleared, even if they match the regex
+  PROTECTED_SHEETS: new Set([
+    'ASSAYER_EDGES', 'ASSAYER_LEAGUE_PURITY',
+    'MA_LOGS', 'MA_DISCOVERY', 'MA_VAULT',
+    'MA_SUMMARY', 'MA_CONFIG', 'MA_CHARTS',
+    'MA_IMPORT_REPORT'
+  ]),
+
+  PROP_RESUME_IDX: 'FI_RESUME_IDX',
+  PROP_RUN_ID:     'FI_RUN_ID',
+
+  // Accuracy_Report tab name variants
+  AR_TAB_ALIASES: ['Accuracy_Report', 'AccuracyReport', 'Accuracy Report', 'accuracy_report'],
+
+  // Universal schema — every type sheet uses this
+  INTAKE_HEADERS: [
+    'satellite_id', 'satellite_name', 'league', 'date', 'match',
+    'pick', 'type', 'quarter', 'direction', 'line',
+    'confidence', 'tier', 'odds', 'outcome', 'actual',
+    'home', 'away', 'units', 'ev', 'notes', 'config_profile', 'imported_at'
+  ],
+
+  // Header detection tokens
+  HEADER_TOKENS: [
+    'league','date','match','market','type','pick','outcome','odds',
+    'confidence','tier','quarter','period','home','away','line',
+    'over','under','result','actual','ev'
+  ],
+
+  // UNIVERSAL LEAGUE IDENTIFIERS:
+  // Every extractable bare league code ingested from a satellite is canonicalized
+  // dynamically into CODE_SLUG form, e.g. LNB_FRA, NBB_BRA, NBA_USA.
+  // Do not maintain a static collision-code list here. The Assayer owns
+  // ingestion-time identity generation; the Mothership consumes the emitted IDs.
+
+  // ─── Core import ──────────────────────────────────────────────────────────
+
+
+  // ─── Resilience & Retry ──────────────────────────────────────────────────
+
+  withRetry_(fn, label, log, opts = {}) {
+    const attempts = opts.attempts || 6;
+    const baseMs = opts.baseMs || 500;
+    const maxMs = opts.maxMs || 20000;
+    let lastError;
+    
+    for (let i = 1; i <= attempts; i++) {
+      try {
+        const result = fn();
+        if (i > 1 && log) {
+          log.info(`[RETRY] RECOVERED_AFTER_RETRY label=${label} attempt=${i}`);
+        }
+        return result;
+      } catch (e) {
+        lastError = e;
+        const msg = e.message || String(e);
+        const isRetryable = msg.includes('Service Spreadsheets timed out') || 
+                            msg.includes('Service invoked too many times') ||
+                            msg.includes('timed out');
+                            
+        if (!isRetryable || i === attempts) {
+          throw e;
+        }
+        
+        let sleepMs = Math.min(baseMs * Math.pow(2, i - 1), maxMs);
+        sleepMs += Math.floor(Math.random() * 250);
+        
+        if (log) {
+          log.warn(`[RETRY] Failed ${label} (attempt ${i}/${attempts}). Retrying in ${sleepMs}ms. Err: ${msg}`);
+        }
+        if (typeof Utilities !== 'undefined' && Utilities.sleep) {
+          Utilities.sleep(sleepMs);
+        } else {
+          const start = Date.now();
+          while (Date.now() - start < sleepMs) {}
+        }
+      }
+    }
+    throw lastError;
+  },
+
+  importAccuracyReports_(ss, opts, log) {
+    opts = opts || {};
+    log  = log  || Log_.module('FLEET_IMPORT');
+
+    const lock = LockService.getScriptLock();
+    let hasLock = false;
+    try {
+      if (!lock.tryLock(2000)) {
+        log.warn('Could not acquire script lock within 2 seconds. Overlapping run detected, exiting early.');
+        return false;
+      }
+      hasLock = true;
+
+      const satellites = this.discoverSatellites_(log);
+      if (!satellites || satellites.length === 0) {
+        log.error('No satellites discovered.');
+        return false;
+      }
+
+      const limit   = opts.limit || satellites.length;
+      const satList = satellites.slice(0, limit);
+      const total   = satList.length;
+      log.info(`Satellites to process: ${total} (limit=${limit})`);
+
+      const props = PropertiesService.getScriptProperties();
+      let startIdx = 0;
+      if (opts.resume) {
+        startIdx = parseInt(props.getProperty(this.PROP_RESUME_IDX) || '0', 10);
+        // If already complete, bail out cleanly — do not overwrite the report
+        if (startIdx >= satList.length) {
+          log.info('Fleet import already complete — nothing to resume.');
+          props.deleteProperty(this.PROP_RESUME_IDX);
+          return true;
+        }
+        log.info(`Resuming from index ${startIdx}`);
+      } else {
+        props.deleteProperty(this.PROP_RESUME_IDX);
+        props.setProperty(this.PROP_RUN_ID, Utils_.generateId('FI'));
+      }
+      const runId = props.getProperty(this.PROP_RUN_ID) || 'UNKNOWN';
+
+      // Report counters
+      const report = {
+        runId,
+        started:      new Date().toISOString(),
+        attempted:    0, succeeded: 0, skipped: 0,
+        missing_ar:   0, headerFails: 0,
+        rowsByType:   {},   // { TYPE: count }
+        rowsSkipped:  0,
+        errors:       [],
+        sampleHeaders: null, sampleResolved: null
+      };
+
+      // buckets: { 'BANKER': [ {key, data}, … ], 'SNIPER_OU': [...], … }
+      const buckets = {};
+
+      // Collision audit accumulator: rawLeague → Set of satellite names.
+      // Detects new collisions not yet in LEAGUE_CODE_COLLISIONS.
+      const collisionAudit = {};
+
+      // Clear on fresh run OR when resume restarts from 0 (no prior chunks)
+      const isGenuineResume = opts.resume && startIdx > 0;
+      if (!isGenuineResume && opts.clearBeforeImport !== false) {
+        this._clearIntakeTabs_(ss, log);
+      }
+
+      const startMs = Date.now();
+      const HARD_MS = 6 * 60 * 1000;
+      const WRAP_BUFFER_MS = 180 * 1000;  // 3 minutes wrap-up buffer (flush + report + log write)
+      const deadlineMs = startMs + HARD_MS - WRAP_BUFFER_MS;
+
+      // ◆ PATCH: build a set of active IDs from the fresh registry fetch for mid-run removal safety
+      const activeSatIds = new Set(satList.map(s => s.id));
+
+      let currentIndex = startIdx;
+      let currentDocId = '';
+      try {
+        for (; currentIndex < satList.length; currentIndex++) {
+          const i = currentIndex;
+        // ── PRE-SATELLITE deadline guard ──────────────────────────────────
+        if (Date.now() > deadlineMs) {
+          const _nowPre = Date.now();
+          const _elapsedS = Math.round((_nowPre - startMs) / 1000);
+          const _remainS  = Math.round((startMs + HARD_MS - _nowPre) / 1000);
+          log.warn(`Time guard hit (pre-sat i=${i}): elapsed=${_elapsedS}s, remaining_in_hard_limit=${_remainS}s`);
+          log.warn(`Saving resume state at satellite index ${i} — will resume here next chunk.`);
+          props.setProperty(this.PROP_RESUME_IDX, String(i));
+          this._flushBuckets_(ss, buckets, log, report);
+          this._writeRunReport_(ss, report, log);
+          Log_.writeToSheet(ss);
+          this._installResumeTimer_(log);
+          return false;
+        }
+
+        const sat = satList[i];
+          currentDocId = sat.id;
+
+        // ◆ PATCH: if resuming and a satellite was removed from the registry, skip it
+        if (opts.resume && !activeSatIds.has(sat.id)) {
+          log.info(`[${i+1}/${total}] ${sat.name} (${sat.id}) — SKIPPED_REMOVED (not in registry)`);
+          report.skipped++;
+          continue;
+        }
+
+        report.attempted++;
+        log.info(`[${i+1}/${total}] ${sat.name} (${sat.id})`);
+
+        const tStartLoop = Date.now();
+        let tOpen = 0;
+        let satSpreadsheet;
+        try {
+          const tOpenStart = Date.now();
+          satSpreadsheet = SpreadsheetApp.openById(sat.id);
+          tOpen = Date.now() - tOpenStart;
+        } catch (e) {
+          log.error(`  → ERROR sat=${sat.id} (open): ${e.message}`);
+          report.errors.push({ sat: sat.id, reason: 'Failed to open: ' + e.message });
+          report.skipped++;
+          continue;
+        }
+
+        try {
+          const result = this.readAccuracyReport_(satSpreadsheet, log);
+
+          if (!result) {
+            log.warn(`  → No Accuracy_Report tab. Skipping.`);
+            report.missing_ar++;
+            report.skipped++;
+            continue;
+          }
+
+          const { headers, rows, headerIdx, configSnapshot, tARRead, tCfg, tBetSlips, tStats } = result;
+
+          if (headerIdx === -1 || rows.length === 0) {
+            report.headerFails++;
+            report.skipped++;
+            continue;
+          }
+
+          log.info(`  → ${rows.length} data rows`);
+
+          if (report.succeeded === 0) {
+            report.sampleHeaders = headers;
+          }
+
+          // Resolve columns once per satellite
+          ColResolver_.init();
+          const ALIASES = {};
+          for (const k in Config_.sideColumnAliases) {
+            ALIASES[k] = [...Config_.sideColumnAliases[k]];
+          }
+          for (const k in Config_.totalsColumnAliases) {
+            if (ALIASES[k]) {
+              ALIASES[k] = Array.from(new Set([...ALIASES[k], ...Config_.totalsColumnAliases[k]]));
+            } else {
+              ALIASES[k] = [...Config_.totalsColumnAliases[k]];
+            }
+          }
+
+          const { resolved } = ColResolver_.resolve(headers, ALIASES, `AR_${sat.id.slice(0,8)}`);
+
+          if (report.succeeded === 0) report.sampleResolved = resolved;
+
+          const resolvedCount = Object.keys(resolved).length;
+          if (resolvedCount < 4) {
+            log.warn(`  → Schema anomaly: only ${resolvedCount} canonicals resolved. Flagging satellite.`);
+            report.errors.push({ sat: sat.id, reason: `SCHEMA_ANOMALY: Only ${resolvedCount} recognizable columns` });
+            report.skipped++;
+            continue;
+          }
+
+          // Must have at least date
+          if (resolved['date'] === undefined) {
+            log.warn(`  → No date column. Flagging satellite.`);
+            report.errors.push({ sat: sat.id, reason: `SCHEMA_ANOMALY: Missing canonical 'date' column` });
+            report.skipped++;
+            continue;
+          }
+
+          const typeColIdx = resolved['type'];
+
+          const tRouteStart = Date.now();
+          let satRows = 0, satSkipped = 0;
+
+          for (let r = 0; r < rows.length; r++) {
+            const raw = rows[r];
+
+            // Skip blank rows
+            if (raw.every(c => c === '' || c === null || c === undefined)) {
+              satSkipped++;
+              continue;
+            }
+
+            // Skip banner / log / summary rows
+            const firstNonEmpty = raw.find(c => c !== '' && c !== null && c !== undefined);
+            const firstStr = String(firstNonEmpty || '').trim();
+            const fullRowStr = raw.join(' ').toLowerCase();
+            
+            if (
+              firstStr.startsWith('═') ||
+              firstStr.startsWith('---') ||
+              /^(source sheet|total bets|matched to|hits?:|misses?:|pushes|hit rate|metric|raw log|unique pred|\(no match\))/i.test(firstStr) ||
+              fullRowStr.includes('source sheet:') ||
+              fullRowStr.includes('--- bet details ---') ||
+              fullRowStr.includes('═══')
+            ) {
+              satSkipped++;
+              continue;
+            }
+
+            // Skip header-echo rows
+            const getRaw = (canon) => {
+              const idx = resolved[canon];
+              return (idx !== undefined && idx >= 0 && idx < raw.length) ? String(raw[idx] || '').trim().toLowerCase() : '';
+            };
+            
+            const rawType = getRaw('type');
+            if (rawType === 'type' || rawType === 'market' || rawType === 'bet type') {
+              satSkipped++;
+              continue;
+            }
+            
+            if (getRaw('league') === 'league' && getRaw('date') === 'date') {
+              satSkipped++;
+              continue;
+            }
+
+            const rowObj = this._buildRowObj_(raw, resolved, sat, configSnapshot);
+            if (!rowObj) { satSkipped++; continue; }  // UNKNOWN type — skip entirely
+
+            // Collision audit: record raw league code before disambiguation.
+            // getRaw is already in scope in this loop (defined earlier in the iteration).
+            const rawLeagueAudit = getRaw('league').toUpperCase();
+            if (rawLeagueAudit) {
+              if (!collisionAudit[rawLeagueAudit]) collisionAudit[rawLeagueAudit] = new Set();
+              collisionAudit[rawLeagueAudit].add(sat.name || sat.id);
+            }
+
+            const tabName = this._typeToTab_(rowObj.type);
+
+            const keyParts = [
+              sat.id,
+              rowObj.league, rowObj.date, rowObj.match,
+              rowObj.type, rowObj.pick, rowObj.quarter,
+              rowObj.direction, rowObj.line, rowObj.odds
+            ];
+            const key = keyParts.map(s => String(s || '').toUpperCase().trim()).join('|');
+
+            if (!buckets[tabName]) buckets[tabName] = [];
+            buckets[tabName].push({ key, data: this._toIntakeRow_(rowObj) });
+
+            report.rowsByType[tabName] = (report.rowsByType[tabName] || 0) + 1;
+            satRows++;
+          }
+          const tRoute = Date.now() - tRouteStart;
+
+          log.info(`  → Routed: ${satRows} rows across ${Object.keys(buckets).length} type(s), skipped: ${satSkipped}`);
+          report.rowsSkipped += satSkipped;
+          report.succeeded++;
+
+          const tTotal = Date.now() - tStartLoop;
+          log.info(`[PERF] sat=${sat.name || sat.id} open=${tOpen}ms ar=${tARRead}ms cfg=${tCfg}ms slips=${tBetSlips}ms stats=${tStats}ms route=${tRoute}ms total=${tTotal}ms`);
+
+        } catch (e) {
+          log.error(`  → ERROR sat=${sat.id}: ${e.message}`);
+          report.errors.push({ sat: sat.id, reason: e.message });
+          report.skipped++;
+        }
+
+        // ── POST-SATELLITE deadline guard ─────────────────────────────────
+        // Runs even when a satellite is skipped/errored, so wrap-up time is
+        // not eaten by a large batch of failing opens right at the deadline.
+        if (Date.now() > deadlineMs) {
+          const _nowPost = Date.now();
+          const _elapsedS = Math.round((_nowPost - startMs) / 1000);
+          const _remainS  = Math.round((startMs + HARD_MS - _nowPost) / 1000);
+          log.warn(`Time guard hit (post-sat i=${i}): elapsed=${_elapsedS}s, remaining_in_hard_limit=${_remainS}s`);
+          log.warn(`Saving resume state at satellite index ${i + 1} — next chunk starts there.`);
+          props.setProperty(this.PROP_RESUME_IDX, String(i + 1));
+          try { this._flushBuckets_(ss, buckets, log, report); } catch(e){}
+          try { this._writeRunReport_(ss, report, log); } catch(e){}
+          try { Log_.writeToSheet(ss); } catch(e){}
+          this._installResumeTimer_(log);
+          return false;
+        }
+      }
+      } catch (e) {
+        const msg = e.message || String(e);
+        if (msg.includes('Service Spreadsheets timed out') || msg.includes('Service invoked too many times') || msg.includes('timed out')) {
+          log.error(`[FLEET_IMPORT] GRACEFUL_ABORT_AND_RESCHEDULE reason="${msg}" nextIndex=${currentIndex} docId=${currentDocId}`);
+          props.setProperty(this.PROP_RESUME_IDX, String(currentIndex));
+          try { this._flushBuckets_(ss, buckets, log, report); } catch(e2){}
+          try { this._writeRunReport_(ss, report, log); } catch(e2){}
+          try { Log_.writeToSheet(ss); } catch(e2){}
+          this._installResumeTimer_(log);
+          return false;
+        }
+        throw e;
+      }
+
+      // Collision audit remains diagnostic only. Ingestion now canonicalizes every
+      // extractable league identifier into CODE_SLUG, so no static collision
+      // seed/set is required.
+      var collisionSummaries = [];
+      var auditCodes = Object.keys(collisionAudit || {});
+
+      for (var ca = 0; ca < auditCodes.length; ca++) {
+        var rawCode = auditCodes[ca];
+        var satSet = collisionAudit[rawCode];
+
+        if (satSet && satSet.size > 1) {
+          collisionSummaries.push(rawCode + ' [' + Array.from(satSet).join(', ') + ']');
+        }
+      }
+
+      if (collisionSummaries.length > 0) {
+        log.warn(
+          '[COLLISION_AUDIT] INFO — league code collisions observed and handled by universal CODE_SLUG ingestion. ' +
+          'No static collision-code list is required. Review only if a slug looks wrong: ' +
+          collisionSummaries.join(' | ')
+        );
+      }
+
+      this._flushBuckets_(ss, buckets, log, report);
+      this._writeRunReport_(ss, report, log);
+      props.deleteProperty(this.PROP_RESUME_IDX);
+
+      log.info('═══ FLEET IMPORT COMPLETE ═══');
+      log.info(`Attempted=${report.attempted} Succeeded=${report.succeeded} Skipped=${report.skipped}`);
+      const typesSummary = Object.entries(report.rowsByType).map(([t,n]) => `${t}=${n}`).join(' ');
+      log.info(`Rows by type: ${typesSummary || 'none'}`);
+
+      return report.succeeded > 0;
+    } finally {
+      if (hasLock) {
+        lock.releaseLock();
+      }
+    }
+  },
+
+  // ─── Type → tab name ──────────────────────────────────────────────────────
+
+  // Canonical aliases: maps sanitized variants → canonical sheet name.
+  // Add here whenever a new alias sheet appears in the report.
+  TYPE_CANONICAL: {
+    // Sniper O/U family
+    'SNIPER_O_U':          'SNIPER_OU',
+    'SNIPER_O_U_STAR':     'SNIPER_OU',
+    'SNIPER_OU_STAR':      'SNIPER_OU',
+    'SNIPER_O_U_DIR':      'SNIPER_OU',
+    'SNIPER_OU_DIR':       'SNIPER_OU',
+    'SNIPER_OVER_UNDER':   'SNIPER_OU',
+    // FT O/U family
+    'FT_O_U':              'FT_O_U',
+    'FT_OU':               'FT_O_U',
+    'FULL_TIME_O_U':       'FT_O_U',
+    'FULL_TIME_OU':        'FT_O_U',
+    // HT O/U family
+    'HT_OU':               'HT_O_U',
+    'HT_O_U':              'HT_O_U',
+    'HALF_TIME_OU':        'HT_O_U',
+    // 1X2 family
+    '1X2':                 '1X2',
+    'FT_1X2':              '1X2',
+    '1H_1X2':              '1H_1X2',
+    'FIRST_HALF_1X2':      '1H_1X2',
+    // Sniper High Qtr family
+    'SNIPER_HIGH_QTR':     'SNIPER_HIGH_QTR',
+    'SNIPER_HIGH_QUARTER': 'SNIPER_HIGH_QTR',
+    'HIGHEST_QTR':         'SNIPER_HIGH_QTR',
+    'HIGHEST_QUARTER':     'SNIPER_HIGH_QTR',
+    'HIGH_QUARTER':        'SNIPER_HIGH_QTR',
+    'HIGH_QTR':            'SNIPER_HIGH_QTR',
+  },
+
+  _typeToTab_(rawType) {
+    const s = String(rawType || 'UNKNOWN').trim();
+    if (!s) return 'UNKNOWN';
+    const sanitized = s
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 25);
+    const key = sanitized || 'UNKNOWN';
+    // Collapse known variants to canonical sheet name
+    return this.TYPE_CANONICAL[key] || key;
+  },
+
+
+  // ─── Field normalizers ────────────────────────────────────────────────────
+
+  // Confidence: "● (62%) ○" | "★ (95%) ★" | "82%" | "82" → "82"
+  _normalizeConfidence_(raw) {
+    if (!raw) return '';
+    // Extract first number (integer or decimal) from the string
+    const m = String(raw).match(/(\d+(?:\.\d+)?)/);
+    return m ? m[1] : String(raw).trim();
+  },
+
+  // Date: "15/01/2026" | "01/15/2026" | "2026-01-15" | "Jan 15, 2026" → "YYYY-MM-DD"
+  _normalizeDate_(raw) {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    // Already ISO
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    // DD/MM/YYYY or MM/DD/YYYY — heuristic: first part >12 means it must be DD
+    const slashParts = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+    if (slashParts) {
+      const [, a, b, y] = slashParts;
+      const firstIsDay = parseInt(a, 10) > 12;
+      const dd = (firstIsDay ? a : b).padStart(2, '0');
+      const mm = (firstIsDay ? b : a).padStart(2, '0');
+      return y + '-' + mm + '-' + dd;
+    }
+    // Try native Date parse as fallback
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return s;
+  },
+
+  // Outcome: "✅ HIT" | "WIN" | "W" → "HIT" | "❌ MISS" | "LOSE" → "MISS" | "🟡 PUSH" → "PUSH"
+  _normalizeOutcome_(raw) {
+    if (!raw) return '';
+    // Strip emoji/symbols, normalize win/loss variants
+    const s = String(raw).replace(/[^\w\s]/g, '').trim().toUpperCase();
+    if (/^HIT|^WIN/.test(s) || s === 'W') return '✅ HIT';
+    if (/^MISS|^LOSS|^LOSE/.test(s) || s === 'L') return '❌ MISS';
+    if (/^PUSH|^VOID|^REFUND/.test(s)) return '🟡 PUSH';
+    return String(raw).trim();
+  },
+
+  // Track raw unknown types for auditing (stored in script property as JSON)
+  PROP_UNKNOWN_TYPES: 'FI_UNKNOWN_TYPES',
+  _trackUnknownType_(rawType) {
+    if (!rawType || rawType === 'UNKNOWN') return;
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const stored = JSON.parse(props.getProperty(this.PROP_UNKNOWN_TYPES) || '{}');
+      stored[rawType] = (stored[rawType] || 0) + 1;
+      props.setProperty(this.PROP_UNKNOWN_TYPES, JSON.stringify(stored));
+    } catch(e) { /* non-critical */ }
+  },
+
+  _escapeRegex_(s) {
+    return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  },
+
+  _countrySlugFromSatelliteText_(text) {
+    var clean = String(text || '')
+      .toUpperCase()
+      .replace(/[^A-Z]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!clean) return '';
+
+    // This is NOT a league-code collision map.
+    // It is a generic country/region-name normalizer used only to derive
+    // the dynamic CODE_SLUG suffix from satellite identity text.
+    var aliases = {
+      'UNITED STATES OF AMERICA': 'USA',
+      'UNITED STATES': 'USA',
+      'AMERICA': 'USA',
+      'USA': 'USA',
+      'US': 'USA',
+
+      'BRASIL': 'BRA',
+      'BRAZIL': 'BRA',
+
+      'CZECH REPUBLIC': 'CZE',
+      'CZECHIA': 'CZE',
+      'CZECH': 'CZE',
+
+      'LATVIA': 'LAT',
+      'LATVIAN': 'LAT',
+      'LATIN AMERICA': 'LAT',
+      'LATIN': 'LAT',
+
+      'SPAIN': 'ESP',
+      'ESPANA': 'ESP',
+      'ESPAÑA': 'ESP',
+
+      'MEXICO': 'MEX',
+      'ARGENTINA': 'ARG',
+      'AUSTRIA': 'AUT',
+      'BENIN': 'BEN',
+      'PHILIPPINES': 'PHI',
+      'PHILIPPINE': 'PHI',
+      'NETHERLANDS': 'NLD',
+      'HOLLAND': 'NLD',
+      'CHINA': 'CHN',
+      'CROATIA': 'HRV',
+      'HRVATSKA': 'HRV',
+      'POLAND': 'POL',
+      'DENMARK': 'DEN',
+      'NIGERIA': 'NGA',
+      'BULGARIA': 'BUL',
+      'ECUADOR': 'ECU',
+      'FINLAND': 'FIN',
+      'FRANCE': 'FRA',
+      'DOMINICAN REPUBLIC': 'DOM',
+
+      'INTERNATIONAL': 'INT',
+      'WORLD': 'INT',
+      'GLOBAL': 'INT',
+      'EUROPE': 'INT',
+      'EURO': 'INT'
+    };
+
+    var phrases = Object.keys(aliases).sort(function(a, b) {
+      return b.length - a.length;
+    });
+
+    for (var i = 0; i < phrases.length; i++) {
+      var phrase = phrases[i];
+      var re = new RegExp('(^| )' + this._escapeRegex_(phrase) + '( |$)', 'i');
+      if (re.test(clean)) return aliases[phrase];
+    }
+
+    return '';
+  },
+
+  _extractLeagueCode_(leagueText, sat) {
+    var raw = String(leagueText || '').trim();
+    var upper = raw.toUpperCase();
+
+    if (!upper) return '';
+
+    // Already compound: return bare component.
+    if (/^[A-Z0-9]{2,8}_[A-Z0-9]{2,8}$/.test(upper)) {
+      return upper.split('_')[0];
+    }
+
+    // Already bare.
+    if (/^[A-Z0-9]{2,8}$/.test(upper)) {
+      return upper;
+    }
+
+    var satName = String((sat && sat.name) || '').trim().toUpperCase();
+    var sources = [upper, satName];
+
+    // Prefer explicit parenthesized codes such as "Brazil (NBB)".
+    for (var si = 0; si < sources.length; si++) {
+      var src = sources[si];
+      var paren = src.match(/\(([A-Z0-9]{2,8})\)/);
+      if (paren && paren[1]) return paren[1];
+    }
+
+    var stop = {
+      MA: true,
+      PRO: true,
+      DIV: true,
+      MEN: true,
+      MENS: true,
+      WOM: true,
+      WOMEN: true,
+      WOMENS: true,
+      THE: true,
+      AND: true,
+      LEAGUE: true,
+      LIGA: true,
+      SERIE: true,
+      SERIES: true
+    };
+
+    // Scan league text first, then satellite name.
+    // Candidate codes are compact tokens length 2-3 or tokens containing digits.
+    for (var sj = 0; sj < sources.length; sj++) {
+      var tokens = String(sources[sj] || '').match(/\b[A-Z0-9]{2,8}\b/g) || [];
+      var candidates = [];
+
+      for (var ti = 0; ti < tokens.length; ti++) {
+        var tok = tokens[ti];
+        if (stop[tok]) continue;
+        if (/\d/.test(tok) || tok.length <= 3) candidates.push(tok);
+      }
+
+      if (candidates.length === 1) return candidates[0];
+
+      // If multiple compact candidates exist, prefer the last token for names
+      // like "United States NBA"; this is still dynamic and non-static.
+      if (candidates.length > 1) return candidates[candidates.length - 1];
+    }
+
+    // Last resort: first alphanumeric token.
+    var first = upper.split(/\s+/)[0] || '';
+    first = first.replace(/[^A-Z0-9]/g, '');
+    return /^[A-Z0-9]{2,8}$/.test(first) ? first : '';
+  },
+
+  _deriveLeagueSlug_(rawCode, sat) {
+    var code = String(rawCode || '').trim().toUpperCase();
+    var satName = String((sat && sat.name) || '').trim();
+    var satId = String((sat && sat.id) || '').trim();
+    var basis = satName || satId || code;
+
+    // Remove common project prefix.
+    basis = basis.replace(/^\s*MA\s+/i, ' ');
+
+    // Remove the league code as a whole token, including "(CODE)".
+    var stripped = String(basis || '')
+      .replace(new RegExp('\\(' + this._escapeRegex_(code) + '\\)', 'gi'), ' ')
+      .replace(new RegExp('\\b' + this._escapeRegex_(code) + '\\b', 'gi'), ' ')
+      .replace(/\b(MA|GOLIDE|GOLD|UNIVERSE|BASKETBALL|LEAGUE|LIGA|SERIE|SERIES|PRO|DIVISION|MEN|MENS|WOMEN|WOMENS)\b/gi, ' ')
+      .replace(/\b[FMJ]\d+(?:\.\d+)?\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    var slug = this._countrySlugFromSatelliteText_(stripped);
+
+    if (!slug) {
+      var explicitTokens = String(stripped || '').toUpperCase().match(/\b[A-Z]{3}\b/g) || [];
+      var stop3 = {
+        MA: true,
+        PRO: true,
+        DIV: true,
+        MEN: true,
+        WOM: true
+      };
+
+      for (var et = 0; et < explicitTokens.length; et++) {
+        var token = explicitTokens[et];
+        if (token !== code && token !== code.slice(0, 3) && !stop3[token]) {
+          slug = token;
+          break;
+        }
+      }
+    }
+
+    if (!slug) {
+      var words = String(stripped || '').split(/\s+/);
+      for (var wi = 0; wi < words.length; wi++) {
+        var alpha = String(words[wi] || '').replace(/[^A-Za-z]/g, '');
+        if (!alpha) continue;
+        var candidate = alpha.slice(0, 3).toUpperCase();
+        if (candidate && candidate !== code.slice(0, 3)) {
+          slug = candidate;
+          break;
+        }
+      }
+    }
+
+    // Generic ISO-ish corrections. Not a league-code map.
+    var fixes = {
+      NET: 'NLD',
+      NED: 'NLD',
+      HOL: 'NLD',
+      NIG: 'NGA',
+      CRO: 'HRV'
+    };
+    if (fixes[slug]) slug = fixes[slug];
+
+    // Final fallback.
+    if (!slug || slug === code.slice(0, 3)) {
+      slug = satId.replace(/[^A-Za-z0-9]/g, '').slice(-3).toUpperCase();
+    }
+
+    if (!slug) slug = 'UNK';
+    return slug;
+  },
+
+  _canonicalLeagueAtIngestion_(leagueVal, sat) {
+    var raw = String(leagueVal || '').trim();
+    if (!raw) return raw;
+
+    var upper = raw.toUpperCase();
+
+    // Already canonical.
+    if (/^[A-Z0-9]{2,8}_[A-Z0-9]{2,8}$/.test(upper)) {
+      return upper;
+    }
+
+    var code = this._extractLeagueCode_(raw, sat);
+    if (!code) return upper;
+
+    var slug = this._deriveLeagueSlug_(code, sat);
+    if (!slug) return code;
+
+    return code + '_' + slug;
+  },
+
+  // ─── Build universal row object ───────────────────────────────────────────
+
+  _buildRowObj_(raw, resolved, sat, configSnapshot) {
+    const get = (canon) => {
+      const idx = resolved[canon];
+      return (idx !== undefined && idx >= 0 && idx < raw.length)
+        ? String(raw[idx] ?? '').trim()
+        : '';
+    };
+
+    // Extract home/away from match string if no dedicated columns
+    let home = get('home');
+    let away = get('away');
+    if (!home && !away) {
+      const m = String(get('match')).match(/^(.*?)\s+(?:vs\.?|v\.?)\s+(.*)$/i);
+      if (m) { home = m[1].trim(); away = m[2].trim(); }
+    }
+
+    const rawType     = get('type');
+    const canonType   = this._typeToTab_(rawType);
+    if (canonType === 'UNKNOWN') {
+      // Track the raw type string for future TYPE_CANONICAL expansion (diagnostic only)
+      this._trackUnknownType_(rawType);
+      // Skip — UNKNOWN bets are unclassifiable and must not flow into the assayer
+      return null;
+    }
+
+    const pick = get('pick');
+    let quarter = get('quarter');
+    let direction = get('direction');
+    let line = get('line');
+    let odds = get('odds');
+
+    // Fallback extraction from pick string if missing in source
+    if (typeof Parser_ !== 'undefined' && pick) {
+      const cleanedPick = String(pick)
+        .replace(/\s*[★●○◆▲▼]\s*\(\d+(?:\.\d+)?%\)\s*[★●○◆▲▼]?\s*/g, '')
+        .replace(/\s*\(\d+(?:\.\d+)?%\)\s*/g, '')
+        .trim();
+        
+      if (!quarter) {
+        const parsedQ = Parser_.parseQuarter(cleanedPick);
+        if (parsedQ != null) quarter = parsedQ;
+      }
+      if (!direction) {
+        const parsedOU = Parser_.parseDirection(cleanedPick);
+        if (parsedOU) {
+          direction = parsedOU.toUpperCase();
+        } else {
+          const parsedSide = Parser_.parseSide(cleanedPick, null);
+          if (parsedSide === 'H') direction = 'HOME';
+          if (parsedSide === 'A') direction = 'AWAY';
+          
+          // If still no direction (e.g. 1H_1X2 or BANKER pick is just the team name),
+          // deduce direction by checking if pick contains home/away team
+          if (!direction && home && away) {
+            const pickU = cleanedPick.toUpperCase();
+            const homeU = home.toUpperCase();
+            const awayU = away.toUpperCase();
+            
+            // Only deduce if team name is > 2 chars to avoid accidental matches
+            if (homeU.length > 2 && (pickU.includes(homeU) || homeU.includes(pickU))) {
+              direction = 'HOME';
+            } else if (awayU.length > 2 && (pickU.includes(awayU) || awayU.includes(pickU))) {
+              direction = 'AWAY';
+            }
+          }
+        }
+      }
+      
+      const isOU = direction === 'Over' || direction === 'Under' || canonType.includes('O_U') || canonType.includes('OU');
+      const parsedLineMatch = String(cleanedPick).match(/\(([+-]?\d+(?:\.\d+)?)\)\s*$/) 
+                           || String(cleanedPick).match(/([+-]\d+(?:\.\d+)?)\s*$/)
+                           || (isOU ? String(cleanedPick).match(/\b(\d+(?:\.\d+)?)\s*$/) : null);
+      if (parsedLineMatch) {
+        const val = parsedLineMatch[1];
+        const isMoneyline = canonType.includes('1X2') || canonType === 'BANKER' || canonType === 'ROBBER';
+        
+        if (isMoneyline) {
+          if (!odds || odds === '-') odds = val;
+        } else {
+          if (!line || line === '-') line = val;
+        }
+      }
+    }
+
+    // Canonicalize every extractable league identifier dynamically at ingestion.
+    // Examples: LNB -> LNB_FRA, NBB -> NBB_BRA.
+    var leagueVal = this._canonicalLeagueAtIngestion_(get('league'), sat);
+
+    return {
+      satellite_id:   sat.id,
+      satellite_name: sat.name,
+      league:         leagueVal,
+      date:           this._normalizeDate_(get('date')),
+      match:          get('match'),
+      pick:           pick,
+      type:           canonType,
+      quarter:        quarter,
+      direction:      direction,
+      line:           line,
+      confidence:     this._normalizeConfidence_(get('confidence')),
+      tier:           get('tier'),
+      odds:           get('odds'),
+      outcome:        this._normalizeOutcome_(get('outcome') || get('result')),
+      actual:         get('actual'),
+      home,
+      away,
+      units:          get('units'),
+      ev:             get('ev'),
+      notes:          get('notes'),
+      config_profile: configSnapshot || '{}'
+    };
+  },
+
+  // ─── Serialize to INTAKE_HEADERS order ───────────────────────────────────
+
+  _toIntakeRow_(o) {
+    return [
+      o.satellite_id, o.satellite_name, o.league, o.date, o.match,
+      o.pick, o.type, o.quarter, o.direction, o.line,
+      o.confidence, o.tier, o.odds, o.outcome, o.actual,
+      o.home, o.away, o.units, o.ev, o.notes, o.config_profile,
+      new Date().toISOString()
+    ];
+  },
+
+  // ─── Flush all buckets to sheets ─────────────────────────────────────────
+
+  _flushBuckets_(ss, buckets, log, report) {
+    const tFlushStart = Date.now();
+    const seenKeys = {};
+    const H = this.INTAKE_HEADERS;
+    let totalRows = 0;
+    let totalTabs = 0;
+
+    for (const [tabName, items] of Object.entries(buckets)) {
+      if (!items.length) continue;
+
+      const sheet = this.ensureTab_(ss, tabName, H, log);
+
+      const deduped = [];
+      for (const item of items) {
+        const k = tabName + '|' + item.key;
+        if (!seenKeys[k]) {
+          seenKeys[k] = true;
+          deduped.push(item.data);
+        }
+      }
+
+      if (deduped.length > 0) {
+        const padded = deduped.map(r => {
+          while (r.length < H.length) r.push('');
+          return r.slice(0, H.length);
+        });
+        const nextRow = this.withRetry_(() => sheet.getLastRow(), `getLastRow:${tabName}`, log) + 1;
+        this.withRetry_(() => {
+          sheet.getRange(nextRow, 1, padded.length, H.length).setValues(padded);
+        }, `setValues:${tabName}:R${nextRow}C1:${padded.length}x${H.length}`, log);
+        log.info(`Flushed ${padded.length} rows → ${tabName}`);
+        totalRows += padded.length;
+        totalTabs++;
+        
+        if (typeof Utilities !== 'undefined' && Utilities.sleep) {
+          Utilities.sleep(150 + Math.floor(Math.random() * 150));
+        }
+      }
+    }
+    const tFlush = Date.now() - tFlushStart;
+    log.info(`[PERF] flushBuckets=${tFlush}ms tabs=${totalTabs} rows=${totalRows}`);
+  },
+
+  // ─── Clear all managed type tabs ─────────────────────────────────────────────
+
+  _clearIntakeTabs_(ss, log) {
+    const H = this.INTAKE_HEADERS;
+    ss.getSheets().forEach(sh => {
+      const name = sh.getName();
+      if (this.MANAGED_SHEET_RE.test(name) && !this.PROTECTED_SHEETS.has(name)) {
+        
+        // Delete the UNKNOWN tab if it exists (since we skip these bets now)
+        if (name === 'UNKNOWN') {
+          try {
+            ss.deleteSheet(sh);
+            log.info('Deleted legacy UNKNOWN tab');
+          } catch(e) {}
+          return;
+        }
+
+        // 1. Ensure header row exists and freeze row 1
+        sh.getRange(1, 1, 1, H.length).setValues([H]);
+        sh.setFrozenRows(1);
+
+        // 2. Ensure sheet has at least 2 rows total
+        const maxRows = sh.getMaxRows();
+        if (maxRows < 2) {
+          sh.insertRowsAfter(1, 1);
+        }
+
+        // 3. Clear contents below header across schema width only
+        //    (using H.length avoids blasting thousands of formatted-but-empty cols)
+        const lastRow = sh.getLastRow();
+        if (lastRow >= 2) {
+          sh.getRange(2, 1, lastRow - 1, H.length).clearContent();
+        }
+
+        // 4. Trim rows: keep exactly 2 rows (header + one blank buffer)
+        const updatedMaxRows = sh.getMaxRows();
+        if (updatedMaxRows > 2) {
+          sh.deleteRows(3, updatedMaxRows - 2);
+        }
+
+        // 5. Trim columns beyond schema width
+        const maxCols = sh.getMaxColumns();
+        if (maxCols > H.length) {
+          sh.deleteColumns(H.length + 1, maxCols - H.length);
+        }
+
+        // 6. Clear formatting on the single buffer row so it looks clean
+        //    (sheet is now exactly 2 rows × H.length cols — tiny range, safe)
+        sh.getRange(2, 1, 1, H.length).clearFormat();
+
+        log.info('Cleared: ' + name);
+      }
+    });
+  },
+
+  // ─── Purge specific satellite (No Ghosts) ───────────────────────────────────
+
+  purgeSatellite(ss, satelliteId, satelliteNameSubstring, log) {
+    log = log || Log_.module('FLEET_PURGE');
+    if (!satelliteId && !satelliteNameSubstring) {
+      log.warn("purgeSatellite requires either satelliteId or satelliteNameSubstring");
+      return;
+    }
+
+    log.info(`Purging satellite — ID: ${satelliteId || 'ANY'}, Name: ${satelliteNameSubstring || 'ANY'}`);
+    let totalDeleted = 0;
+
+    ss.getSheets().forEach(sh => {
+      const name = sh.getName();
+      if (this.MANAGED_SHEET_RE.test(name) && !this.PROTECTED_SHEETS.has(name)) {
+        const lastRow = sh.getLastRow();
+        const lastCol = sh.getLastColumn();
+        if (lastRow <= 1 || lastCol === 0) return;
+
+        const data = sh.getRange(1, 1, lastRow, lastCol).getValues();
+        const headers = data[0].map(h => String(h || '').trim().toLowerCase());
+        const idColIdx = headers.indexOf('satellite_id');
+        const nameColIdx = headers.indexOf('satellite_name');
+
+        if (idColIdx === -1 && nameColIdx === -1) return; // Not an intake sheet?
+
+        let deletedHere = 0;
+        // Iterate backwards to safely delete rows without messing up indices
+        for (let r = lastRow - 1; r >= 1; r--) {
+          const rowData = data[r];
+          const rowId = idColIdx !== -1 ? String(rowData[idColIdx] || '').trim() : '';
+          const rowName = nameColIdx !== -1 ? String(rowData[nameColIdx] || '').trim() : '';
+
+          let match = false;
+          if (satelliteId && rowId === String(satelliteId).trim()) {
+            match = true;
+          } else if (satelliteNameSubstring && rowName.includes(satelliteNameSubstring)) {
+            match = true;
+          }
+
+          if (match) {
+            sh.deleteRow(r + 1);
+            deletedHere++;
+            totalDeleted++;
+          }
+        }
+        
+        if (deletedHere > 0) {
+          log.info(`Purged ${deletedHere} rows from ${name}`);
+        }
+      }
+    });
+
+    log.success(`Purge complete. Total rows deleted across all managed tabs: ${totalDeleted}`);
+  },
+
+  // ─── Ensure tab exists with header row ───────────────────────────────────
+
+  ensureTab_(ss, tabName, headers, log) {
+    let sheet = this.withRetry_(() => ss.getSheetByName(tabName), `getSheetByName:${tabName}`, log);
+    if (!sheet) {
+      sheet = this.withRetry_(() => ss.insertSheet(tabName), `insertSheet:${tabName}`, log);
+    }
+    // Always re-stamp header row so schema stays consistent
+    this.withRetry_(() => {
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.setFrozenRows(1);
+      sheet.getRange(1, 1, 1, headers.length)
+        .setFontWeight('bold')
+        .setBackground(Config_.colors.header)
+        .setFontColor(Config_.colors.headerText);
+    }, `formatHeader:${tabName}`, log);
+    return sheet;
+  },
+
+ // ─── Satellite discovery ──────────────────────────────────────────────────
+
+discoverSatellites_(log) {
+    log = log || Log_.module('FLEET_DISCOVER');
+    log.info('Discovering satellites dynamically from registry.json + Drive folder...');
+
+    // PATCH: do not treat the GitHub registry as the only source of truth.
+    // The registry can be stale while new satellite spreadsheets already exist
+    // in Drive. Load both sources, merge by spreadsheet ID, and keep running if
+    // either source is unavailable. This makes newly-added satellite files
+    // visible on the next import/run without editing code.
+    const merged = [];
+    const seen = new Set();
+
+    const addSat = (sat, source) => {
+      if (!sat || !sat.id) return;
+      const id = String(sat.id).trim();
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      merged.push({
+        id: id,
+        name: String(sat.name || id).trim(),
+        source: source
+      });
+    };
+
+    try {
+      const resp = UrlFetchApp.fetch(this.REGISTRY_URL, { muteHttpExceptions: true });
+      if (resp.getResponseCode() !== 200) throw new Error('HTTP ' + resp.getResponseCode());
+      const json = JSON.parse(resp.getContentText());
+      const sats = Array.isArray(json.satellites) ? json.satellites : [];
+      sats.forEach(s => addSat(s, 'registry'));
+      log.info(`Registry: ${sats.length} satellites loaded.`);
+    } catch (e) {
+      log.warn('Registry fetch failed: ' + e.message + ' — continuing with Drive folder discovery.');
+    }
+
+    const beforeDrive = merged.length;
+    const driveSats = this._discoverFromDrive_(log) || [];
+    driveSats.forEach(s => addSat(s, 'drive'));
+    const addedFromDrive = merged.length - beforeDrive;
+
+    log.info(`Satellite discovery merged: ${merged.length} unique satellites ` +
+             `(registry=${beforeDrive}, drive_checked=${driveSats.length}, drive_added=${addedFromDrive}).`);
+
+    return merged;
+  },
+
+ _discoverFromDrive_(log) {
+    try {
+      const folder = DriveApp.getFolderById(this.FOLDER_ID);
+      const files  = folder.getFiles();
+      const sats   = [];
+      const seen   = new Set();
+      const SHEET_MIME = MimeType.GOOGLE_SHEETS;
+      const SHORTCUT_MIME = 'application/vnd.google-apps.shortcut';
+
+      const add = (id, name) => {
+        id = String(id || '').trim();
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        sats.push({ id: id, name: String(name || id).trim() });
+      };
+
+      while (files.hasNext()) {
+        const f = files.next();
+        const mime = f.getMimeType();
+
+        if (mime === SHEET_MIME) {
+          add(f.getId(), f.getName());
+          continue;
+        }
+
+        // Support Drive shortcuts to satellite spreadsheets too.
+        if (mime === SHORTCUT_MIME && typeof f.getTargetId === 'function') {
+          try {
+            if (f.getTargetMimeType && f.getTargetMimeType() === SHEET_MIME) {
+              add(f.getTargetId(), f.getName());
+            }
+          } catch (shortcutErr) {
+            log.warn(`Skipping unreadable Drive shortcut ${f.getName()}: ${shortcutErr.message}`);
+          }
+        }
+      }
+      log.info(`Drive folder: ${sats.length} satellite spreadsheets found.`);
+      return sats;
+    } catch (e) {
+      log.error('Drive folder discovery failed: ' + e.message);
+      return [];
+    }
+  },
+
+  // ─── Read Accuracy_Report tab ─────────────────────────────────────────────
+
+  readAccuracyReport_(satOrId, log) {
+    log = log || Log_.module('AR_READER');
+    const tARReadStart = Date.now();
+    let sat;
+    if (typeof satOrId === 'string') {
+      try {
+        sat = SpreadsheetApp.openById(satOrId);
+      } catch (e) {
+        log.warn(`Cannot open ${satOrId}: ${e.message}`);
+        return null;
+      }
+    } else {
+      sat = satOrId;
+    }
+
+    const satSheets = sat.getSheets();
+    const sheetMap = {};
+    for (let s of satSheets) {
+      const name = s.getName();
+      sheetMap[name.toLowerCase()] = s;
+    }
+
+    let arSheet = null;
+    for (const alias of this.AR_TAB_ALIASES) {
+      arSheet = sheetMap[alias.toLowerCase()];
+      if (arSheet) break;
+    }
+    if (!arSheet) return null;
+
+    let fullData;
+    try {
+      const maxRows = Math.min(arSheet.getMaxRows(), 2000);
+      const maxCols = Math.min(arSheet.getMaxColumns(), 30);
+      fullData = arSheet.getRange(1, 1, maxRows, maxCols).getValues();
+    } catch (e) {
+      log.warn(`  AR read error: ${e.message}`);
+      return null;
+    }
+    if (fullData.length === 0 || fullData[0].length === 0) {
+      return { headers: [], rows: [], headerIdx: -1 };
+    }
+
+    const data = fullData.slice(0, 60).map(row => row.slice(0, 30));
+    const tokens = this.HEADER_TOKENS;
+
+    // Find best header row
+    let bestScore = -1, bestRowIdx = -1, bestTokenHits = 0, bestNonEmpty = 0;
+
+    for (let r = 0; r < data.length; r++) {
+      const row = data[r];
+      let nonEmpty = 0, tokenHits = 0;
+      const joined = row.join('|').toLowerCase();
+      const isBanner = joined.includes('accuracy report') || joined.includes('golide');
+
+      for (const cell of row) {
+        if (cell !== '' && cell !== null && cell !== undefined) {
+          nonEmpty++;
+          const cLower = String(cell).toLowerCase().trim();
+          if (tokens.some(t => cLower.includes(t) || (cLower.length >= 3 && t.includes(cLower)))) {
+            tokenHits++;
+          }
+        }
+      }
+
+      let score = nonEmpty + tokenHits * 3;
+      if (isBanner && tokenHits < 3) score -= 20;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestRowIdx = r;
+        bestTokenHits = tokenHits;
+        bestNonEmpty = nonEmpty;
+      }
+    }
+
+    if (bestRowIdx === -1 || bestNonEmpty < 6 || bestTokenHits < 3) {
+      log.warn(`HEADER_NOT_FOUND sat=${satOrId}`);
+      return { headers: [], rows: [], headerIdx: -1 };
+    }
+
+    const finalHeaders = data[bestRowIdx].map(h => String(h || '').trim());
+    log.info(`Header row ${bestRowIdx + 1}: [${finalHeaders.slice(0,10).join(', ')}]`);
+
+    // Slicing out trailing empty rows
+    const rawRows = fullData.slice(bestRowIdx + 1);
+    const rows = [];
+    let consecutiveBlanks = 0;
+    for (let r = 0; r < rawRows.length; r++) {
+      const row = rawRows[r];
+      const isBlank = row.every(c => c === '' || c === null || c === undefined);
+      if (isBlank) {
+        consecutiveBlanks++;
+        if (consecutiveBlanks >= 10) {
+          break;
+        }
+      } else {
+        consecutiveBlanks = 0;
+        rows.push(row);
+      }
+    }
+    log.info(`→ ${rows.length} data rows`);
+
+    const tARRead = Date.now() - tARReadStart;
+
+    // --- EXTRACT CONFIGURATION SNAPSHOT (multi-source merge) ---
+    // Source 1: Config_* sheets (fill-first)
+    const tCfgStart = Date.now();
+    const cfgSheetData = {};
+    for (const s of satSheets) {
+      const sName = s.getName();
+      if (sName.startsWith('Config_') && !sName.includes('Proposals')) {
+        try {
+          var numRows = Math.min(s.getMaxRows(), 600);
+          var numCols = Math.min(s.getMaxColumns(), 3);
+          const cfgData = s.getRange(1, 1, numRows, numCols).getValues();
+          const cfgProps = {};
+          let consecutiveEmptyKeys = 0;
+          for (let i = 0; i < cfgData.length; i++) {
+            const key = String(cfgData[i][0] || '').trim();
+            const val = cfgData[i][1];
+            if (!key) {
+              consecutiveEmptyKeys++;
+              if (consecutiveEmptyKeys >= 50) break;
+              continue;
+            }
+            consecutiveEmptyKeys = 0;
+            if (!key.startsWith('//') && val !== undefined && val !== '') {
+              cfgProps[key] = this._normalizeCellValue_(val);
+            }
+          }
+          if (Object.keys(cfgProps).length > 0) cfgSheetData[sName] = cfgProps;
+        } catch (_) { /* ignore unreadable */ }
+      }
+    }
+    const tCfg = Date.now() - tCfgStart;
+
+    // Source 2: Bet_Slips (fill-missing keys only)
+    const tBetSlipsStart = Date.now();
+    const betSlipsCfg  = this._extractConfigFromBetSlips_(sat, sheetMap, log);
+    const tBetSlips = Date.now() - tBetSlipsStart;
+
+    // Source 3: Stats sheet
+    const tStatsStart = Date.now();
+    const statsSummary = this._extractStatsSheet_(sat, sheetMap, log);
+    const tStats = Date.now() - tStatsStart;
+
+    // Merge + size-guard
+    const configSnapshot = this._guardConfigJson_(
+      this._mergeConfigSnapshot_(cfgSheetData, betSlipsCfg, statsSummary), log
+    );
+
+    return { headers: finalHeaders, rows, headerIdx: bestRowIdx, configSnapshot, tARRead, tCfg, tBetSlips, tStats };
+  },
+
+  // ─── Run report ───────────────────────────────────────────────────────────
+
+  _writeRunReport_(ss, report, log) {
+    const TAB = 'MA_ImportReport';
+    let sheet = ss.getSheetByName(TAB);
+    if (!sheet) {
+      sheet = ss.insertSheet(TAB);
+    }
+    const lastR = sheet.getLastRow();
+    if (lastR > 0) sheet.clearContents();
+
+    sheet.getRange(1,1,1,2).setValues([['Field','Value']]);
+    sheet.setFrozenRows(1);
+
+    const typeBreakdown = Object.entries(report.rowsByType)
+      .sort((a,b) => b[1] - a[1])
+      .map(([t,n]) => `${t}:${n}`)
+      .join(', ') || 'none';
+
+    const rows = [
+      ['run_id',          report.runId],
+      ['started',         report.started],
+      ['finished',        new Date().toISOString()],
+      ['attempted',       report.attempted],
+      ['succeeded',       report.succeeded],
+      ['skipped',         report.skipped],
+      ['missing_ar',      report.missing_ar],
+      ['header_fails',    report.headerFails],
+      ['rows_skipped',    report.rowsSkipped],
+      ['intake_sheets',   Object.keys(report.rowsByType).length],
+      ['rows_by_type',    typeBreakdown],
+      ['sample_headers',  JSON.stringify(report.sampleHeaders || [])],
+      ['sample_resolved', JSON.stringify(report.sampleResolved || {})],
+      ['errors_count',    report.errors.length],
+      ['error_detail',    JSON.stringify(report.errors).slice(0, 1000)]
+    ];
+
+    sheet.getRange(2, 1, rows.length, 2).setValues(rows);
+    log.info('Run report written to ' + TAB);
+  },
+
+  // ─── Auto-resume timer ────────────────────────────────────────────────────
+
+  PROP_TRIGGER_ID: 'FI_TRIGGER_ID',
+
+  _installResumeTimer_(log) {
+    // Cancel any existing timer first
+    this._cancelResumeTimer_();
+    try {
+      const trigger = ScriptApp
+        .newTrigger('runFleetImportResume')
+        .timeBased()
+        .after(60 * 1000)   // fire ~1 minute from now
+        .create();
+      PropertiesService.getScriptProperties()
+        .setProperty(this.PROP_TRIGGER_ID, trigger.getUniqueId());
+      if (log) log.info('Auto-resume trigger scheduled (≈1 min).');
+    } catch (e) {
+      if (log) log.warn('Could not install resume trigger: ' + e.message);
+    }
+  },
+
+  // ─── Cell value normaliser ─────────────────────────────────────────────────
+
+  _normalizeCellValue_(v) {
+    if (v === null || v === undefined || v === '') return undefined;
+    if (typeof v === 'boolean') return v;
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === 'number') return v;
+    var s = String(v).trim();
+    if (!s) return undefined;
+    var u = s.toUpperCase();
+    if (u === 'TRUE')  return true;
+    if (u === 'FALSE') return false;
+    // Percent string → fraction
+    if (/^\d+(\.\d+)?%$/.test(s)) {
+      var p = parseFloat(s);
+      return isFinite(p) ? p / 100 : s;
+    }
+    var n = Number(s);
+    if (!isNaN(n) && isFinite(n)) return n;
+    return s;
+  },
+
+  // ─── Bet_Slips config extractor ───────────────────────────────────────────
+  //
+  // Reads a BOUNDED window (A1:E500) of the Bet_Slips sheet.
+  // Detects Config_Tier2 / Config_Tier1 / Config_Accumulator blocks, parses
+  // key/value rows until the next block header or bet-table header.
+  // Returns an object keyed by block name (same shape as Config_* sheet data).
+  //
+  _extractConfigFromBetSlips_(sat, sheetMap, log) {
+    if (!sheetMap || typeof sheetMap.info === 'function' || typeof sheetMap.log === 'function') {
+      log = sheetMap;
+      sheetMap = null;
+    }
+    log = log || { info: function() {}, warn: function() {} };
+
+    if (!sheetMap) {
+      sheetMap = {};
+      var satSheets = sat.getSheets();
+      for (var si = 0; si < satSheets.length; si++) {
+        var s = satSheets[si];
+        sheetMap[s.getName().toLowerCase()] = s;
+      }
+    }
+
+    // Detect sheet (tolerant matching using sheetMap)
+    var bsSheet = null;
+    var candidates = ['bet_slips', 'bets_slips', 'bet slips', 'betslips'];
+    for (var ci = 0; ci < candidates.length; ci++) {
+      bsSheet = sheetMap[candidates[ci]];
+      if (bsSheet) break;
+    }
+    if (!bsSheet) {
+      // Case-insensitive scan over all keys in sheetMap
+      var keys = Object.keys(sheetMap);
+      for (var ki = 0; ki < keys.length; ki++) {
+        if (keys[ki].replace(/[\s_]/g, '') === 'betslips') {
+          bsSheet = sheetMap[keys[ki]];
+          break;
+        }
+      }
+    }
+    if (!bsSheet) { log.info('  Bet_Slips: not found'); return {}; }
+
+    // Single-fetch: read bounded window A1:J500 without using getDataRange()
+    var data;
+    try {
+      var numRows = Math.min(bsSheet.getMaxRows(), 500);
+      var numCols = Math.min(bsSheet.getMaxColumns(), 10);
+      data = bsSheet.getRange(1, 1, numRows, numCols).getValues();
+    } catch (e) { log.warn('  Bet_Slips read error: ' + e.message); return {}; }
+
+    if (data.length === 0 || data[0].length === 0) { log.info('  Bet_Slips: empty'); return {}; }
+
+    // Bet-table stop tokens (stop if >= 5 match)
+    var BET_HEADER_TOKENS = ['league','date','match','pick','type','odds','confidence','ev','tier','result','outcome'];
+
+    var result = {};
+    var currentBlock = null;
+    var keyColIndex = 0;
+    var blocksFound = [];
+    var rowsInBlock = 0;
+    var MAX_ROWS_PER_BLOCK = 80;
+
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+
+      // Stop condition: bet-table header detected
+      var rowJoined = row.map(function(c) { return String(c || '').toLowerCase(); }).join('|');
+      var tokenHits = 0;
+      for (var ti = 0; ti < BET_HEADER_TOKENS.length; ti++) {
+        if (rowJoined.indexOf(BET_HEADER_TOKENS[ti]) !== -1) tokenHits++;
+      }
+      if (tokenHits >= 5) {
+        log.info('  Bet_Slips: bet-table header detected at row ' + (r + 1) + ', stopping.');
+        break;
+      }
+
+      // New block start? Scan all cells of a row to catch layouts where it might be shifted or share a row
+      var rowCells = row.map(function(c) { return String(c || '').trim(); });
+      var foundBlockName = null;
+      var foundBlockCol = -1;
+      for (var ci = 0; ci < rowCells.length; ci++) {
+        var txt = rowCells[ci];
+        if (/config[_\s-]*tier[_\s-]*2/i.test(txt)) {
+          foundBlockName = 'Config_Tier2';
+          foundBlockCol = ci;
+          break;
+        } else if (/config[_\s-]*tier[_\s-]*1/i.test(txt)) {
+          foundBlockName = 'Config_Tier1';
+          foundBlockCol = ci;
+          break;
+        } else if (/config[_\s-]*accumulator/i.test(txt)) {
+          foundBlockName = 'Config_Accumulator';
+          foundBlockCol = ci;
+          break;
+        }
+      }
+
+      if (foundBlockName) {
+        currentBlock = foundBlockName;
+        keyColIndex = foundBlockCol;
+        rowsInBlock  = 0;
+        if (!result[currentBlock]) {
+          result[currentBlock] = { __comments: {} };
+          blocksFound.push(currentBlock);
+        }
+
+        // Check if there is a key-value pair on this SAME row to the right of the block header
+        var remainingCells = row.slice(keyColIndex + 1);
+        for (var ri = 0; ri < remainingCells.length - 1; ri++) {
+          var possibleKey = String(remainingCells[ri] === null || remainingCells[ri] === undefined ? '' : remainingCells[ri]).trim();
+          if (possibleKey && !possibleKey.startsWith('//') && !possibleKey.startsWith('-')) {
+            var possibleVal = remainingCells[ri + 1];
+            if (possibleVal === '' || possibleVal === null || possibleVal === undefined) {
+              if (ri + 2 < remainingCells.length) {
+                possibleVal = remainingCells[ri + 2];
+              }
+            }
+            var normVal = this._normalizeCellValue_(possibleVal);
+            if (normVal !== undefined && normVal !== '') {
+              result[currentBlock][possibleKey] = normVal;
+              var possibleComment = '';
+              if (ri + 2 < remainingCells.length && remainingCells[ri + 2] !== possibleVal) {
+                possibleComment = String(remainingCells[ri + 2] || '').trim();
+              }
+              if (possibleComment) result[currentBlock].__comments[possibleKey] = possibleComment;
+              rowsInBlock++;
+              break;
+            }
+          }
+        }
+        continue;
+      }
+
+      if (!currentBlock) continue;
+      if (rowsInBlock >= MAX_ROWS_PER_BLOCK) continue;
+
+      // Extract key relative to keyColIndex
+      var colA = row.length > keyColIndex ? String(row[keyColIndex] === null || row[keyColIndex] === undefined ? '' : row[keyColIndex]).trim() : '';
+      var colB = row.length > keyColIndex + 1 ? row[keyColIndex + 1] : '';
+      var colC = row.length > keyColIndex + 2 ? row[keyColIndex + 2] : '';
+
+      // Divider rows: skip
+      if (colA.startsWith('---') || colA.indexOf('═══') !== -1 ||
+          colA.startsWith('===') || colA.startsWith('***')) continue;
+
+      // Skip comment lines
+      if (colA.startsWith('//')) continue;
+
+      // Skip rows where colA contains 'key' and colB contains 'value' (column header)
+      if (colA.toLowerCase() === 'key' &&
+          String(colB || '').toLowerCase().indexOf('value') !== -1) continue;
+
+      // Blank key row: skip
+      if (!colA) continue;
+
+      // Parse key/value
+      var rawVal = (colB === '' || colB === null || colB === undefined) ? colC : colB;
+      var normVal = this._normalizeCellValue_(rawVal);
+      if (normVal !== undefined) {
+        result[currentBlock][colA] = normVal;
+        // Store comment if colC differs from value and is non-empty
+        var commentSrc = (colB === '' || colB === null || colB === undefined) ? '' : String(colC || '').trim();
+        if (commentSrc) result[currentBlock].__comments[colA] = commentSrc;
+        rowsInBlock++;
+      }
+    }
+
+    // Extract cfgVersions
+    var cfgVersions = {};
+    if (result['Config_Tier2'] && result['Config_Tier2']['config_version'])
+      cfgVersions.tier2 = result['Config_Tier2']['config_version'];
+    if (result['Config_Tier1'] && result['Config_Tier1']['config_version'])
+      cfgVersions.tier1 = result['Config_Tier1']['config_version'];
+    if (result['Config_Accumulator'] && result['Config_Accumulator']['config_version'])
+      cfgVersions.acca = result['Config_Accumulator']['config_version'];
+    if (Object.keys(cfgVersions).length > 0) result.__cfgVersions = cfgVersions;
+
+    log.info('  Bet_Slips: found blocks=[' + blocksFound.join(', ') + ']' +
+             (Object.keys(cfgVersions).length ? ' versions=' + JSON.stringify(cfgVersions) : ''));
+    return result;
+  },
+
+  // ─── Stats sheet extractor ─────────────────────────────────────────────────
+  //
+  // Reads A1:F250 of a sheet named `Stats` (case-insensitive).
+  // Extracts winner-accuracy table and probability-range breakdown table.
+  //
+  _extractStatsSheet_(sat, sheetMap, log) {
+    if (!sheetMap || typeof sheetMap.info === 'function' || typeof sheetMap.log === 'function') {
+      log = sheetMap;
+      sheetMap = null;
+    }
+    log = log || { info: function() {}, warn: function() {} };
+
+    if (!sheetMap) {
+      sheetMap = {};
+      var satSheets = sat.getSheets();
+      for (var si = 0; si < satSheets.length; si++) {
+        var s = satSheets[si];
+        sheetMap[s.getName().toLowerCase()] = s;
+      }
+    }
+
+    var statsSheet = sheetMap['stats'];
+    if (!statsSheet) { return {}; }
+
+    // Single-fetch: read bounded window A1:F250 without using getDataRange()
+    var data;
+    try {
+      var numRows = Math.min(statsSheet.getMaxRows(), 250);
+      var numCols = Math.min(statsSheet.getMaxColumns(), 6);
+      data = statsSheet.getRange(1, 1, numRows, numCols).getValues();
+    } catch (e) { log.warn('  Stats read error: ' + e.message); return {}; }
+
+    if (data.length === 0 || data[0].length === 0) return {};
+
+    var result = {};
+
+    // Helper: parse accuracy cell -> fraction
+    var parseAcc = function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (typeof v === 'number') return v > 1 ? v / 100 : v;
+      var s = String(v).replace('%', '').trim();
+      var n = parseFloat(s);
+      return isFinite(n) ? (n > 1 ? n / 100 : n) : null;
+    };
+
+    // Helper: find a row index whose joined lower content contains a substring
+    var findAnchor = function(substr, startRow) {
+      startRow = startRow || 0;
+      for (var i = startRow; i < data.length; i++) {
+        var joined = data[i].map(function(c) { return String(c || '').toLowerCase(); }).join('|');
+        if (joined.indexOf(substr) !== -1) return i;
+      }
+      return -1;
+    };
+
+    // Helper: collect table rows until blank or non-numeric first column
+    var collectTable = function(headerRow, cols) {
+      var rows = [];
+      for (var i = headerRow + 1; i < Math.min(headerRow + 60, data.length); i++) {
+        var r = data[i];
+        var first = String(r[0] === null || r[0] === undefined ? '' : r[0]).trim();
+        if (!first) break; // blank row = end of table
+        var obj = {};
+        for (var c = 0; c < cols.length; c++) {
+          obj[cols[c]] = c < r.length ? r[c] : null;
+        }
+        rows.push(obj);
+      }
+      return rows;
+    };
+
+    // 1) Winner accuracy table
+    var anchorWA = findAnchor('accuracy', 0);
+    if (anchorWA !== -1) {
+      // Find header row with league/accuracy/correct/total near anchor
+      var hWA = -1;
+      for (var i = anchorWA; i < Math.min(anchorWA + 5, data.length); i++) {
+        var j = data[i].map(function(c) { return String(c || '').toLowerCase(); }).join('|');
+        if (j.indexOf('league') !== -1 || j.indexOf('accuracy') !== -1) { hWA = i; break; }
+      }
+      if (hWA !== -1) {
+        var rawWA = collectTable(hWA, ['league', 'accuracy', 'correct', 'total']);
+        result.winnerAccuracyByLeague = rawWA.map(function(row) {
+          return {
+            league:   String(row.league || '').trim(),
+            accuracy: parseAcc(row.accuracy),
+            correct:  isFinite(Number(row.correct)) ? Number(row.correct) : null,
+            total:    isFinite(Number(row.total))   ? Number(row.total)   : null
+          };
+        }).filter(function(r) {
+          // Skip blank rows and header-sentinel rows (when anchor == header row)
+          return r.league && r.league.toLowerCase() !== 'league';
+        });
+        // Cap at 30 leagues for size safety
+        if (result.winnerAccuracyByLeague.length > 30)
+          result.winnerAccuracyByLeague = result.winnerAccuracyByLeague.slice(0, 30);
+      }
+    }
+
+    // 2) Probability range breakdown
+    var anchorPR = findAnchor('probability', 0);
+    if (anchorPR !== -1) {
+      var hPR = -1;
+      for (var i = anchorPR; i < Math.min(anchorPR + 5, data.length); i++) {
+        var j = data[i].map(function(c) { return String(c || '').toLowerCase(); }).join('|');
+        if (j.indexOf('range') !== -1 || j.indexOf('accuracy') !== -1) { hPR = i; break; }
+      }
+      if (hPR !== -1) {
+        var rawPR = collectTable(hPR, ['range', 'accuracy', 'correct', 'total']);
+        result.probRangeBreakdown = rawPR.map(function(row) {
+          return {
+            range:    String(row.range || '').trim(),
+            accuracy: parseAcc(row.accuracy),
+            correct:  isFinite(Number(row.correct)) ? Number(row.correct) : null,
+            total:    isFinite(Number(row.total))   ? Number(row.total)   : null
+          };
+        }).filter(function(r) {
+          // Skip blank rows and header-sentinel rows
+          return r.range && r.range.toLowerCase() !== 'range';
+        });
+      }
+    }
+
+    if (Object.keys(result).length > 0)
+      log.info('  Stats: extracted tables=[' + Object.keys(result).join(', ') + ']');
+    return result;
+  },
+
+  // ─── Config snapshot merge ─────────────────────────────────────────────────
+  //
+  // Merge rule: Config_* sheets fill first; Bet_Slips fills MISSING keys only.
+  // Stats goes under "Stats.*" key.
+  //
+  _mergeConfigSnapshot_(cfgSheetData, betSlipsCfg, statsSummary) {
+    var merged = {};
+
+    // 1. Copy Config_* sheet data
+    var sheetKeys = Object.keys(cfgSheetData);
+    for (var i = 0; i < sheetKeys.length; i++) {
+      merged[sheetKeys[i]] = {};
+      var src = cfgSheetData[sheetKeys[i]];
+      var srcKeys = Object.keys(src);
+      for (var j = 0; j < srcKeys.length; j++) {
+        merged[sheetKeys[i]][srcKeys[j]] = src[srcKeys[j]];
+      }
+    }
+
+    // 2. Bet_Slips: fill missing keys per block; also carry __cfgVersions
+    var bsBlocks = Object.keys(betSlipsCfg).filter(function(k) { return k !== '__cfgVersions'; });
+    for (var bi = 0; bi < bsBlocks.length; bi++) {
+      var block = bsBlocks[bi];
+      if (!merged[block]) merged[block] = {};
+      var bsProps = betSlipsCfg[block];
+      var bsPropKeys = Object.keys(bsProps).filter(function(k) { return k !== '__comments'; });
+      for (var bj = 0; bj < bsPropKeys.length; bj++) {
+        var bKey = bsPropKeys[bj];
+        // Only fill if not already set by Config_* sheet
+        if (!merged[block].hasOwnProperty(bKey)) {
+          merged[block][bKey] = bsProps[bKey];
+        }
+      }
+    }
+    if (betSlipsCfg.__cfgVersions) merged.__cfgVersions = betSlipsCfg.__cfgVersions;
+
+    // 3. Stats summary
+    if (statsSummary && Object.keys(statsSummary).length > 0) {
+      merged['Stats'] = statsSummary;
+    }
+
+    return merged;
+  },
+
+  // ─── JSON size guard ──────────────────────────────────────────────────────
+  //
+  // Google Sheets cell limit: 50,000 chars. We target < 45,000.
+  // If over-limit: drop __comments, cap league arrays, add truncated flag.
+  //
+  _guardConfigJson_(merged, log) {
+    if (!merged || Object.keys(merged).length === 0) return '{}';
+    var json = JSON.stringify(merged);
+    if (json.length <= 45000) return json;
+
+    // Prune 1: drop __comments from all blocks
+    var keys = Object.keys(merged);
+    for (var i = 0; i < keys.length; i++) {
+      if (merged[keys[i]] && merged[keys[i]].__comments)
+        delete merged[keys[i]].__comments;
+    }
+    json = JSON.stringify(merged);
+    if (json.length <= 45000) return json;
+
+    // Prune 2: cap Stats league array to 15
+    if (merged['Stats'] && merged['Stats'].winnerAccuracyByLeague) {
+      merged['Stats'].winnerAccuracyByLeague =
+        merged['Stats'].winnerAccuracyByLeague.slice(0, 15);
+    }
+    json = JSON.stringify(merged);
+    if (json.length <= 45000) return json;
+
+    // Prune 3: drop Stats entirely
+    delete merged['Stats'];
+    merged.config_profile_truncated = true;
+    json = JSON.stringify(merged);
+    if (log) log.warn('  config_profile truncated (' + json.length + ' chars after pruning)');
+    return json;
+  },
+
+  _cancelResumeTimer_() {
+    const props = PropertiesService.getScriptProperties();
+    // Delete ALL runFleetImportResume triggers (not just the stored ID)
+    // — this prevents stale triggers from piling up across sessions
+    let deletedCount = 0;
+    ScriptApp.getProjectTriggers().forEach(t => {
+      if (t.getHandlerFunction() === 'runFleetImportResume') {
+        ScriptApp.deleteTrigger(t);
+        deletedCount++;
+      }
+    });
+    if (deletedCount > 0 && this.log) {
+      this.log.info(`Deleted ${deletedCount} runFleetImportResume trigger(s).`);
+    } else if (deletedCount > 0) {
+      Logger.log(`Deleted ${deletedCount} runFleetImportResume trigger(s).`);
+    }
+    props.deleteProperty(this.PROP_TRIGGER_ID);
+  },
+
+  cleanResumeTriggers_() {
+    this._cancelResumeTimer_();
+    const props = PropertiesService.getScriptProperties();
+    props.deleteProperty(this.PROP_RESUME_IDX);
+    props.deleteProperty(this.PROP_RUN_ID);
+    props.deleteProperty('FI_CHAIN_ASSAY');
+  }
+};
+
+// ============================================================================
+// Self-test harness — call from Apps Script editor
+// ============================================================================
+
+function runFleetImportSelfTests() {
+  FleetImport_.selfTestBetSlipsConfigExtraction_();
+  FleetImport_.selfTestStatsExtraction_();
+  FleetImport_.selfTestPurge_();
+}
+
+FleetImport_.selfTestPurge_ = function() {
+  var log = { info: Logger.log.bind(Logger), warn: Logger.log.bind(Logger), success: Logger.log.bind(Logger) };
+  Logger.log('=== selfTestPurge_ ===');
+
+  var deletedCount = 0;
+  var fakeRows = [
+    ['satellite_id', 'satellite_name', 'league'],
+    ['sat_1', 'Target Sat', 'NBA'],
+    ['sat_2', 'Keep Me', 'NFL'],
+    ['sat_1', 'Target Sat', 'NHL'],
+    ['sat_3', 'Target Other', 'MLB']
+  ];
+
+  var mockSheet = {
+    getName: function() { return 'TEST_INTAKE'; },
+    getLastRow: function() { return fakeRows.length; },
+    getLastColumn: function() { return 3; },
+    getRange: function(r, c, nr, nc) {
+      return { getValues: function() { return fakeRows; } };
+    },
+    deleteRow: function(idx) {
+      deletedCount++;
+      fakeRows[idx - 1] = null; // simulate deletion
+    }
+  };
+
+  var mockSs = {
+    getSheets: function() { return [mockSheet]; }
+  };
+
+  FleetImport_.purgeSatellite(mockSs, 'sat_1', null, log);
+
+  var passed = true;
+  if (deletedCount !== 2) {
+    Logger.log('FAIL: Expected to delete 2 rows, got ' + deletedCount);
+    passed = false;
+  }
+
+  deletedCount = 0;
+  fakeRows = [
+    ['satellite_id', 'satellite_name', 'league'],
+    ['sat_1', 'Target Sat', 'NBA'],
+    ['sat_2', 'Keep Me', 'NFL'],
+    ['sat_3', 'Target Other', 'MLB']
+  ];
+
+  FleetImport_.purgeSatellite(mockSs, null, 'Target', log);
+  if (deletedCount !== 2) {
+    Logger.log('FAIL: Expected to delete 2 rows (substring), got ' + deletedCount);
+    passed = false;
+  }
+
+  Logger.log(passed ? '✅ selfTestPurge_ PASSED' : '❌ FAILED');
+};
+
+FleetImport_.selfTestBetSlipsConfigExtraction_ = function() {
+  var log = { info: Logger.log.bind(Logger), warn: Logger.log.bind(Logger) };
+  Logger.log('=== selfTestBetSlipsConfigExtraction_ ===');
+
+  // Fake Bet_Slips 2D array
+  var fakeData = [
+    ['Config_Tier2',    '',              ''],
+    ['--- CORE PARAMS ---', '',          ''],
+    ['config_version',  'v2.4.1',        ''],
+    ['threshold',        0.62,           '62% minimum confidence'],
+    ['ou_min_conf',      '0.65',         '65% for O/U'],
+    ['forebet_blend',    'TRUE',         'enable forebet'],
+    ['last_updated',     '2026-05-01',   ''],
+    ['Config_Tier1',    '',              ''],
+    ['config_version',  'v1.9.0',        ''],
+    ['threshold',        0.58,           ''],
+    ['Config_Accumulator', '',           ''],
+    ['config_version',  'v3.0.0',        ''],
+    ['acca_min_legs',    3,              ''],
+  ];
+
+  // Inject fake getValues by creating a mock sat object
+  var mockSat = {
+    getSheets: function() {
+      return [{
+        getName: function() { return 'Bet_Slips'; },
+        getLastRow: function() { return fakeData.length; },
+        getLastColumn: function() { return 3; },
+        getRange: function(r, c, nR, nC) {
+          return {
+            getValues: function() {
+              return fakeData.slice(r - 1, r - 1 + nR).map(function(row) {
+                return row.slice(c - 1, c - 1 + nC);
+              });
+            }
+          };
+        }
+      }];
+    },
+    getSheetByName: function(name) {
+      if (name === 'Bet_Slips') return this.getSheets()[0];
+      return null;
+    }
+  };
+
+  var result = FleetImport_._extractConfigFromBetSlips_(mockSat, log);
+  Logger.log('Extracted: ' + JSON.stringify(result));
+
+  var passed = true;
+
+  // Assert config_version for Tier2
+  if (!result['Config_Tier2'] || result['Config_Tier2']['config_version'] !== 'v2.4.1') {
+    Logger.log('FAIL: Config_Tier2.config_version expected v2.4.1, got ' +
+      (result['Config_Tier2'] ? result['Config_Tier2']['config_version'] : 'missing block'));
+    passed = false;
+  }
+  // Assert numeric ou_min_conf
+  if (!result['Config_Tier2'] || result['Config_Tier2']['ou_min_conf'] !== 0.65) {
+    Logger.log('FAIL: ou_min_conf expected 0.65 (number), got ' +
+      (result['Config_Tier2'] ? result['Config_Tier2']['ou_min_conf'] : 'n/a'));
+    passed = false;
+  }
+  // Assert boolean TRUE
+  if (!result['Config_Tier2'] || result['Config_Tier2']['forebet_blend'] !== true) {
+    Logger.log('FAIL: forebet_blend expected true (boolean)');
+    passed = false;
+  }
+  // Assert cfgVersions
+  if (!result.__cfgVersions || result.__cfgVersions.tier2 !== 'v2.4.1') {
+    Logger.log('FAIL: __cfgVersions.tier2 missing or wrong');
+    passed = false;
+  }
+
+  Logger.log(passed ? '✅ selfTestBetSlipsConfigExtraction_ PASSED' : '❌ FAILED');
+};
+
+FleetImport_.selfTestStatsExtraction_ = function() {
+  var log = { info: Logger.log.bind(Logger), warn: Logger.log.bind(Logger) };
+  Logger.log('=== selfTestStatsExtraction_ ===');
+
+  // Fake Stats sheet 2D array
+  var fakeStats = [
+    ['Ma Golide Winner Accuracy (Historical)', '', '', ''],
+    ['League', 'Accuracy', 'Correct', 'Total'],
+    ['NBA',    '77.10%',   154,       200    ],
+    ['NFL',    '65.00%',   130,       200    ],
+    ['NHL',    '72.50%',   145,       200    ],
+    ['',       '',         '',        ''     ],
+    ['Probability Range Breakdown', '', '', ''],
+    ['Range',  'Accuracy', 'Correct', 'Total'],
+    ['55-60%', '58.00%',   58,        100   ],
+    ['60-65%', '70.00%',   70,        100   ],
+    ['65-70%', '80.00%',   80,        100   ],
+  ];
+
+  var mockSat = {
+    getSheets: function() {
+      return [{
+        getName: function() { return 'Stats'; },
+        getLastRow: function() { return fakeStats.length; },
+        getLastColumn: function() { return 4; },
+        getRange: function(r, c, nR, nC) {
+          return {
+            getValues: function() {
+              return fakeStats.slice(r - 1, r - 1 + nR).map(function(row) {
+                return row.slice(c - 1, c - 1 + nC);
+              });
+            }
+          };
+        }
+      }];
+    }
+  };
+
+  var result = FleetImport_._extractStatsSheet_(mockSat, log);
+  Logger.log('Stats extracted: ' + JSON.stringify(result));
+
+  var passed = true;
+
+  if (!result.winnerAccuracyByLeague || result.winnerAccuracyByLeague.length < 3) {
+    Logger.log('FAIL: winnerAccuracyByLeague missing or too short');
+    passed = false;
+  } else {
+    var nba = result.winnerAccuracyByLeague[0];
+    if (Math.abs((nba.accuracy || 0) - 0.771) > 0.001) {
+      Logger.log('FAIL: NBA accuracy expected 0.771, got ' + nba.accuracy);
+      passed = false;
+    }
+  }
+
+  if (!result.probRangeBreakdown || result.probRangeBreakdown.length < 3) {
+    Logger.log('FAIL: probRangeBreakdown missing or too short');
+    passed = false;
+  } else {
+    if (Math.abs((result.probRangeBreakdown[2].accuracy || 0) - 0.80) > 0.001) {
+      Logger.log('FAIL: 65-70% accuracy expected 0.80, got ' + result.probRangeBreakdown[2].accuracy);
+      passed = false;
+    }
+  }
+
+  Logger.log(passed ? '✅ selfTestStatsExtraction_ PASSED' : '❌ FAILED');
+};
+
+// ============================================================================
+// Menu-callable globals
+// ============================================================================
+
+function runFleetImportOnly() {
+  Log_.init();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const log = Log_.module('FLEET_IMPORT');
+  FleetImport_.importAccuracyReports_(ss, { clearBeforeImport: true }, log);
+  Log_.writeToSheet(ss);
+}
+
+function runFleetImportAndAssay() {
+  Log_.init();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const log = Log_.module('FLEET_IMPORT');
+  
+  PropertiesService.getScriptProperties().setProperty('FI_CHAIN_ASSAY', 'true');
+  
+  const done = FleetImport_.importAccuracyReports_(ss, { clearBeforeImport: true }, log);
+  if (done !== false) {
+    PropertiesService.getScriptProperties().deleteProperty('FI_CHAIN_ASSAY');
+    log.info('Fleet import finished synchronously. Triggering Main_.runAssay()...');
+    Log_.writeToSheet(ss);
+    Main_.runAssay();
+  } else {
+    log.info('Fleet import paused for quota. Main_.runAssay() will execute upon final resume completion.');
+    Log_.writeToSheet(ss);
+  }
+}
+
+function runFleetImportTest() {
+  Log_.init();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const log = Log_.module('FLEET_IMPORT_TEST');
+  log.info('TEST RUN — limit=3 satellites');
+  FleetImport_.importAccuracyReports_(ss, { limit: 3, clearBeforeImport: true }, log);
+  Log_.writeToSheet(ss);
+}
+
+function runFleetImportResume() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(2000)) {
+    console.warn("Could not acquire script lock. Exiting early.");
+    return;
+  }
+  try {
+  // Cancel the trigger that fired us so it doesn't stack
+  FleetImport_._cancelResumeTimer_();
+  Log_.init();
+  const ss  = SpreadsheetApp.getActiveSpreadsheet();
+  const log = Log_.module('FLEET_IMPORT');
+  const done = FleetImport_.importAccuracyReports_(ss, { resume: true }, log);
+  if (done !== false) {
+    // ── BUG FIX: read FI_CHAIN_ASSAY BEFORE cleanResumeTriggers_() deletes it ──
+    const shouldChainAssay = PropertiesService.getScriptProperties().getProperty('FI_CHAIN_ASSAY') === 'true';
+
+    // Completed — cancel any leftover timer and clean properties
+    FleetImport_.cleanResumeTriggers_();
+
+    // Chain into runAssay if this run was launched via runFleetImportAndAssay
+    if (shouldChainAssay) {
+      log.info('Fleet import finished on resume. Launching assay...');
+      log.info('══════════════════════════════════════');
+      log.info('HANDOFF → launching Main_.runAssay()');
+      log.info('══════════════════════════════════════');
+      Log_.writeToSheet(ss);
+      Main_.runAssay();
+      return;
+    }
+  }
+  Log_.writeToSheet(ss);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function resetFleetImport() {
+  FleetImport_.cleanResumeTriggers_();
+  Logger.log('FleetImport resume state + timer cleared.');
+}
+
+function purgeSatelliteAction() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt('Purge Satellite', 'Enter the exact Satellite ID to remove from intake tabs:', ui.ButtonSet.OK_CANCEL);
+  if (response.getSelectedButton() === ui.Button.OK) {
+    const id = response.getResponseText().trim();
+    if (id) {
+      Log_.init();
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      FleetImport_.purgeSatellite(ss, id, null);
+      Log_.writeToSheet(ss);
+      ui.alert('Purge complete. Check MA_Logs for details.');
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEBUG UTILITY: wipe all intake sheets + reset state for a clean run
+// ─────────────────────────────────────────────────────────────────────────────
+
+function clearAllIntakeData() {
+  FleetImport_._cancelResumeTimer_();
+
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty(FleetImport_.PROP_RESUME_IDX);
+  props.deleteProperty(FleetImport_.PROP_RUN_ID);
+
+  const ss      = SpreadsheetApp.getActiveSpreadsheet();
+  const log     = Log_.module ? Log_.module('CLEAR') : console;
+  const sheets  = ss.getSheets();
+  const cleared = [];
+
+  sheets.forEach(sh => {
+    const name = sh.getName();
+    if (
+      FleetImport_.MANAGED_SHEET_RE.test(name) &&
+      !FleetImport_.PROTECTED_SHEETS.has(name) &&
+      name !== 'MA_ImportReport'
+    ) {
+      sh.clearContents();
+      cleared.push(name);
+    }
+  });
+
+  Logger.log(`clearAllIntakeData: cleared ${cleared.length} sheets — ${cleared.join(', ')}`);
+  if (log.info) log.info(`Cleared ${cleared.length} intake sheets. Resume state reset.`);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DIAGNOSTIC: count every unique type value in the UNKNOWN sheet.
+// Run once from the editor — results appear in the execution log.
+// Paste the sanitized values into TYPE_CANONICAL to eliminate UNKNOWN rows.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function auditUnknownTypes() {
+  // Reads the raw-type tracker built during import (not the sheet)
+  // so you see the ORIGINAL satellite type strings, not "UNKNOWN"
+  const props = PropertiesService.getScriptProperties();
+  const stored = props.getProperty(FleetImport_.PROP_UNKNOWN_TYPES);
+  if (!stored) {
+    Logger.log('No unknown type data recorded yet. Run a fleet import first.');
+    return;
+  }
+  const counts = JSON.parse(stored);
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const total  = sorted.reduce((s, [,n]) => s + n, 0);
+
+  Logger.log('==== UNKNOWN raw type audit (' + total + ' rows, ' + sorted.length + ' unique types) ====');
+  sorted.forEach(function([type, n]) {
+    const sanitized = type.toUpperCase()
+      .replace(/[^A-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 25);
+    Logger.log('  ' + String(n).padStart(4) + 'x  "' + type + '"  =>  sanitized: "' + sanitized + '"');
+  });
+  Logger.log('==== Paste the sanitized keys into TYPE_CANONICAL to resolve. ====');
+}
+
+
+// ─── DEV ONLY: Retry Simulation ───────────────────────────────────────────
+function DEV_simulateRetry() {
+  const log = Log_.module('DEV_TEST');
+  let throwCount = 0;
+  log.info('Starting dev retry simulation...');
+  try {
+    const result = FleetImport_.withRetry_(() => {
+      throwCount++;
+      if (throwCount <= 2) {
+        throw new Error('Service Spreadsheets timed out while accessing document');
+      }
+      return 'SUCCESS';
+    }, 'simulate_openById', log, { attempts: 4, baseMs: 100, maxMs: 1000 });
+    log.info(`Final result: ${result}`);
+  } catch (e) {
+    log.error(`Failed: ${e.message}`);
+  }
+}
