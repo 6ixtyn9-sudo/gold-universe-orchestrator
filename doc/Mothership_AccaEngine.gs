@@ -826,16 +826,17 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
 
     // --- Team-based disambiguation for colliding league codes ---
     if (!leagueMeta && bet.league && metrics._teamToLeague) {
-      var teamKey = String(bet.home || '').trim().toLowerCase();
-      if (!teamKey) teamKey = String(bet.away || '').trim().toLowerCase();
-      if (teamKey) {
-        var resolvedByTeam = metrics._teamToLeague[teamKey];
-        if (resolvedByTeam && metrics[resolvedByTeam]) {
-          leagueMeta = metrics[resolvedByTeam];
-          matchedCount++;
-          Logger.log("[_enrichBetsWithAccuracy] Team match for %s -> %s (resolved via team: %s)",
-                     bet.league, resolvedByTeam, teamKey);
-        }
+      var homeKey = String(bet.home || '').trim().toLowerCase();
+      var awayKey = String(bet.away || '').trim().toLowerCase();
+      
+      var resolvedByTeam = metrics._teamToLeague[homeKey] || metrics._teamToLeague[awayKey];
+      var matchedTeam = metrics._teamToLeague[homeKey] ? homeKey : (metrics._teamToLeague[awayKey] ? awayKey : '');
+      
+      if (resolvedByTeam && metrics[resolvedByTeam]) {
+        leagueMeta = metrics[resolvedByTeam];
+        matchedCount++;
+        Logger.log("[_enrichBetsWithAccuracy] Team match for %s -> %s (resolved via team: %s)",
+                   bet.league, resolvedByTeam, matchedTeam);
       }
     }
     // --- End team disambiguation ---
@@ -2945,15 +2946,16 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
 
           // --- Team-based disambiguation for colliding league codes ---
           if (!foundMeta && leg.league && metrics._teamToLeague) {
-            var teamKey = String(leg.home || '').trim().toLowerCase();
-            if (!teamKey) teamKey = String(leg.away || '').trim().toLowerCase();
-            if (teamKey) {
-              var resolvedLeagueName = metrics._teamToLeague[teamKey];
-              if (resolvedLeagueName && metrics[resolvedLeagueName]) {
-                foundMeta = metrics[resolvedLeagueName];
-                Logger.log("[_writePortfolioWithAccuracy] Team match for %s -> %s (resolved via team: %s)", 
-                           leg.league, resolvedLeagueName, teamKey);
-              }
+            var homeKey = String(leg.home || '').trim().toLowerCase();
+            var awayKey = String(leg.away || '').trim().toLowerCase();
+            
+            var resolvedLeagueName = metrics._teamToLeague[homeKey] || metrics._teamToLeague[awayKey];
+            var matchedTeam = metrics._teamToLeague[homeKey] ? homeKey : (metrics._teamToLeague[awayKey] ? awayKey : '');
+            
+            if (resolvedLeagueName && metrics[resolvedLeagueName]) {
+              foundMeta = metrics[resolvedLeagueName];
+              Logger.log("[_writePortfolioWithAccuracy] Team match for %s -> %s (resolved via team: %s)", 
+                         leg.league, resolvedLeagueName, matchedTeam);
             }
           }
           // --- End team disambiguation ---
