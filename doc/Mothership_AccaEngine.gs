@@ -828,16 +828,28 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
       }
     }
 
-    // ── Collision-resolution fallback (averages colliding leagues) ──
-    if (!leagueMeta && metrics._collisionResolution) {
-      var colKey = String(league || '').trim();
-      if (metrics._collisionResolution[colKey]) {
-        leagueMeta = metrics._collisionResolution[colKey];
+  // ── SourceSheet disambiguation (exact league name match) ──
+  if (!leagueMeta && bet.sourcesheet) {
+    var sourceKeys = [bet.sourcesheet, bet.sourcesheet.toLowerCase(), bet.sourcesheet.toUpperCase()];
+    for (var ski = 0; ski < sourceKeys.length; ski++) {
+      if (sourceKeys[ski] && metrics[sourceKeys[ski]]) {
+        leagueMeta = metrics[sourceKeys[ski]];
         matchedCount++;
-        Logger.log('[' + FUNC_NAME + '] Collision resolution used for ' + league + ': ' + leagueMeta.tier1Source);
+        Logger.log('[' + FUNC_NAME + '] SourceSheet match for ' + league + ' -> ' + sourceKeys[ski]);
+        break;
       }
     }
-    // ── END collision-resolution fallback ──
+  }
+
+  // ── Collision-resolution fallback (averaged, self-documenting) ──
+  if (!leagueMeta && metrics._collisionResolution) {
+    var colKey = String(league || '').trim();
+    if (metrics._collisionResolution[colKey]) {
+      leagueMeta = metrics._collisionResolution[colKey];
+      matchedCount++;
+      Logger.log('[' + FUNC_NAME + '] Collision resolution used for ' + league + ': ' + leagueMeta.tier1Source);
+    }
+  }
 
     // Dynamic unique-prefix fallback (no static collision list).
     // Example: bet.league="LNB" can match metrics["LNB_FRA"] if it is the only LNB_* key.
@@ -2906,14 +2918,24 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
             }
           }
           
-          // ── Collision-resolution fallback ──
-          if (!foundMeta && metrics._collisionResolution) {
-            const colKey2 = String(leg.league || '').trim();
-            if (metrics._collisionResolution[colKey2]) {
-              foundMeta = metrics._collisionResolution[colKey2];
+          // ── SourceSheet disambiguation ──
+          if (!foundMeta && leg.sourcesheet) {
+            var sourceKeys2 = [leg.sourcesheet, leg.sourcesheet.toLowerCase(), leg.sourcesheet.toUpperCase()];
+            for (var ski2 = 0; ski2 < sourceKeys2.length; ski2++) {
+              if (sourceKeys2[ski2] && metrics[sourceKeys2[ski2]]) {
+                foundMeta = metrics[sourceKeys2[ski2]];
+                break;
+              }
             }
           }
-          // ── END collision-resolution fallback ──
+
+          // ── Collision-resolution fallback ──
+          if (!foundMeta && metrics._collisionResolution) {
+            var colKey3 = String(leg.league || '').trim();
+            if (metrics._collisionResolution[colKey3]) {
+              foundMeta = metrics._collisionResolution[colKey3];
+            }
+          }
           
           if (foundMeta) {
             if (isBanker && foundMeta.hasTier1) {
@@ -7410,7 +7432,8 @@ function _loadBetsFromSyncTemp(ss) {
 
       isBanker:      type.toUpperCase().indexOf('BANKER') >= 0,
       isSniper:      type.toUpperCase().indexOf('SNIPER') >= 0,
-      isDirectional: type.toUpperCase().indexOf('DIR') >= 0
+      isDirectional: type.toUpperCase().indexOf('DIR') >= 0,
+      sourcesheet:   String(getCell(row, 30) || '').trim()
     });
   }
 
