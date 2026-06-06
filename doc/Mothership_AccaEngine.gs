@@ -809,34 +809,56 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
 
     // ── League metrics lookup ──
     var leagueMeta = null;
-    var rawLeague = String(league).toUpperCase();
+    var keysToTry = [
+      league,
+      league.toLowerCase(),
+      league.toUpperCase(),
+      league.replace(/\s+/g, ''),
+      league.replace(/\s+/g, '_'),
+      league.split(' ')[0],
+      league.split(' ').pop()
+    ];
 
-    // 1. Exact canonical match first (CODE_SLUG -> CODE_SLUG)
-    if (metrics[rawLeague]) {
-      leagueMeta = metrics[rawLeague];
-      matchedCount++;
-    } else {
-      // 2. Dynamic Unique-Prefix Fallback
-      // If LNB_FRA isn't in metrics, look for keys starting with LNB_.
-      // If exactly ONE matches, use it. If 2+ match, it's ambiguous, so leave unmatched.
-      var parts = rawLeague.split('_');
-      if (parts.length > 0) {
-        var prefix = parts[0] + '_';
-        var candidates = [];
-        var metricKeys = Object.keys(metrics);
-
-        for (var ki = 0; ki < metricKeys.length; ki++) {
-          if (metricKeys[ki].toUpperCase().indexOf(prefix) === 0) {
-            candidates.push(metrics[metricKeys[ki]]);
-          }
-        }
-
-        if (candidates.length === 1) {
-          leagueMeta = candidates[0];
-          matchedCount++;
-        }
+    for (var ki = 0; ki < keysToTry.length; ki++) {
+      var key = keysToTry[ki];
+      if (key && metrics[key]) {
+        leagueMeta = metrics[key];
+        matchedCount++;
+        break;
       }
     }
+
+    // Dynamic unique-prefix fallback (no static collision list).
+    // Example: bet.league="LNB" can match metrics["LNB_FRA"] if it is the only LNB_* key.
+    if (!leagueMeta) {
+      var leagueUpper = String(league || '').trim().toUpperCase();
+      var leagueBare = leagueUpper.split('_')[0];
+      var prefix = leagueBare ? (leagueBare + '_') : '';
+      var matchedKeysByUpper = {};
+
+      if (prefix) {
+        for (var mk = 0; mk < metricKeys.length; mk++) {
+          var metricKey = String(metricKeys[mk] || '').trim();
+          var metricKeyUpper = metricKey.toUpperCase();
+
+          if (metricKeyUpper.indexOf(prefix) === 0 && metrics[metricKey]) {
+            matchedKeysByUpper[metricKeyUpper] = metricKey;
+          }
+        }
+      }
+
+      var matchedKeyUppers = Object.keys(matchedKeysByUpper);
+
+      if (matchedKeyUppers.length === 1) {
+        var matchedMetricKey = matchedKeysByUpper[matchedKeyUppers[0]];
+        leagueMeta = metrics[matchedMetricKey];
+        matchedCount++;
+        Logger.log('[' + FUNC_NAME + '] Dynamic league prefix match: ' + league + ' -> ' + matchedMetricKey);
+      } else if (matchedKeyUppers.length > 1) {
+        Logger.log('[' + FUNC_NAME + '] Ambiguous dynamic league prefix for ' + league + ': ' + matchedKeyUppers.join(', ') + ' — leaving unmatched');
+      }
+    }
+
 
     if (!leagueMeta) {
       leagueMeta = {
