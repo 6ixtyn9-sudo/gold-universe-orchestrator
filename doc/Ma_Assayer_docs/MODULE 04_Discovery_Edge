@@ -1,0 +1,749 @@
+// ============================================================================
+// MODULE: Discovery_ — Edge Discovery Engine (v5.0.0)
+//
+// WHAT CHANGED (v5.0.0 — config_profile Fleet edges):
+//   1. Config-profile helpers: _safeParseJSON_, _flattenConfigProfile_,
+//      _normalizeConfigVal_, _isThresholdKey_, _bucketCfgValue_,
+//      _getCfgFlat_, _getCfgBucketCached_
+//   2. discoverAll(sideBets, totalsBets, fleetBets) — new 3rd arg.
+//   3. Fleet discovery pass: per-type, per-threshold-key config edges
+//      with contextual baselines. No Tier1/Tier2 bleed (type is part of
+//      criteria). Hard caps: 25 keys/type, 8 buckets/key.
+//   4. matchesCriteria handles cfgKey + cfgBucket criteria (cached per bet).
+//   5. Filter gate extended: Fleet edges must carry type + cfgKey + cfgBucket.
+//   6. getSummary includes Fleet source.
+//   7. selfTestConfigProfile_() — in-memory self-test harness.
+// ============================================================================
+
+const Discovery_ = {
+  log: null,
+
+  init() {
+    this.log = Log_.module("DISCOVERY");
+  },
+
+  // ---------------------------------------------------------------------------
+  // Internal helpers
+  // ---------------------------------------------------------------------------
+
+  _clone(obj) {
+    if (typeof Utils_ !== "undefined" && Utils_.deepClone) {
+      return Utils_.deepClone(obj);
+    }
+    return JSON.parse(JSON.stringify(obj));
+  },
+
+  /**
+   * ◆ PATCH: Normalise a raw type string to upper-case, single-spaced.
+   */
+  _normalizeType(raw) {
+    return String(raw || "").trim().toUpperCase().replace(/\s+/g, " ");
+  },
+
+  /**
+   * ◆ PATCH: Derive a canonical, stable typeKey for any totals bet.
+   *
+   * Maps the messy universe of type strings to a small canonical set:
+   *   SNIPER_OU  |  SNIPER_OU_DIR  |  SNIPER_OU_STAR
+   *   OU         |  OU_DIR         |  OU_STAR
+   *   OTHER      |  UNKNOWN
+   *
+   * This is the field that goes into edge criteria and prevents
+   * cross-derivation leakage.
+   */
+  _getTotalsTypeKey(bet) {
+    if (!bet) return "UNKNOWN";
+    if (bet.typeKey) return bet.typeKey;          // already computed
+
+    const t = this._normalizeType(bet.type);
+    if (!t) return "UNKNOWN";
+
+    // Detect "Sniper O/U" family
+    const hasSniper = t.includes("SNIPER");
+    const hasOU     = t.includes("O/U")  || t.includes("OU")  ||
+                      t.includes("OVER/UNDER") || t.includes("OVER UNDER") ||
+                      t.includes("TOTAL");
+
+    if (hasSniper && hasOU) {
+      if (t.includes("DIR"))  return "SNIPER_OU_DIR";
+      if (t.includes("STAR")) return "SNIPER_OU_STAR";
+      return "SNIPER_OU";
+    }
+
+    if (hasOU) {
+      if (t.includes("DIR"))  return "OU_DIR";
+      if (t.includes("STAR")) return "OU_STAR";
+      return "OU";
+    }
+
+    return "OTHER";
+  },
+
+  // ---------------------------------------------------------------------------
+  // Edge creation
+  // ---------------------------------------------------------------------------
+
+  createEdge(source, id, name, bets, stats, baseline, criteria = {}) {
+    const lowerBound = Stats_.wilsonLowerBound(stats.wins, stats.decisive);
+    const upperBound = Stats_.wilsonUpperBound(stats.wins, stats.decisive);
+    const lift       = stats.winRate - baseline.winRate;
+    const liftPct    = baseline.winRate > 0 ? (lift / baseline.winRate) * 100 : 0;
+    const gradeInfo  = Stats_.getGradeInfo(stats.winRate, stats.decisive);
+
+    return {
+      id: id.replace(/\s+/g, "_").replace(/[^A-Z0-9_]/gi, "").toUpperCase(),
+      source,
+      name,
+      description: `${name} (${source})`,
+      criteria: this._clone(criteria),
+      n: stats.decisive,
+      wins: stats.wins,
+      losses: stats.losses,
+      winRate: stats.winRate,
+      winRatePct: Stats_.pct(stats.winRate),
+      lift,
+      liftPct,
+      liftDisplay: Stats_.lift(lift),
+      lowerBound,
+      upperBound,
+      confidenceInterval: `${Stats_.pct(lowerBound)} - ${Stats_.pct(upperBound)}`,
+      grade: gradeInfo.grade,
+      gradeSymbol: gradeInfo.symbol,
+      gradeName: gradeInfo.name,
+      reliable: stats.decisive >= Config_.thresholds.minNReliable,
+      sampleSize: stats.decisive >= Config_.thresholds.minNPlatinum ? "Large" :
+                  stats.decisive >= Config_.thresholds.minNReliable ? "Medium" : "Small",
+      autoDiscovered: true,
+      discoveredAt: new Date().toISOString()
+    };
+  },
+
+  // ---------------------------------------------------------------------------
+  // Attribute scanner (unchanged API — baseline meaning is now contextual)
+  // ---------------------------------------------------------------------------
+
+  scanAttribute(bets, source, attrName, values, getter, baseline, parentCriteria = {}) {
+    const edges = [];
+    const t = Config_.thresholds;
+
+    for (const val of values) {
+      if (val === null || val === undefined) continue;
+
+      const filtered = bets.filter(b => getter(b) === val);
+      if (filtered.length < t.minN) continue;
+
+      const stats = Stats_.calcBasic(filtered);
+      if (stats.decisive < t.minN) continue;
+
+      const lift = stats.winRate - baseline.winRate;
+
+      if (lift >= t.liftThreshold) {
+        const criteria  = { ...parentCriteria, [attrName]: val };
+        const sortedKeys = Object.keys(criteria).sort();
+        const idParts   = [source];
+        const nameParts = [];
+        for (const k of sortedKeys) {
+          const v = criteria[k];
+          idParts.push(`${k}_${String(v).replace(/[^A-Z0-9]/gi, "")}`);
+          nameParts.push(`${k}=${v}`);
+        }
+
+        edges.push(this.createEdge(
+          source,
+          idParts.join("_"),
+          nameParts.join(" + "),
+          filtered,
+          stats,
+          baseline,
+          criteria
+        ));
+      }
+    }
+
+    return edges;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Config-profile helpers (v5.0.0)
+  // ---------------------------------------------------------------------------
+
+  /** Safely parse a JSON string to an object; returns {} on any error. */
+  _safeParseJSON_(s) {
+    if (!s || typeof s !== 'string') return {};
+    var t = s.trim();
+    if (!t || t === '{}') return {};
+    try { return JSON.parse(t); } catch (_) { return {}; }
+  },
+
+  /** Normalise a raw config value to a typed scalar. */
+  _normalizeConfigVal_(raw) {
+    if (raw === null || raw === undefined || raw === '') return undefined;
+    var s = String(raw).trim();
+    if (!s) return undefined;
+    var u = s.toUpperCase();
+    if (u === 'TRUE')  return true;
+    if (u === 'FALSE') return false;
+    if (/^\d+(\.\d+)?%$/.test(s)) { var p = parseFloat(s); return isFinite(p) ? p / 100 : s; }
+    var n = Number(s);
+    if (!isNaN(n) && isFinite(n)) return n;
+    return s;
+  },
+
+  /**
+   * Flatten nested config_profile object to dot-notation keys.
+   *   { "Config_Tier2": { "Min Confidence": 60 } }
+   *   → { "Config_Tier2.Min Confidence": 60 }
+   * Keys are trimmed + whitespace-collapsed.
+   */
+  _flattenConfigProfile_(obj) {
+    if (!obj || typeof obj !== 'object') return {};
+    var out = {};
+    var sheets = Object.keys(obj);
+    for (var si = 0; si < sheets.length; si++) {
+      var sheet = sheets[si];
+      var props  = obj[sheet];
+      if (!props || typeof props !== 'object') continue;
+      var pkeys = Object.keys(props);
+      for (var pi = 0; pi < pkeys.length; pi++) {
+        var normKey = String(pkeys[pi]).trim().replace(/\s+/g, ' ');
+        if (!normKey) continue;
+        out[sheet + '.' + normKey] = this._normalizeConfigVal_(props[pkeys[pi]]);
+      }
+    }
+    return out;
+  },
+
+  /** True if the dot-key looks like a numeric threshold (confidence, ev, min, max, …). */
+  _isThresholdKey_(keyPath) {
+    return /min|max|threshold|\bev\b|expected.value|confidence|edge|tolerance/i.test(keyPath);
+  },
+
+  /**
+   * Bucket a config value to a low-cardinality, stable string.
+   * Returns 'MISSING' when value is absent.
+   */
+  _bucketCfgValue_(keyPath, val) {
+    if (val === undefined || val === null) return 'MISSING';
+    if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+
+    // Confidence keys — normalise to 0-1 then use confBuckets
+    if (/confidence/i.test(keyPath)) {
+      var c = typeof val === 'number' ? val : parseFloat(val);
+      if (!isFinite(c)) return 'MISSING';
+      if (c > 1 && c <= 100) c = c / 100;
+      var cb = (typeof Config_ !== 'undefined') ? Config_.confBuckets : null;
+      if (cb) {
+        for (var ci = 0; ci < cb.length; ci++) {
+          if (c >= cb[ci].min && c <= cb[ci].max) return cb[ci].name;
+        }
+      }
+      if (c < 0.55) return '<55%';
+      if (c < 0.60) return '55-60%';
+      if (c < 0.65) return '60-65%';
+      if (c < 0.70) return '65-70%';
+      return '>=70%';
+    }
+
+    // EV / expected-value keys
+    if (/\bev\b|expected.value/i.test(keyPath)) {
+      var ev = typeof val === 'number' ? val : parseFloat(val);
+      if (!isFinite(ev)) return 'MISSING';
+      if (ev < 0)  return '<0';
+      if (ev < 2)  return '0-2';
+      if (ev < 5)  return '2-5';
+      if (ev < 10) return '5-10';
+      return '>=10';
+    }
+
+    // Generic numeric thresholds
+    var nv = typeof val === 'number' ? val : Number(val);
+    if (!isNaN(nv) && isFinite(nv)) {
+      if (nv <= 0)  return '<=0';
+      if (nv <= 1)  return '0-1';
+      if (nv <= 2)  return '1-2';
+      if (nv <= 5)  return '2-5';
+      if (nv <= 10) return '5-10';
+      return '>=10';
+    }
+
+    // String discrete value — return as-is (already low-cardinality from config sheet)
+    return String(val).trim().slice(0, 30) || 'MISSING';
+  },
+
+  /** Lazily parse + flatten a bet's config_profile (cached on bet._cfgFlat). */
+  _getCfgFlat_(bet) {
+    if (!bet._cfgFlat) {
+      bet._cfgFlat = this._flattenConfigProfile_(
+        this._safeParseJSON_((bet && bet.config_profile) ? bet.config_profile : '{}')
+      );
+    }
+    return bet._cfgFlat;
+  },
+
+  /** Get a bet's bucketed value for one cfgKey, caching on bet._cfgBucketCache. */
+  _getCfgBucketCached_(bet, cfgKey) {
+    if (!bet._cfgBucketCache) bet._cfgBucketCache = {};
+    if (bet._cfgBucketCache.hasOwnProperty(cfgKey)) return bet._cfgBucketCache[cfgKey];
+    var flat   = this._getCfgFlat_(bet);
+    var bucket = this._bucketCfgValue_(cfgKey, flat[cfgKey]);
+    bet._cfgBucketCache[cfgKey] = bucket;
+    return bucket;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Main discovery orchestrator
+  // ---------------------------------------------------------------------------
+
+  discoverAll(fleetBets, globalStats) {
+    fleetBets = Array.isArray(fleetBets) ? fleetBets : [];
+    if (!this.log) this.init();
+    Log_.section("Discovering Edges");
+
+    this.log.info(`Discovery inputs: fleetBets=${fleetBets.length}`);
+
+    const discovered = [];
+    const t = Config_.thresholds;
+
+    const discoveryStartTime = Date.now();
+    const MAX_DISCOVERY_MS   = 5 * 60 * 1000;
+    let   timeoutWarningLogged = false;
+
+    const isApproachingTimeout = () => {
+      if (Date.now() - discoveryStartTime > MAX_DISCOVERY_MS) {
+        if (!timeoutWarningLogged) {
+          this.log.warn("Approaching execution time limit, completing discovery early");
+          timeoutWarningLogged = true;
+        }
+        return true;
+      }
+      return false;
+    };
+
+    // ========================================================================
+    //  FLEET DISCOVERY  (config_profile threshold edges, v5.0.0)
+    //  Per-type, per-threshold-key with contextual baselines.
+    //  Hard caps: 25 keys/type, 8 buckets/key, 50 keys/bet.
+    // ========================================================================
+    const fleetStartIdx = discovered.length;
+
+    fleetBets = fleetBets.filter(b => b && b.source === 'Fleet');
+    if (fleetBets.length > 0 && !isApproachingTimeout()) {
+      this.log.info(`Scanning ${fleetBets.length} Fleet bets for config-profile edges`);
+
+      const MAX_CFG_KEYS    = 25;
+      const MAX_KEYS_PER_BET = 50;
+      const MAX_BUCKETS     = 8;
+
+      // Stamp typeKey (already set by Parser, but ensure)
+      for (const b of fleetBets) {
+        if (!b.typeKey) b.typeKey = String(b.type || 'UNKNOWN').trim().toUpperCase() || 'UNKNOWN';
+      }
+
+      const fleetTypeCounts = {};
+      for (const b of fleetBets) {
+        fleetTypeCounts[b.typeKey] = (fleetTypeCounts[b.typeKey] || 0) + 1;
+      }
+      const fleetTypes = Object.keys(fleetTypeCounts).filter(k => fleetTypeCounts[k] >= t.minN);
+      this.log.info(`Fleet type distribution: ${JSON.stringify(fleetTypeCounts)}`);
+      this.log.info(`Fleet types >= ${t.minN} samples: ${fleetTypes.join(', ') || 'none'}`);
+
+      // ----- Step 1: typeKey-only scan (global baseline) -----
+      // Emits type-only edges (criteria: { type: 'BANKER' }) without cfgKey dependencies.
+      const fleetBaseline = Stats_.calcBasic(fleetBets);
+      discovered.push(...this.scanAttribute(
+        fleetBets, 'Fleet', 'type', fleetTypes,
+        b => b.typeKey, fleetBaseline
+      ));
+
+      for (const typ of fleetTypes) {
+        if (isApproachingTimeout()) break;
+
+        const typedBets    = fleetBets.filter(b => b.typeKey === typ);
+        if (typedBets.length < t.minN) continue;
+
+        const typeBaseline = Stats_.calcBasic(typedBets);
+
+        // Collect threshold key frequencies across this type slice
+        const keyCounts = {};
+        for (const b of typedBets) {
+          const flat = this._getCfgFlat_(b);
+          let keyCount = 0;
+          for (const k in flat) {
+            if (!this._isThresholdKey_(k)) continue;
+            if (keyCount++ >= MAX_KEYS_PER_BET) break;
+            keyCounts[k] = (keyCounts[k] || 0) + 1;
+          }
+        }
+
+        // Top-K threshold keys by frequency
+        const sortedKeys = Object.keys(keyCounts)
+          .sort((a, b) => keyCounts[b] - keyCounts[a])
+          .slice(0, MAX_CFG_KEYS);
+
+        if (sortedKeys.length === 0) {
+          // Gating dump
+          const allKeyCounts = {};
+          for (const b of typedBets) {
+            const flat = this._getCfgFlat_(b);
+            for (const k in flat) {
+              allKeyCounts[k] = (allKeyCounts[k] || 0) + 1;
+            }
+          }
+          const top5Keys = Object.keys(allKeyCounts)
+            .sort((a, b) => allKeyCounts[b] - allKeyCounts[a])
+            .slice(0, 5);
+
+          this.log.warn(`  Fleet[${typ}]: 0 threshold keys found. (Check if config_profile contains min/max/threshold/ev/confidence keys)`);
+          this.log.info(`  [DEBUG] Gating Dump for ${typ}: minN=${t.minN}, minLift=${t.liftThreshold}, MAX_CFG_KEYS=${MAX_CFG_KEYS}, MAX_BUCKETS=${MAX_BUCKETS}`);
+          this.log.info(`  [DEBUG] Top 5 all-keys detected: ${top5Keys.map(k => `${k}(${allKeyCounts[k]})`).join(', ')}`);
+          continue;
+        }
+        this.log.info(`  Fleet[${typ}]: ${sortedKeys.length} threshold keys found`);
+
+        for (const cfgKey of sortedKeys) {
+          if (isApproachingTimeout()) break;
+
+          // Collect distinct buckets for this key (skip MISSING)
+          const bucketCounts = {};
+          for (const b of typedBets) {
+            const bucket = this._getCfgBucketCached_(b, cfgKey);
+            if (bucket === 'MISSING') continue;
+            bucketCounts[bucket] = (bucketCounts[bucket] || 0) + 1;
+          }
+
+          const buckets = Object.keys(bucketCounts)
+            .sort((a, b) => bucketCounts[b] - bucketCounts[a])
+            .slice(0, MAX_BUCKETS);
+          if (buckets.length === 0) continue;
+
+          // criteria = { type, cfgKey } — cfgBucket added by scanAttribute
+          const cfgParentCriteria = { type: typ, cfgKey: cfgKey };
+          discovered.push(...this.scanAttribute(
+            typedBets, 'Fleet', 'cfgBucket', buckets,
+            b => this._getCfgBucketCached_(b, cfgKey),
+            typeBaseline, cfgParentCriteria
+          ));
+        }
+      }
+
+      this.log.info(`Fleet discovery found ${discovered.length - fleetStartIdx} raw edges`);
+    }
+
+    // ========================================================================
+    //  FILTER & DEDUPLICATE  ◆ PATCH: typeKey gate + Wilson gate
+    // ========================================================================
+    const maxLift   = t.maxEdgeLift || 0.25;
+    const wilsonGate = t.wilsonLowerBoundGate || 0;
+
+    const filtered = discovered.filter(e =>
+      e.n >= t.minN &&
+      e.lift >= t.liftThreshold &&
+      e.lift <= maxLift &&
+      e.lowerBound >= wilsonGate &&                                        // ◆ PATCH
+      (e.source !== 'Totals' || (e.criteria && e.criteria.typeKey)) &&    // Totals gate
+      (e.source !== 'Fleet'  || (e.criteria && e.criteria.type))          // Fleet gate
+    );
+
+    // Deduplicate by ID (keep largest sample)
+    const uniqueMap = {};
+    filtered.forEach(e => {
+      if (!uniqueMap[e.id] || e.n > uniqueMap[e.id].n) {
+        uniqueMap[e.id] = e;
+      }
+    });
+
+    const unique = Object.values(uniqueMap);
+
+    // Sort: grade descending, then lift descending
+    const gradeOrder = {
+      PLATINUM: 6, GOLD: 5, SILVER: 4, BRONZE: 3, ROCK: 2, CHARCOAL: 1
+    };
+
+    unique.sort((a, b) => {
+      const gradeCompare = (gradeOrder[b.grade] || 0) - (gradeOrder[a.grade] || 0);
+      if (gradeCompare !== 0) return gradeCompare;
+      return b.lift - a.lift;
+    });
+
+    // ---- Logging ----
+    const elapsedMs = Date.now() - discoveryStartTime;
+    this.log.info(
+      `Discovery complete: ${unique.length} unique edges from ${discovered.length} raw (${elapsedMs}ms)`
+    );
+
+    if (fleetBets.length > 0 && unique.length === 0) {
+      this.log.warn("No edges met thresholds; check minN, lift, key caps, and ensure config_profile contains threshold keys.");
+    }
+
+    const gradeCounts = {};
+    unique.forEach(e => { gradeCounts[e.grade] = (gradeCounts[e.grade] || 0) + 1; });
+    this.log.info("Edge grade distribution:", gradeCounts);
+
+
+
+    const topTier = unique.filter(e => e.grade === "GOLD" || e.grade === "PLATINUM");
+    this.log.info(`Gold/Platinum edges: ${topTier.length}`);
+
+    if (timeoutWarningLogged) {
+      this.log.warn("Discovery was truncated due to time constraints — results may be incomplete");
+    }
+
+    Log_.sectionEnd("Discovering Edges");
+
+    return unique;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Edge matching (used by Flagger_)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * ◆ PATCH: auto-computes typeKey on the fly for Totals bets that don't
+   * have it yet (safety net for callers outside the discovery pipeline).
+   */
+    matchesCriteria(bet, edge) {
+    if (!edge || !edge.criteria || typeof edge.criteria !== "object" || Object.keys(edge.criteria).length === 0) {
+      return false;
+    }
+    if (!bet || typeof bet !== "object") {
+      return false;
+    }
+
+    var norm = function(x) {
+      if (x === null || x === undefined) return x;
+      if (typeof x === "boolean") return x;
+      if (typeof x === "number") return isFinite(x) ? x : null;
+
+      var s = String(x).trim();
+      if (s === "") return "";
+
+      if (/^[+-]?\d+(\.\d+)?$/.test(s)) {
+        var n = parseFloat(s);
+        return isFinite(n) ? n : null;
+      }
+      return s.toUpperCase();
+    };
+
+    var criteriaEntries = Object.entries(edge.criteria);
+    for (var i = 0; i < criteriaEntries.length; i++) {
+      var key      = criteriaEntries[i][0];
+      var expected = criteriaEntries[i][1];
+
+      // cfgKey is metadata only — it's consumed by cfgBucket lookup; skip direct match
+      if (key === 'cfgKey') continue;
+
+      var actual;
+
+      if (key === 'cfgBucket') {
+        // Match bet's config bucket for the cfgKey named in criteria
+        var cfgKeyPath = edge.criteria['cfgKey'];
+        if (!cfgKeyPath) { actual = undefined; }
+        else             { actual = this._getCfgBucketCached_(bet, cfgKeyPath); }
+      } else if (key === 'type') {
+        // Fleet bets store canonical type in bet.type (same as typeKey)
+        actual = bet['type'] || bet['typeKey'];
+      } else {
+        actual = bet[key];
+        // Auto-derive typeKey for untagged Totals bets
+        if (key === 'typeKey' && (actual === undefined || actual === null)) {
+          actual = this._getTotalsTypeKey(bet);
+        }
+      }
+
+      if (actual === undefined || actual === null) return false;
+      if (norm(actual) !== norm(expected)) return false;
+    }
+
+    return true;
+  },
+
+  /**
+   * ◆ PATCH: pre-compute typeKey once before iterating edges for efficiency.
+   */
+  findMatchingEdges(bet, edges) {
+    // Stamp typeKey if needed so matchesCriteria doesn't recompute per-edge
+    if (bet.source === 'Totals' && !bet.typeKey) {
+      bet.typeKey = this._getTotalsTypeKey(bet);
+    }
+    // Pre-compute cfgFlat for Fleet bets so matchesCriteria caches correctly
+    if (bet.source === 'Fleet' && !bet._cfgFlat) {
+      this._getCfgFlat_(bet);
+    }
+
+    const matches = edges.filter(e =>
+      (e.source === bet.source || (e.source === 'Fleet' && bet.source === 'Fleet')) &&
+      this.matchesCriteria(bet, e)
+    );
+
+    const gradeOrder = {
+      PLATINUM: 6, GOLD: 5, SILVER: 4, BRONZE: 3, ROCK: 2, CHARCOAL: 1
+    };
+    matches.sort((a, b) => (gradeOrder[b.grade] || 0) - (gradeOrder[a.grade] || 0));
+
+    return matches;
+  },
+
+  getBestEdge(bet, edges) {
+    const matches = this.findMatchingEdges(bet, edges);
+    return matches.length > 0 ? matches[0] : null;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Query helpers (unchanged)
+  // ---------------------------------------------------------------------------
+
+  getTopEdges(edges, grade = null, limit = 10) {
+    let filtered = edges;
+
+    if (grade) {
+      if (Array.isArray(grade)) {
+        filtered = edges.filter(e => grade.includes(e.grade));
+      } else {
+        filtered = edges.filter(e => e.grade === grade);
+      }
+    }
+
+    return filtered.slice(0, limit);
+  },
+
+  getEdgesBySource(edges, source) {
+    return edges.filter(e => e.source === source);
+  },
+
+  groupByGrade(edges) {
+    const groups = {
+      PLATINUM: [], GOLD: [], SILVER: [], BRONZE: [], ROCK: [], CHARCOAL: []
+    };
+
+    edges.forEach(e => {
+      if (groups[e.grade]) {
+        groups[e.grade].push(e);
+      }
+    });
+
+    return groups;
+  },
+
+  getSummary(edges) {
+    const byGrade  = this.groupByGrade(edges);
+    const bySource = {
+      Side:   edges.filter(e => e.source === 'Side').length,
+      Totals: edges.filter(e => e.source === 'Totals').length,
+      Fleet:  edges.filter(e => e.source === 'Fleet').length
+    };
+
+    const avgLift = edges.length > 0
+      ? edges.reduce((sum, e) => sum + e.lift, 0) / edges.length
+      : 0;
+
+    const avgN = edges.length > 0
+      ? edges.reduce((sum, e) => sum + e.n, 0) / edges.length
+      : 0;
+
+    return {
+      total: edges.length,
+      byGrade: {
+        PLATINUM:  byGrade.PLATINUM.length,
+        GOLD:      byGrade.GOLD.length,
+        SILVER:    byGrade.SILVER.length,
+        BRONZE:    byGrade.BRONZE.length,
+        ROCK:      byGrade.ROCK.length,
+        CHARCOAL:  byGrade.CHARCOAL.length
+      },
+      bySource,
+      avgLift: Math.round(avgLift * 10000) / 10000,
+      avgN:    Math.round(avgN)
+    };
+  }
+};
+
+// ============================================================================
+// Self-test harness — call selfTestConfigProfile() from Apps Script editor
+// ============================================================================
+
+function selfTestConfigProfile() {
+  Discovery_.selfTestConfigProfile_();
+}
+
+Discovery_.selfTestConfigProfile_ = function() {
+  var log = (typeof Log_ !== 'undefined' && Log_.module)
+              ? Log_.module('DISCOVERY_SELF_TEST')
+              : { info: Logger.log.bind(Logger), warn: Logger.log.bind(Logger), error: Logger.log.bind(Logger) };
+
+  log.info('=== Discovery selfTestConfigProfile_ ===');
+
+  // ── Build fake bets ──────────────────────────────────────────────────────
+  var makeBet = function(confVal, outcome) {
+    return {
+      source: 'Fleet',
+      type: 'FT_O_U',
+      typeKey: 'FT_O_U',
+      league: 'TEST',
+      result: outcome,
+      config_profile: JSON.stringify({
+        'Config_Tier2': { 'Min Confidence': confVal, 'EV Threshold': 5 }
+      })
+    };
+  };
+
+  // 12 bets: 8 with confidence 65 (4 win, 4 lose), 6 with confidence 55 (1 win, 5 lose)
+  // → 65% bucket should show meaningful lift vs 55% bucket
+  var fakeBets = [];
+  for (var i = 0; i < 6; i++) fakeBets.push(makeBet(65, i < 5 ? 1 : 0)); // 5W 1L
+  for (var j = 0; j < 6; j++) fakeBets.push(makeBet(55, j < 1 ? 1 : 0)); // 1W 5L
+  // Pad to minN across types
+  for (var k = 0; k < 4; k++) fakeBets.push(makeBet(70, 1));
+
+  // ── Run Discovery ────────────────────────────────────────────────────────
+  Discovery_.init();
+  var edges;
+  try {
+    edges = Discovery_.discoverAll([], [], fakeBets);
+  } catch (e) {
+    log.error('discoverAll threw: ' + e.message);
+    return;
+  }
+
+  var fleetEdges = edges.filter(function(e) { return e.source === 'Fleet'; });
+  log.info('Total edges: ' + edges.length + ' | Fleet edges: ' + fleetEdges.length);
+
+  // ── Sample edge ──────────────────────────────────────────────────────────
+  if (fleetEdges.length > 0) {
+    var s = fleetEdges[0];
+    log.info('Sample Fleet edge: ' + s.name);
+    log.info('  criteria: ' + JSON.stringify(s.criteria));
+    log.info('  n=' + s.n + ' winRate=' + s.winRate.toFixed(3) + ' lift=' + s.lift.toFixed(3));
+  }
+
+  // ── Assertions ───────────────────────────────────────────────────────────
+  var passed = true;
+
+  if (fleetEdges.length === 0) {
+    log.warn('FAIL: No Fleet config edges produced');
+    passed = false;
+  } else {
+    var s0 = fleetEdges[0];
+    if (!s0.criteria || !s0.criteria.cfgKey) {
+      log.warn('FAIL: Edge criteria missing cfgKey');
+      passed = false;
+    }
+    if (!s0.criteria || !s0.criteria.cfgBucket) {
+      log.warn('FAIL: Edge criteria missing cfgBucket');
+      passed = false;
+    }
+    if (!s0.criteria || !s0.criteria.type) {
+      log.warn('FAIL: Edge criteria missing type');
+      passed = false;
+    }
+  }
+
+  // ── matchesCriteria check ────────────────────────────────────────────────
+  if (fleetEdges.length > 0) {
+    var testBet = makeBet(65, 1);
+    var matched = Discovery_.matchesCriteria(testBet, fleetEdges[0]);
+    log.info('matchesCriteria(conf=65, firstEdge) = ' + matched);
+  }
+
+  log.info(passed ? '✅ SELF-TEST PASSED' : '❌ SELF-TEST FAILED');
+  Logger.log('selfTestConfigProfile_ done. Fleet edges=' + (fleetEdges ? fleetEdges.length : 0));
+};
