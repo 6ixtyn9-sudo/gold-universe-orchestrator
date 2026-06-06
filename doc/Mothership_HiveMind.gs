@@ -2759,19 +2759,53 @@ function fetchLeagueAccuracyMetrics() {
 
   Logger.log('[' + FUNC_NAME + '] ═══════════════════════════════════════');
   // Remove bare-code keys that collide across multiple leagues (e.g., LNB)
-  // LNB RESOLVER: keep both leagues, do NOT delete bare key
-  // Resolution happens in _enrichBetsWithAccuracy via team-name lookup
   for (var _colCode in _codeToFusedCount) {
     if (_codeToFusedCount[_colCode] > 1) {
-      Logger.log('[' + FUNC_NAME + '] COLLISION DETECTED "' + _colCode + '" - keeping both, resolver will pick by team name');
-      // DO NOT DELETE - keep last loaded (Dominican) on bare key as fallback
+      delete leagueMetrics[_colCode];
+      delete leagueMetrics[_colCode.toLowerCase()];
+      delete leagueMetrics[_colCode.toUpperCase()];
+      Logger.log('[' + FUNC_NAME + '] COLLISION — removed bare key "' + _colCode + '" (shared by ' + _codeToFusedCount[_colCode] + ' leagues)');
     }
   }
-  // Add collision map for resolver
-  leagueMetrics._lnbTeams = {
-    france: ['CHOLET','PARIS','ASVEL','MONACO','STRASBOURG'],
-    dominican: ['METROS','SANTIAGO','GIGANTES','HEROES','MOCA','TITANES','LICEY','SAN FRANCISCO']
-  };
+
+  // ── COLLISION RESOLUTION: average colliding metrics for bare-code lookup ──
+  var collisionResolution = {};
+  for (var colCode in _codeToFusedCount) {
+    if (_codeToFusedCount[colCode] > 1) {
+      var fusedSet = Array.from(_codeToFusedSet[colCode]);
+      var collidingMetrics = [];
+      for (var fi = 0; fi < fusedSet.length; fi++) {
+        var fusedKey = fusedSet[fi];
+        if (leagueMetrics[fusedKey]) {
+          collidingMetrics.push(leagueMetrics[fusedKey]);
+        }
+      }
+      if (collidingMetrics.length > 0) {
+        var avgBanker = collidingMetrics.reduce(function(sum, m) { return sum + (m.bankerAccuracy || 0); }, 0) / collidingMetrics.length;
+        var avgSniper = collidingMetrics.reduce(function(sum, m) { return sum + (m.sniperAccuracy || 0); }, 0) / collidingMetrics.length;
+        var hasTier1 = collidingMetrics.some(function(m) { return m.hasTier1; });
+        var hasTier2 = collidingMetrics.some(function(m) { return m.hasTier2; });
+        var tier1Parts = collidingMetrics.map(function(m) { return m.leagueName + ' (' + (m.bankerAccuracy || 0).toFixed(1) + '%)'; });
+        var tier2Parts = collidingMetrics.map(function(m) { return m.leagueName + ' (' + (m.sniperAccuracy || 0).toFixed(1) + '%)'; });
+        var res = {
+          bankerAccuracy: avgBanker,
+          sniperAccuracy: avgSniper,
+          hasTier1: hasTier1,
+          hasTier2: hasTier2,
+          tier1Source: '⚠️ Collision: ' + tier1Parts.join(' + '),
+          tier2Source: '⚠️ Collision: ' + tier2Parts.join(' + '),
+          leagueName: colCode,
+          leagueCode: colCode,
+          _isCollisionResolution: true
+        };
+        collisionResolution[colCode] = res;
+        collisionResolution[colCode.toLowerCase()] = res;
+        collisionResolution[colCode.toUpperCase()] = res;
+      }
+    }
+  }
+  leagueMetrics._collisionResolution = collisionResolution;
+  // ── END COLLISION RESOLUTION ──
 
   Logger.log('[' + FUNC_NAME + '] ✅ Total metric keys: ' + Object.keys(leagueMetrics).length);
 
