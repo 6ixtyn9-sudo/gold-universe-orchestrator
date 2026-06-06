@@ -809,54 +809,58 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
 
     // ── League metrics lookup ──
     var leagueMeta = null;
-    var keysToTry = [
-      league,
-      league.toLowerCase(),
-      league.toUpperCase(),
-      league.replace(/\s+/g, ''),
-      league.replace(/\s+/g, '_'),
-      league.split(' ')[0],
-      league.split(' ').pop()
-    ];
 
-    for (var ki = 0; ki < keysToTry.length; ki++) {
-      var key = keysToTry[ki];
-      if (key && metrics[key]) {
-        leagueMeta = metrics[key];
-        matchedCount++;
-        break;
+    // --- Sourcesheet disambiguation via Config sheet File URL bridge ---
+    if (!leagueMeta && bet.sourcesheet && metrics._sheetNameToLeagueName) {
+      var resolvedLeagueName = metrics._sheetNameToLeagueName[bet.sourcesheet];
+      if (resolvedLeagueName) {
+        leagueMeta = metrics[resolvedLeagueName];
+        if (leagueMeta) {
+          matchedCount++;
+          Logger.log("[_enrichBetsWithAccuracy] SourceSheet match for %s -> %s (Tier1: %s, Tier2: %s)", 
+                     league, resolvedLeagueName, leagueMeta.bankerAccuracy, leagueMeta.sniperAccuracy);
+        }
       }
     }
+    // --- End sourcesheet disambiguation ---
 
-  // --- Sourcesheet disambiguation via Config sheet File URL bridge ---
-  if (!leagueMeta && bet.sourcesheet && metrics._sheetNameToLeagueName) {
-    var resolvedLeagueName = metrics._sheetNameToLeagueName[bet.sourcesheet];
-    if (resolvedLeagueName) {
-      leagueMeta = metrics[resolvedLeagueName];
-      if (leagueMeta) {
-        matchedCount++;
-        Logger.log("[_enrichBetsWithAccuracy] SourceSheet match for %s -> %s (Tier1: %s, Tier2: %s)", 
-                   league, resolvedLeagueName, leagueMeta.bankerAccuracy, leagueMeta.sniperAccuracy);
+    // --- Team-based disambiguation for colliding league codes ---
+    if (!leagueMeta && bet.league && metrics._teamToLeague) {
+      var teamKey = String(bet.home || '').trim().toLowerCase();
+      if (!teamKey) teamKey = String(bet.away || '').trim().toLowerCase();
+      if (teamKey) {
+        var resolvedByTeam = metrics._teamToLeague[teamKey];
+        if (resolvedByTeam && metrics[resolvedByTeam]) {
+          leagueMeta = metrics[resolvedByTeam];
+          matchedCount++;
+          Logger.log("[_enrichBetsWithAccuracy] Team match for %s -> %s (resolved via team: %s)",
+                     bet.league, resolvedByTeam, teamKey);
+        }
       }
     }
-  }
-  // --- End sourcesheet disambiguation ---
+    // --- End team disambiguation ---
 
-  // --- Team-based disambiguation for colliding league codes ---
-  if (!leagueMeta && bet.league && metrics._teamToLeague) {
-    var teamKey = String(bet.home || '').trim().toLowerCase();
-    if (!teamKey) teamKey = String(bet.away || '').trim().toLowerCase();
-    if (teamKey) {
-      var resolvedByTeam = metrics._teamToLeague[teamKey];
-      if (resolvedByTeam && metrics[resolvedByTeam]) {
-        leagueMeta = metrics[resolvedByTeam];
-        matchedCount++;
-        Logger.log("[_enrichBetsWithAccuracy] Team match for %s -> %s (resolved via team: %s)",
-                   bet.league, resolvedByTeam, teamKey);
+    // Only try key variants if disambiguation did not find a match
+    if (!leagueMeta) {
+      var keysToTry = [
+        league,
+        league.toLowerCase(),
+        league.toUpperCase(),
+        league.replace(/\s+/g, ''),
+        league.replace(/\s+/g, '_'),
+        league.split(' ')[0],
+        league.split(' ').pop()
+      ];
+
+      for (var ki = 0; ki < keysToTry.length; ki++) {
+        var key = keysToTry[ki];
+        if (key && metrics[key]) {
+          leagueMeta = metrics[key];
+          matchedCount++;
+          break;
+        }
       }
     }
-  }
-  // --- End team disambiguation ---
 
   // ── Collision-resolution fallback (averaged, self-documenting) ──
   if (!leagueMeta && metrics._collisionResolution) {
@@ -2924,17 +2928,8 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
           const isBanker = betType.includes('BANKER');
           const isSniper = betType.includes('SNIPER');
           
-          // Try multiple lookup keys
-          const keysToTry = [leagueKey, leagueKey.toLowerCase(), leagueKey.toUpperCase()];
           let foundMeta = null;
-          
-          for (const key of keysToTry) {
-            if (metrics[key]) {
-              foundMeta = metrics[key];
-              break;
-            }
-          }
-          
+
           // --- Sourcesheet disambiguation via Config sheet File URL bridge ---
           if (!foundMeta && leg.sourcesheet && metrics._sheetNameToLeagueName) {
             var resolvedLeagueName = metrics._sheetNameToLeagueName[leg.sourcesheet];
@@ -2962,6 +2957,17 @@ function _writePortfolioWithAccuracy(sheet, accas, leagueMetrics) {
             }
           }
           // --- End team disambiguation ---
+
+          // Try multiple lookup keys if disambiguation didn't find a match
+          if (!foundMeta) {
+            const keysToTry = [leagueKey, leagueKey.toLowerCase(), leagueKey.toUpperCase()];
+            for (const key of keysToTry) {
+              if (metrics[key]) {
+                foundMeta = metrics[key];
+                break;
+              }
+            }
+          }
 
           // ── Collision-resolution fallback ──
           if (!foundMeta && metrics._collisionResolution) {
