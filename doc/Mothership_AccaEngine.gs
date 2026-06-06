@@ -837,6 +837,9 @@ function _enrichBetsWithAccuracy(bets, leagueMetrics, assayerData) {
         matchedCount++;
         Logger.log("[_enrichBetsWithAccuracy] Team match for %s -> %s (resolved via team: %s)",
                    bet.league, resolvedByTeam, matchedTeam);
+      } else if (bet.league === 'LNB' || bet.league === 'lnb') {
+        Logger.log("[_enrichBetsWithAccuracy] Team disambiguation FAILED for %s. Tried home='%s', away='%s'. Available teams in map: %s",
+                   bet.league, homeKey, awayKey, Object.keys(metrics._teamToLeague).length);
       }
     }
     // --- End team disambiguation ---
@@ -7476,8 +7479,8 @@ function _loadBetsFromSyncTemp(ss) {
       isSniper:      type.toUpperCase().indexOf('SNIPER') >= 0,
       isDirectional: type.toUpperCase().indexOf('DIR') >= 0,
       sourcesheet:   String(getCell(row, 30) || '').trim(),
-      home:          String(getCell(row, 3) || '').trim(),
-      away:          String(getCell(row, 4) || '').trim()
+      home:          String(getCell(row, 3) || '').trim() || match.split(' vs ')[0].trim(),
+      away:          String(getCell(row, 4) || '').trim() || match.split(' vs ')[1].trim()
     });
   }
 
