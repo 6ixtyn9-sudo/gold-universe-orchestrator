@@ -179,6 +179,17 @@ be named, **and** live writes must be switched on by hand.
 repository's **default branch** (`main`). Until this branch is merged, the
 nightly job will not run — dispatching by hand works from any branch.
 
+### How many satellites a night?
+
+By default a league gets a satellite whether or not it has games — that is what
+the 512-sheet fleet looked like, and downstream reads a present-but-empty
+`UpcomingClean` as "nothing on tonight". The cost is real: **a full fleet day
+writes ~113 snapshots, most of them empty.** Dispatch with
+`only_with_games=true` (or pass `--only-with-games`) and the run writes only the
+leagues that had fixtures, results or standings — on a typical night that is
+10–25 instead of 113. Both are correct; pick one deliberately, because
+downstream cannot tell a skipped satellite from a league you stopped covering.
+
 ### What the workflow refuses to do
 
 - It will not write to Supabase unless the sink names it *and* a live write was

@@ -85,7 +85,10 @@ def _target_leagues(args) -> List[str]:
     if requested and any(r.lower() == "all" for r in requested):
         if len(requested) > 1:
             raise SystemExit("--leagues all cannot be combined with other league names")
-        return []
+        # `all` means the same thing as omitting the flag. Returning an empty
+        # list here silently ingested *nothing* — the pipeline iterates the
+        # league list, so an empty list is not "everything", it is "none".
+        requested = []
     if requested:
         return requested
     specs = configured_leagues()
@@ -159,6 +162,7 @@ def cmd_run(args) -> int:
         game_logs=not args.no_game_logs,
         max_games_per_satellite=args.max_games,
         bulk=not args.no_bulk,
+        only_with_games=args.only_with_games,
     )
 
     report = pipeline.run(request)
@@ -404,6 +408,9 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--no-game-logs", action="store_true")
     run.add_argument("--no-bulk", action="store_true",
                      help="fetch per league instead of one request per day for all leagues")
+    run.add_argument("--only-with-games", action="store_true",
+                     help="skip leagues with no fixtures and no results in the window "
+                          "(default: write a satellite for every league, as the sheets did)")
     run.add_argument("--max-games", type=int, default=40)
     run.add_argument("--report", help="write a JSON report to this path")
     run.add_argument("--config", help="JSON file of model weights overriding the league config")

@@ -165,9 +165,9 @@ class TestWorkflowHygiene(unittest.TestCase):
             "IN_DATE", "IN_LEAGUES", "IN_PROVIDER", "IN_SINK", "IN_DRY", "IN_CAPTURE",
             "VAR_SINK", "VAR_LIVE", "RUN_DATE", "RUN_MONTH", "RUN_LEAGUES",
             "RUN_PROVIDER", "RUN_SINK", "RUN_DRY_FLAG", "RUN_DRY_LABEL",
-            "RUN_CAPTURE_FLAG", "BASH_SOURCE", "FAILED", "leaked", "hits", "value",
+            "RUN_CAPTURE_FLAG", "RUN_GAMES_FLAG", "IN_ONLY_WITH_GAMES", "BASH_SOURCE", "FAILED", "leaked", "hits", "value",
             "name", "bundle", "bundles", "date", "leagues", "provider", "sink",
-            "month", "capture", "dry_flag", "dry_label", "capture_flag", "failed",
+            "month", "capture", "dry_flag", "dry_label", "capture_flag", "games_flag", "failed",
         }
         unknown = read - written - github_builtins - secrets_and_inputs
         self.assertEqual(unknown, set(), f"workflow reads variables nothing sets: {sorted(unknown)}")

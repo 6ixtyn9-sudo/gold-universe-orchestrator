@@ -61,6 +61,7 @@ class IngestRequest:
     model_config: Dict[str, Any] = field(default_factory=dict)
     bulk: bool = True            # one vendor request per day for ALL leagues
     auto_learn_leagues: bool = True  # persist vendor league ids we matched
+    only_with_games: bool = False    # skip satellites for leagues with nothing in window
 
     def window(self) -> List[str]:
         start = date.fromisoformat(self.date_from[:10])
@@ -108,6 +109,9 @@ class IngestReport:
     bulk_calls: int = 0
     unresolved_teams: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+    # leagues the run deliberately passed over (--only-with-games); kept apart
+    # from errors because a quiet league is not a failure
+    skipped_leagues: List[str] = field(default_factory=list)
 
     @property
     def totals(self) -> Dict[str, int]:
@@ -117,6 +121,7 @@ class IngestReport:
             "priced": sum(l.priced for l in self.leagues),
             "results": sum(l.results for l in self.leagues),
             "satellites": sum(len(l.satellites) for l in self.leagues),
+            "skipped": len(self.skipped_leagues),
         }
 
     def as_dict(self) -> Dict[str, Any]:
@@ -130,6 +135,7 @@ class IngestReport:
             "sinks": self.sink_results,
             "bulk_calls": self.bulk_calls,
             "unresolved_teams": self.unresolved_teams,
+            "skipped_leagues": self.skipped_leagues,
             "errors": self.errors,
         }
 
@@ -142,11 +148,15 @@ class IngestReport:
             f"{t['results']} results · {t['satellites']} virtual satellites",
             f"vendor requests: {self.bulk_calls} bulk date call(s)",
         ]
+        if self.skipped_leagues:
+            lines.append(
+                f"{len(self.skipped_leagues)} league(s) skipped (no content in window)"
+            )
         for lg in self.leagues:
             if lg.fixtures or lg.results:
                 flag = ""
             elif not lg.configured:
-                flag = "  (no api_league_id — run bootstrap-leagues --probe)"
+                flag = "  (no api_league_id — bulk mode resolves this from the vendor's own names)"
             else:
                 flag = "  (no games in window)"
             lines.append(f"  • {lg.display_name}: {lg.fixtures} fixtures, {lg.priced} priced{flag}")
@@ -347,6 +357,16 @@ class IngestPipeline:
                 lg.warnings.append(f"standings unavailable: {exc}")
             lg.standings_rows = len(standings)
             self._learn_standings(standings)
+
+        # A satellite per league per day is what the 512-sheet fleet looked
+        # like, and downstream reads a present-but-empty tab as "no games".
+        # That parity costs ~113 mostly-empty snapshots a night, so it can be
+        # switched off; the fleet then only hears about leagues with content.
+        if request.only_with_games and not fixtures and not results and not standings:
+            lg.warnings.append("skipped: no fixtures, results or standings in window")
+            report.leagues[:] = [l for l in report.leagues if l is not lg]
+            report.skipped_leagues.append(spec.key)
+            return
 
         quarter_profiles = self._quarter_profiles(spec, results, request, lg)
 

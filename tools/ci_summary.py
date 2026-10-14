@@ -44,6 +44,9 @@ def render(report: Dict[str, Any], verbose: bool = False, max_errors: int = MAX_
     lines.append(f"| results | {_fmt(totals.get('results'), '0')} |")
     lines.append(f"| satellites written | {_fmt(totals.get('satellites'), '0')} |")
     lines.append(f"| bulk vendor calls | {_fmt(report.get('bulk_calls'), '0')} |")
+    skipped = totals.get("skipped") or 0
+    if skipped:
+        lines.append(f"| leagues skipped (empty) | {skipped} |")
 
     # Unpriced fixtures are the quiet failure mode: the satellite still gets
     # written, but the Assayer has nothing to grade against.
