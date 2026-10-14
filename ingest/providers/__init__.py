@@ -19,6 +19,7 @@ from ingest.providers.base import (
     ProbabilitySource,
     ProviderError,
 )
+from ingest.providers.failover import FailoverProvider
 from ingest.providers.fixture import FixtureProvider
 from ingest.providers.model import ModelProbabilitySource, PoissonRatings
 from ingest.providers.odds import OddsApiProbabilitySource
@@ -26,6 +27,12 @@ from ingest.providers.odds import OddsApiProbabilitySource
 PROVIDERS: Dict[str, str] = {
     "fixture": "ingest.providers.fixture:FixtureProvider",
     "api_sports": "ingest.providers.api_sports:ApiSportsProvider",
+    # Not yet implemented — each is one file implementing DataProvider, and
+    # make_provider("api_sports,highlightly") starts working the moment it
+    # lands. See docs/FREE_API_STACK.md for the free-tier trade-offs.
+    #   "highlightly":  "ingest.providers.highlightly:HighlightlyProvider",
+    #   "broadage":     "ingest.providers.broadage:BroadageProvider",
+    #   "basketapi":    "ingest.providers.basketapi:BasketApiProvider",
 }
 
 PROBABILITY_SOURCES: Dict[str, str] = {
@@ -38,6 +45,7 @@ __all__ = [
     "ProbabilitySource",
     "ProviderError",
     "NotSupported",
+    "FailoverProvider",
     "FixtureProvider",
     "ModelProbabilitySource",
     "OddsApiProbabilitySource",
@@ -55,11 +63,21 @@ def _import(dotted: str) -> Any:
 
 def make_provider(name: str, **kwargs: Any) -> DataProvider:
     """
-    Instantiate a provider by name.
+    Instantiate a provider, or a failover chain of them.
 
-        python -m ingest.cli run --provider api_sports
-        python -m ingest.cli run --provider fixture --fixtures examples/provider_fixtures
+        --provider api_sports
+        --provider fixture --fixtures examples/provider_fixtures
+        --provider api_sports,highlightly        # 200 req/day behaving as one
+
+    A comma-separated list becomes a FailoverProvider: each call is answered by
+    the first provider with budget left. With free tiers this is the difference
+    between "the fleet ingests" and "the fleet ingests until 11am".
     """
+    names = [n.strip() for n in str(name).split(",") if n.strip()]
+    if len(names) > 1:
+        members = [make_provider(n, **kwargs) for n in names]
+        return FailoverProvider(members)
+
     if name not in PROVIDERS:
         raise ProviderError(
             f"unknown provider '{name}' — available: {', '.join(sorted(PROVIDERS))}"

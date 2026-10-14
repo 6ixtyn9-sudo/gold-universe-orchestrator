@@ -1,6 +1,9 @@
 # Moving the Gold Universe off Google Sheets
 
 **Status:** Phase 1 (ingestion layer) implemented and verified offline.
+Bulk (all-leagues) mode, the quota ledger and the free-key failover chain are
+in place; the live cutover is waiting on the user's vendor key.
+**Free-tier survey:** `docs/FREE_API_STACK.md`.
 **Scope:** replace "copy/paste from Forebet into a satellite sheet" with API feeds,
 without breaking the Assayer, the Brain or the Mothership.
 
@@ -8,8 +11,18 @@ without breaking the Assayer, the Brain or the Mothership.
 
 ## 1. Why this is smaller than it looks
 
-The fleet is 512 sheets across 166 leagues, but the sheets are only doing three
-jobs — and only one of them is hard to replace.
+The fleet is 512 sheets across 166 league *names*, but the sheets are only doing
+three jobs — and only one of them is hard to replace.
+
+> **Note on "166".** Mining `registry.json` yields 166 satellite labels, but
+> several are the same competition spelled differently across sheets
+> ("South Korea (KBL) JW31", "South Korea (KBL) May 13", "South Korea (KBL)").
+> Feeding a vendor league once per satellite would hand the Assayer the same
+> games multiple times and inflate every purity number. `ingest/leagues.py`
+> therefore merges label variants that share a competition code:
+> **166 labels → 113 distinct competitions**, with the absorbed spellings kept
+> as aliases so `resolve()` still finds them. Women's competitions are never
+> merged into men's, even when the code is shared (e.g. `ESW` vs `ESP`).
 
 | Job | Happens today | Replaced by |
 |---|---|---|
@@ -187,6 +200,38 @@ redundant.
 
 **Phase 4 — Cut over per league.**
 Enable `--sink supabase` league by league. Sheets become read-only history.
+
+**Phase 4.5 — Bulk mode (all leagues at once).**
+The user's cutover decision is *all 166 leagues in one night*, which a
+per-league loop cannot do: 166 leagues × 2 requests = 332 calls/day against a
+100/day free tier. API-Sports' `/games?date=` returns **every competition's
+games for one day in a single response**, each game tagged with its league and
+carrying quarter splits. So:
+
+```
+GET /games?date=2026-10-14        # every league, one request
+```
+
+`ingest/providers/api_sports.py::bulk_day()` fetches the day once;
+`group_games()` buckets the raw games by `league.id` into the same
+fixtures/results structures the per-league path produces, and
+`ingest/pipeline.py::_prefetch_bulk()` distributes them to each fleet league.
+Each fleet league then resolves its own vendor league id from that response —
+which is why **no league ids are hard-coded**: a wrong id silently pulls the
+wrong competition, so unmatched leagues are skipped loudly instead
+(`… unresolved — run bootstrap-leagues`) rather than guessed.
+
+Budget for the whole fleet: **1 request per day**, plus 1 per day of lookback
+for results history (`results_lookback_days`). `--no-bulk` still exists for
+single-league debugging. `ingest/quotas.py` enforces the vendor's real limit
+before each uncached call and `python3 -m ingest.cli quota` prints the ledger.
+
+Multiple free keys chain into one provider —
+`--provider api_sports,highlightly` — via `ingest/providers/failover.py`:
+when the first key's quota is exhausted mid-day, the next answers, and a call is
+never split across vendors (splitting would double-count games). See
+`docs/FREE_API_STACK.md` for the free-tier survey and the de-vigged-odds /
+Poisson plan that replaces Forebet's `Prob %`.
 
 **Phase 5 — Retire the sheets.**
 `fetcher/*`, `syncer/*`, `antigravity_deploy.py`, the `.gs` bridges and the

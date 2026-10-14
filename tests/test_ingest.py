@@ -315,3 +315,271 @@ class TestConfigs(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Bulk mode: 1 request/day for all 166 leagues
+# ─────────────────────────────────────────────────────────────────────────
+
+def api_sports_payload():
+    """A payload shaped like API-Basketball's /games?date= response."""
+    return {"response": [
+        {  # finished NBA game
+            "id": 55001,
+            "date": "2026-10-13T23:00:00+00:00",
+            "time": "23:00",
+            "status": {"long": "Finished", "short": "FT"},
+            "league": {"id": 12, "name": "NBA", "season": "2026-2027"},
+            "country": {"id": 5, "name": "USA"},
+            "teams": {"home": {"id": 5, "name": "Denver Nuggets"},
+                      "away": {"id": 6, "name": "Golden State Warriors"}},
+            "scores": {"home": {"quarter_1": 28, "quarter_2": 30, "quarter_3": 27,
+                                "quarter_4": 29, "over_time": None, "total": 114},
+                       "away": {"quarter_1": 25, "quarter_2": 26, "quarter_3": 30,
+                                "quarter_4": 22, "over_time": None, "total": 103}},
+        },
+        {  # upcoming NBA game
+            "id": 55002,
+            "date": "2026-10-14T00:30:00+00:00",
+            "time": "00:30",
+            "status": {"long": "Not Started", "short": "NS"},
+            "league": {"id": 12, "name": "NBA", "season": "2026-2027"},
+            "country": {"id": 5, "name": "USA"},
+            "teams": {"home": {"id": 9, "name": "Boston Celtics"},
+                      "away": {"id": 10, "name": "New York Knicks"}},
+            "scores": {"home": {"quarter_1": None, "total": None},
+                       "away": {"quarter_1": None, "total": None}},
+        },
+        {  # Brazilian league, finished, overtime
+            "id": 55003,
+            "date": "2026-10-13T22:00:00+00:00",
+            "time": "22:00",
+            "status": {"long": "After Over Time", "short": "AOT"},
+            "league": {"id": 26, "name": "NBB", "season": "2026-2027"},
+            "country": {"id": 26, "name": "Brazil"},
+            "teams": {"home": {"id": 40, "name": "Flamengo"},
+                      "away": {"id": 41, "name": "Minas"}},
+            "scores": {"home": {"quarter_1": 20, "quarter_2": 18, "quarter_3": 22,
+                                "quarter_4": 19, "over_time": 12, "total": 91},
+                       "away": {"quarter_1": 19, "quarter_2": 21, "quarter_3": 18,
+                                "quarter_4": 21, "over_time": 9, "total": 88}},
+        },
+    ]}
+
+
+class TestBulkMode(unittest.TestCase):
+    """The free-tier precondition: one date call must cover every league."""
+
+    def setUp(self):
+        from ingest.providers.api_sports import ApiSportsProvider
+        self.provider = ApiSportsProvider(api_key="test", enforce_quota=False)
+        self.groups = self.provider.group_games(api_sports_payload()["response"])
+
+    def test_groups_by_vendor_league(self):
+        names = sorted(g["vendor_league_name"] for g in self.groups)
+        self.assertEqual(names, ["NBA", "NBB"])
+
+    def test_finished_game_parses_with_quarters(self):
+        nba = next(g for g in self.groups if g["vendor_league_name"] == "NBA")
+        self.assertEqual(len(nba["fixtures"]), 1)
+        self.assertEqual(len(nba["results"]), 1)
+        result = nba["results"][0]
+        self.assertEqual(result.home, "Denver Nuggets")
+        self.assertEqual(result.ft_h, 114)
+        self.assertEqual(result.ft_a, 103)
+        self.assertEqual(result.q1h, 28)
+        self.assertEqual(result.status, "FT")
+
+    def test_upcoming_game_becomes_fixture_only(self):
+        nba = next(g for g in self.groups if g["vendor_league_name"] == "NBA")
+        fixture = nba["fixtures"][0]
+        self.assertEqual(fixture.home, "Boston Celtics")
+        self.assertEqual(fixture.date, "2026-10-14")
+        self.assertEqual(fixture.time, "00:30")
+
+    def test_overtime_is_captured(self):
+        nbb = next(g for g in self.groups if g["vendor_league_name"] == "NBB")
+        result = nbb["results"][0]
+        self.assertEqual(result.oth, 12)
+        self.assertEqual(result.ota, 9)
+        self.assertEqual(result.ft_h, 91)
+        self.assertEqual(result.winner_side, "H")
+
+    def test_vendor_leagues_map_to_fleet_leagues(self):
+        from ingest.leagues import match_vendor_league
+        spec, conf = match_vendor_league("NBA", "USA", 12)
+        self.assertIsNotNone(spec, "NBA did not map")
+        self.assertEqual(spec.key, "united-states-nba")
+        self.assertGreater(conf, 0.9)
+
+        spec, conf = match_vendor_league("NBB", "Brazil", 26)
+        self.assertIsNotNone(spec, "NBB did not map")
+        self.assertEqual(spec.key, "brazil-nbb")
+
+    def test_unknown_vendor_league_is_not_guessed(self):
+        from ingest.leagues import match_vendor_league
+        spec, conf = match_vendor_league("Kraken Invitational League", "Atlantis")
+        self.assertIsNone(spec)
+        self.assertLess(conf, 0.72)
+
+
+class TestQuotaLedger(unittest.TestCase):
+
+    def setUp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.path = Path(tmp) / "quota.json"
+        from ingest import quotas
+        self.quotas = quotas
+        self.ledger = quotas.QuotaLedger(self.path)
+
+    def test_spending_counts_down(self):
+        for _ in range(3):
+            self.ledger.spend("api_sports")
+        self.assertEqual(self.ledger.remaining("api_sports"), 100 - 3)
+
+    def test_reserve_is_honoured(self):
+        for _ in range(90):
+            self.ledger.spend("api_sports")
+        self.assertFalse(self.ledger.check("api_sports", reserve=10))
+        self.assertTrue(self.ledger.check("api_sports", 1, reserve=9))
+
+    def test_exhaustion_raises_loudly(self):
+        for _ in range(100):
+            self.ledger.spend("api_sports", reserve=0)
+        with self.assertRaises(self.quotas.QuotaExceeded):
+            self.ledger.spend("api_sports", reserve=0)
+
+    def test_unmetered_provider_never_blocks(self):
+        for _ in range(5000):
+            self.ledger.spend("fixture")
+        self.assertTrue(self.ledger.check("fixture"))
+
+    def test_monthly_budget_for_odds(self):
+        for _ in range(500):
+            self.ledger.spend("odds_api", reserve=0)
+        self.assertFalse(self.ledger.check("odds_api"))
+
+
+class TestBulkPipeline(unittest.TestCase):
+    """A stub provider proving the pipeline attributes bulk games correctly."""
+
+    class StubBulkProvider:
+        name = "stub_bulk"
+        supports_bulk = True
+        supports_standings = False
+
+        def __init__(self, groups):
+            self._groups = groups
+            self.calls = 0
+
+        def bulk_day(self, date_iso):
+            """Filter by date, exactly as a real vendor's ?date= call does."""
+            self.calls += 1
+            out = []
+            for group in self._groups:
+                fixtures = [f for f in group["fixtures"] if f.date == date_iso]
+                results = [r for r in group["results"] if r.date == date_iso]
+                if fixtures or results:
+                    out.append({**group, "fixtures": fixtures, "results": results})
+            return out
+
+        def standings(self, league_key, season=""):
+            return []
+
+        def team_history(self, *a, **k):
+            return []
+
+        def h2h(self, *a, **k):
+            return []
+
+    def test_bulk_run_attributes_games_to_fleet_leagues(self):
+        from ingest.providers.api_sports import ApiSportsProvider
+
+        provider = ApiSportsProvider(api_key="test", enforce_quota=False)
+        groups = provider.group_games(api_sports_payload()["response"])
+        stub = self.StubBulkProvider(groups)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pipeline = IngestPipeline(stub, [], [LocalBundleSink(root=tmp)], TeamResolver())
+            report = pipeline.run(IngestRequest(
+                leagues=["nba", "nbb"],
+                date_from="2026-10-13",
+                date_to="2026-10-14",
+                results_lookback_days=0,
+                auto_learn_leagues=False,
+                enrich=False,
+            ))
+
+        # one provider call per day regardless of league count
+        self.assertEqual(stub.calls, 2)
+        self.assertEqual(report.bulk_calls, 2)
+        by_key = {lg.league_key: lg for lg in report.leagues}
+        self.assertEqual(by_key["united-states-nba"].fixtures, 1)
+        self.assertEqual(by_key["united-states-nba"].results, 1)
+        self.assertEqual(by_key["brazil-nbb"].results, 1)
+        self.assertFalse(report.errors, report.errors)
+
+
+class TestFailover(unittest.TestCase):
+    """Two free keys must behave like one provider, not like a coin flip."""
+
+    class Exhausted:
+        name = "exhausted"
+        supports_bulk = False
+        supports_standings = False
+
+        def fixtures(self, *a, **k):
+            from ingest.quotas import QuotaExceeded
+            raise QuotaExceeded("today 100 of 100")
+
+    class Broken:
+        name = "broken"
+        supports_bulk = False
+        supports_standings = False
+
+        def fixtures(self, *a, **k):
+            from ingest.providers.base import ProviderError
+            raise ProviderError("HTTP 503")
+
+    class Good:
+        name = "good"
+        supports_bulk = True
+        supports_standings = True
+
+        def fixtures(self, league_key, date_from, date_to):
+            return [Fixture(league_key=league_key, date=date_from, time="20:00",
+                            home="Boston Celtics", away="New York Knicks")]
+
+        def results(self, league_key, date_from, date_to):
+            return [sample_result()]
+
+        def bulk_day(self, date_iso):
+            return [{"vendor_league_name": "NBA", "fixtures": [], "results": []}]
+
+    def test_falls_through_quota_and_errors(self):
+        from ingest.providers.failover import FailoverProvider
+
+        chain = FailoverProvider([self.Exhausted(), self.Broken(), self.Good()], verbose=False)
+        fixtures = chain.fixtures("united-states-nba", "2026-10-14", "2026-10-14")
+        self.assertEqual(len(fixtures), 1)
+        self.assertEqual(chain.last_used, "good")
+        self.assertTrue(chain.supports_bulk)
+
+    def test_all_failing_raises_with_reasons(self):
+        from ingest.providers.base import ProviderError
+        from ingest.providers.failover import FailoverProvider
+
+        chain = FailoverProvider([self.Exhausted(), self.Broken()], verbose=False)
+        with self.assertRaises(ProviderError) as ctx:
+            chain.fixtures("x", "2026-10-14", "2026-10-14")
+        message = str(ctx.exception)
+        self.assertIn("out of quota", message)
+        self.assertIn("503", message)
+
+    def test_usage_is_tracked_per_member(self):
+        from ingest.providers.failover import FailoverProvider
+
+        chain = FailoverProvider([self.Exhausted(), self.Good()], verbose=False)
+        chain.fixtures("x", "2026-10-14", "2026-10-14")
+        chain.results("x", "2026-10-14", "2026-10-14")
+        self.assertEqual(chain.usage["good"], 2)

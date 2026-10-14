@@ -26,7 +26,14 @@ from datetime import date, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from ingest import configs, contracts
-from ingest.leagues import LeagueSpec, resolve, satellite_id_for, satellite_name_for
+from ingest.leagues import (
+    LeagueSpec,
+    apply_vendor_match,
+    match_vendor_league,
+    resolve,
+    satellite_id_for,
+    satellite_name_for,
+)
 from ingest.models import Fixture, GameResult, IngestBundle, QuarterProfile
 from ingest.predict import Enricher
 from ingest.providers.base import DataProvider, ProbabilitySource
@@ -52,6 +59,8 @@ class IngestRequest:
     max_games_per_satellite: int = 40
     enrich: bool = True          # compute t1-*/t2-*/ou-* columns via brain/ ports
     model_config: Dict[str, Any] = field(default_factory=dict)
+    bulk: bool = True            # one vendor request per day for ALL leagues
+    auto_learn_leagues: bool = True  # persist vendor league ids we matched
 
     def window(self) -> List[str]:
         start = date.fromisoformat(self.date_from[:10])
@@ -96,6 +105,7 @@ class IngestReport:
     probability_sources: List[str] = field(default_factory=list)
     leagues: List[LeagueReport] = field(default_factory=list)
     sink_results: List[Dict[str, Any]] = field(default_factory=list)
+    bulk_calls: int = 0
     unresolved_teams: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
 
@@ -118,6 +128,7 @@ class IngestReport:
             "totals": self.totals,
             "leagues": [l.as_dict() for l in self.leagues],
             "sinks": self.sink_results,
+            "bulk_calls": self.bulk_calls,
             "unresolved_teams": self.unresolved_teams,
             "errors": self.errors,
         }
@@ -129,6 +140,7 @@ class IngestReport:
             f"provider={self.provider}  probability={'+'.join(self.probability_sources) or 'none'}",
             f"{t['leagues']} leagues · {t['fixtures']} fixtures ({t['priced']} priced) · "
             f"{t['results']} results · {t['satellites']} virtual satellites",
+            f"vendor requests: {self.bulk_calls} bulk date call(s)",
         ]
         for lg in self.leagues:
             if lg.fixtures or lg.results:
@@ -170,13 +182,17 @@ class IngestPipeline:
             probability_sources=[getattr(s, "name", "?") for s in self.probability_sources],
         )
 
+        bulk_data: Dict[str, Dict[str, List[Any]]] = {}
+        if request.bulk and getattr(self.provider, "supports_bulk", False):
+            bulk_data = self._prefetch_bulk(request, report)
+
         for league_ref in request.leagues:
             spec = resolve(league_ref)
             if spec is None:
                 report.errors.append(f"unknown league '{league_ref}'")
                 continue
             try:
-                self._run_league(spec, request, report)
+                self._run_league(spec, request, report, bulk_data.get(spec.key))
             except Exception as exc:  # noqa: BLE001 - one bad league must not kill the run
                 log.exception("league %s failed", spec.key)
                 report.errors.append(f"{spec.key}: {exc}")
@@ -185,13 +201,99 @@ class IngestPipeline:
         report.finished_at = utc_now_iso()
         return report
 
+    # ── bulk prefetch ───────────────────────────────────────────────────
+
+    def _prefetch_bulk(self, request: IngestRequest, report: IngestReport) -> Dict[str, Dict[str, List[Any]]]:
+        """
+        One request per day for the whole fleet, then attribute each vendor
+        league to a fleet league.
+
+        Quota reality check: 166 leagues × 1 request = 166 requests/day, which
+        will not fit a 100/day free tier. One `date=` call per day does fit, by
+        an order of magnitude — so bulk mode is not an optimisation, it is the
+        precondition for running all 166 leagues on free keys.
+        """
+        wanted = {resolve(ref).key for ref in request.leagues if resolve(ref)}
+        out: Dict[str, Dict[str, List[Any]]] = {key: {"fixtures": [], "results": []} for key in wanted}
+        unmapped: Dict[str, int] = {}
+
+        calls = 0
+        for day in request.window():
+            try:
+                groups = self.provider.bulk_day(day)
+            except Exception as exc:  # noqa: BLE001
+                report.errors.append(f"bulk fetch {day} failed: {exc}")
+                continue
+            calls += 1
+            for group in groups:
+                spec, confidence = match_vendor_league(
+                    group.get("vendor_league_name", ""),
+                    group.get("vendor_country", ""),
+                    group.get("vendor_league_id"),
+                )
+                if spec is None or spec.key not in wanted:
+                    if group.get("fixtures") or group.get("results"):
+                        unmapped[group.get("vendor_league_name", "?")] = (
+                            unmapped.get(group.get("vendor_league_name", "?"), 0)
+                            + len(group.get("fixtures", [])) + len(group.get("results", []))
+                        )
+                    continue
+
+                if request.auto_learn_leagues and spec.api_league_id is None:
+                    try:
+                        apply_vendor_match(spec, group["vendor_league_id"], group.get("vendor_league_name", ""))
+                    except Exception as exc:  # noqa: BLE001
+                        log.debug("could not persist vendor league id for %s: %s", spec.key, exc)
+
+                bucket = out[spec.key]
+                for fixture in group.get("fixtures", []):
+                    bucket["fixtures"].append(_reletter(fixture, spec))
+                for result in group.get("results", []):
+                    bucket["results"].append(_reletter(result, spec))
+
+            # historical results for the policy lookback, one call per day
+            if request.results_lookback_days > 0:
+                lookback_day = _shift(day, -request.results_lookback_days)
+                try:
+                    for group in self.provider.bulk_day(lookback_day):
+                        spec, _conf = match_vendor_league(
+                            group.get("vendor_league_name", ""),
+                            group.get("vendor_country", ""),
+                            group.get("vendor_league_id"),
+                        )
+                        if spec is None or spec.key not in wanted:
+                            continue
+                        out[spec.key]["results"].extend(
+                            _reletter(r, spec) for r in group.get("results", [])
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    log.debug("lookback bulk fetch %s skipped: %s", lookback_day, exc)
+
+        if unmapped:
+            top = sorted(unmapped.items(), key=lambda kv: -kv[1])[:8]
+            report.errors.append(
+                "bulk mode saw competitions with no fleet league: "
+                + ", ".join(f"{name} ({n})" for name, n in top)
+                + " — add them via bootstrap-leagues"
+            )
+        report.bulk_calls = calls
+        return out
+
     # ── per league ──────────────────────────────────────────────────────
 
-    def _run_league(self, spec: LeagueSpec, request: IngestRequest, report: IngestReport) -> None:
+    def _run_league(
+        self,
+        spec: LeagueSpec,
+        request: IngestRequest,
+        report: IngestReport,
+        bulk: Optional[Dict[str, List[Any]]] = None,
+    ) -> None:
         lg = LeagueReport(league_key=spec.key, display_name=spec.display_name, configured=spec.configured)
         report.leagues.append(lg)
 
-        if not spec.configured and getattr(self.provider, "name", "") != "fixture":
+        # Bulk mode resolves leagues at runtime from the vendor's own names, so
+        # a missing api_league_id is not fatal there — only in per-league mode.
+        if not spec.configured and getattr(self.provider, "name", "") != "fixture" and bulk is None:
             lg.warnings.append(
                 "no api_league_id configured — run: python -m ingest.cli bootstrap-leagues --probe"
             )
@@ -200,7 +302,10 @@ class IngestPipeline:
         window = request.window()
         date_from, date_to = window[0], window[-1]
 
-        fixtures = self.provider.fixtures(spec.key, date_from, date_to)
+        if bulk is not None:
+            fixtures = list(bulk["fixtures"])
+        else:
+            fixtures = self.provider.fixtures(spec.key, date_from, date_to)
         fixtures = [f for f in fixtures if f.home and f.away]
         self._learn_teams(fixtures)
 
@@ -220,14 +325,17 @@ class IngestPipeline:
         # results for the league over the satellite window (plus a lookback so
         # ResultsClean carries enough history for the accuracy ledger)
         results: List[GameResult] = []
-        try:
-            results = self.provider.results(
-                spec.key,
-                _shift(date_from, -request.results_lookback_days),
-                date_to,
-            )
-        except Exception as exc:  # noqa: BLE001
-            lg.warnings.append(f"results unavailable: {exc}")
+        if bulk is not None:
+            results = list(bulk["results"])
+        else:
+            try:
+                results = self.provider.results(
+                    spec.key,
+                    _shift(date_from, -request.results_lookback_days),
+                    date_to,
+                )
+            except Exception as exc:  # noqa: BLE001
+                lg.warnings.append(f"results unavailable: {exc}")
         lg.results = len(results)
         self._learn_results(results)
 
@@ -411,6 +519,13 @@ class IngestPipeline:
             team = getattr(row, "team", "")
             if team:
                 self.resolver.learn(team)
+
+
+def _reletter(obj: Any, spec: LeagueSpec) -> Any:
+    """Re-key a bulk-fetched game from its vendor league to the fleet league."""
+    obj.league_key = spec.key
+    obj.league_display = spec.display_name
+    return obj
 
 
 def _shift(iso: str, days: int) -> str:

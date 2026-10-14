@@ -38,6 +38,7 @@ from typing import Any, Dict, List, Optional
 
 from ingest.models import Fixture, GameResult, StandingRow
 from ingest.providers.base import DataProvider, NotSupported, ProviderError
+from ingest import quotas
 
 log = logging.getLogger("ingest.provider.api_sports")
 
@@ -51,6 +52,7 @@ class ApiSportsProvider(DataProvider):
     name = "api_sports"
     supports_standings = True
     supports_odds = False   # odds live in a separate vendor (see providers/odds.py)
+    supports_bulk = True    # /games?date= returns every competition in ONE request
 
     def __init__(
         self,
@@ -59,6 +61,7 @@ class ApiSportsProvider(DataProvider):
         timezone_name: str = "UTC",
         capture: bool = False,
         cache_ttl: int = CACHE_TTL_SECONDS,
+        enforce_quota: bool = True,
     ):
         self.api_key = api_key or os.environ.get("API_SPORTS_KEY", "")
         self.cache_dir = Path(cache_dir)
@@ -67,6 +70,9 @@ class ApiSportsProvider(DataProvider):
         self.capture = capture
         self.cache_ttl = cache_ttl
         self.quota_remaining: Optional[str] = None
+        self.enforce_quota = enforce_quota
+        # how many requests to hold back for the calls that cannot be skipped
+        self.quota_reserve = 10
 
     # ── HTTP ────────────────────────────────────────────────────────────
 
@@ -79,6 +85,10 @@ class ApiSportsProvider(DataProvider):
         cache_file = self._cache_path(path, params)
         if cache_file.exists() and (time.time() - cache_file.stat().st_mtime) < self.cache_ttl:
             return json.loads(cache_file.read_text(encoding="utf-8"))
+
+        # only unmetered calls reach the network, so only they cost quota
+        if self.enforce_quota:
+            quotas.ledger().spend(self.name, 1, reserve=self.quota_reserve)
 
         if not self.api_key:
             raise ProviderError(
@@ -132,6 +142,48 @@ class ApiSportsProvider(DataProvider):
     def _games(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
         return list(self._get("games", params).get("response") or [])
 
+    # ── bulk mode ───────────────────────────────────────────────────────
+
+    def bulk_day(self, date_iso: str) -> List[Dict[str, Any]]:
+        """
+        EVERY competition's games for one date, in a single request.
+
+        This is what makes a 100 req/day free key viable for a 166-league
+        fleet: one call returns all of a day's fixtures *and* finals (with
+        quarter splits), each tagged with its league id/name/country. The
+        caller maps those to fleet leagues and never needs 166 requests.
+
+        Returns a list of per-vendor-league groups:
+            [{vendor_league_id, vendor_league_name, vendor_country,
+              fixtures: [Fixture], results: [GameResult]}, ...]
+        """
+        payload = self._get("games", {"date": date_iso, "timezone": self.timezone_name})
+        return self.group_games(payload.get("response") or [])
+
+    def group_games(self, games: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Group raw vendor games by league into canonical fixtures/results."""
+        grouped: Dict[Any, Dict[str, Any]] = {}
+        for raw in games:
+            league = raw.get("league") or {}
+            country = raw.get("country") or {}
+            vid = league.get("id")
+            bucket = grouped.setdefault(vid, {
+                "vendor_league_id": vid,
+                "vendor_league_name": str(league.get("name") or ""),
+                "vendor_country": str(country.get("name") or ""),
+                "vendor_season": str(league.get("season") or ""),
+                "league_key": f"vendor:{vid}",
+                "league_display": str(league.get("name") or ""),
+                "fixtures": [],
+                "results": [],
+            })
+            parsed = self._parse_game(raw, bucket["league_key"])
+            if parsed["fixture"] is not None:
+                bucket["fixtures"].append(parsed["fixture"])
+            if parsed["result"] is not None:
+                bucket["results"].append(parsed["result"])
+        return list(grouped.values())
+
     def fixtures(self, league_key: str, date_from: str, date_to: str) -> List[Fixture]:
         league_id, season = _league_params(league_key)
         out: List[Fixture] = []
@@ -148,6 +200,8 @@ class ApiSportsProvider(DataProvider):
         return out
 
     def results(self, league_key: str, date_from: str, date_to: str) -> List[GameResult]:
+        """Completed games in a window. In bulk mode the caller passes these in
+        (see bulk_day) and this is never called."""
         league_id, season = _league_params(league_key)
         out: List[GameResult] = []
         for day in _date_range(date_from, date_to):

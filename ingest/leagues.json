@@ -20,60 +20,17 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Europe ABA (NLE)",
+        "europe-aba-nle"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "M13.2",
-        "M3.2"
-      ]
-    },
-    {
-      "key": "aba-league-nle-may-12",
-      "display_name": "ABA League (NLE) May 12",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "argentina-arw",
-      "display_name": "Argentina (ARW)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J14",
-        "J15",
-        "J17",
-        "J19"
-      ]
-    },
-    {
-      "key": "argentina-laa",
-      "display_name": "Argentina (LAA)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "F11",
-        "J12",
-        "J13",
-        "J14",
-        "J16",
-        "J19",
-        "J22",
-        "J24",
-        "J28"
+        "M3.2",
+        "May 12",
+        "J12"
       ]
     },
     {
@@ -82,14 +39,22 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "arw",
+        "Argentina (ARW)",
+        "argentina-arw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F11",
         "F17",
         "F18",
-        "J30"
+        "J30",
+        "J14",
+        "J15",
+        "J17",
+        "J19"
       ]
     },
     {
@@ -98,7 +63,11 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "arw",
+        "Argentina Liga Femenina Women (ARW)",
+        "argentina-liga-femenina-women-arw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -118,19 +87,7 @@
         "J28",
         "M1",
         "M2.1",
-        "M3.2"
-      ]
-    },
-    {
-      "key": "argentina-liga-femenina-women-arw",
-      "display_name": "Argentina Liga Femenina Women (ARW)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
+        "M3.2",
         "J21",
         "J23",
         "M4.2",
@@ -143,7 +100,12 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "laa",
+        "argentina-liga",
+        "Argentina (LAA)",
+        "argentina-laa"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -159,7 +121,16 @@
         "M12.2",
         "M13.2",
         "M14.2",
-        "M5.2"
+        "M5.2",
+        "F11",
+        "J12",
+        "J13",
+        "J14",
+        "J16",
+        "J19",
+        "J22",
+        "J24",
+        "J28"
       ]
     },
     {
@@ -235,19 +206,6 @@
       ]
     },
     {
-      "key": "bnxt-league-bnx",
-      "display_name": "BNXT League (BNX)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "M13.2"
-      ]
-    },
-    {
       "key": "bosnia-and-herzegovina-pbh",
       "display_name": "Bosnia and Herzegovina (PBH)",
       "api_league_id": null,
@@ -266,7 +224,9 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "nbb"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -313,7 +273,10 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Europe Champions League (CHL)",
+        "europe-champions-league-chl"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -321,7 +284,8 @@
         "J27",
         "J28",
         "M10.2",
-        "M11.2"
+        "M11.2",
+        "J20"
       ]
     },
     {
@@ -330,24 +294,16 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "cba"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "M14.2",
-        "M15.2"
+        "M15.2",
+        "May 13"
       ]
-    },
-    {
-      "key": "china-cba-may-13",
-      "display_name": "China (CBA) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "croatia-premijer-hrw",
@@ -377,42 +333,20 @@
       ]
     },
     {
-      "key": "cyprus-dac",
-      "display_name": "Cyprus (DAC)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J16"
-      ]
-    },
-    {
       "key": "cyprus-division-dac",
       "display_name": "Cyprus Division (DAC)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Cyprus (DAC)",
+        "cyprus-dac"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "J11"
-      ]
-    },
-    {
-      "key": "czech-republic-1-liga-cz2",
-      "display_name": "Czech Republic 1. Liga (CZ2)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "M13.2"
+        "J11",
+        "J16"
       ]
     },
     {
@@ -421,14 +355,19 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "cz2",
+        "Czech Republic 1. Liga (CZ2)",
+        "czech-republic-1-liga-cz2"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F20",
         "F22",
         "J11",
-        "J18"
+        "J18",
+        "M13.2"
       ]
     },
     {
@@ -481,19 +420,8 @@
       ]
     },
     {
-      "key": "estonia-korvpalli-meistriliiga-kpm-may-13",
-      "display_name": "Estonia Korvpalli Meistriliiga (KPM) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "eurocup-ecu",
-      "display_name": "Eurocup (ECU)",
+      "key": "estonia-korvpalli-meistriliiga-kpm",
+      "display_name": "Estonia Korvpalli Meistriliiga (KPM)",
       "api_league_id": null,
       "season": "",
       "country": "",
@@ -501,10 +429,7 @@
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "F11",
-        "J27",
-        "J28",
-        "M11.2"
+        "May 13"
       ]
     },
     {
@@ -526,7 +451,11 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "euroleague-eur",
+        "Europe EuroLeague (EUR)",
+        "europe-euroleague-eur"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -535,7 +464,10 @@
         "F26",
         "J15",
         "J16",
-        "M13.2"
+        "M13.2",
+        "J20",
+        "J22",
+        "J23"
       ]
     },
     {
@@ -544,13 +476,17 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Europe Euroleague (EUW)",
+        "europe-euroleague-euw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F18",
         "F19",
-        "J28"
+        "J28",
+        "J21"
       ]
     },
     {
@@ -568,56 +504,24 @@
       ]
     },
     {
-      "key": "europe-aba-nle",
-      "display_name": "Europe ABA (NLE)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J12"
-      ]
-    },
-    {
-      "key": "europe-champions-league-chl",
-      "display_name": "Europe Champions League (CHL)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J20"
-      ]
-    },
-    {
       "key": "europe-enb",
       "display_name": "Europe (ENB)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Europe ENBL (ENB)",
+        "europe-enbl-enb",
+        "European North Basketball League (ENB)",
+        "european-north-basketball-league-enb"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "J20",
-        "J21"
-      ]
-    },
-    {
-      "key": "europe-enbl-enb",
-      "display_name": "Europe ENBL (ENB)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "M10.2"
+        "J21",
+        "M10.2",
+        "J27"
       ]
     },
     {
@@ -626,42 +530,22 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "eurocup",
+        "Eurocup (ECU)",
+        "eurocup-ecu"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "J13",
         "J14",
         "J20",
-        "J21"
-      ]
-    },
-    {
-      "key": "europe-euroleague-eur",
-      "display_name": "Europe EuroLeague (EUR)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J20",
-        "J22",
-        "J23"
-      ]
-    },
-    {
-      "key": "europe-euroleague-euw",
-      "display_name": "Europe Euroleague (EUW)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J21"
+        "J21",
+        "F11",
+        "J27",
+        "J28",
+        "M11.2"
       ]
     },
     {
@@ -669,16 +553,20 @@
       "display_name": "Europe League (BNX)",
       "api_league_id": null,
       "season": "",
-      "country": "Europe",
+      "country": "",
       "aliases": [
-        "euroleague"
+        "euroleague",
+        "euro-league",
+        "BNXT League (BNX)",
+        "bnxt-league-bnx"
       ],
       "team_alias_file": "",
-      "timezone": "Europe/Athens",
+      "timezone": "UTC",
       "satellite_dates": [
         "J10",
         "J16",
-        "J23"
+        "J23",
+        "M13.2"
       ]
     },
     {
@@ -708,52 +596,22 @@
       ]
     },
     {
-      "key": "european-north-basketball-league-enb",
-      "display_name": "European North Basketball League (ENB)",
+      "key": "finland-i-divisioona-a-fi2",
+      "display_name": "Finland I Divisioona A (FI2)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Finland Divisioona (FI2)",
+        "finland-divisioona-fi2",
+        "Finland I Divisioona (FI2)",
+        "finland-i-divisioona-fi2"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "J27"
-      ]
-    },
-    {
-      "key": "finland-divisioona-fi2",
-      "display_name": "Finland Divisioona (FI2)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J23"
-      ]
-    },
-    {
-      "key": "finland-i-divisioona-a-fi2-jw30",
-      "display_name": "Finland I Divisioona A (FI2) JW30",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "finland-i-divisioona-fi2",
-      "display_name": "Finland I Divisioona (FI2)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
+        "JW30",
+        "J23",
         "F23"
       ]
     },
@@ -791,7 +649,9 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "klf"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -827,14 +687,19 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "France Pro B (FR2)",
+        "france-pro-b-fr2"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F13",
         "F17.2",
         "J11",
-        "J23.2"
+        "J23.2",
+        "J9",
+        "M13.2"
       ]
     },
     {
@@ -860,19 +725,9 @@
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "F20"
+        "F20",
+        "May 12"
       ]
-    },
-    {
-      "key": "france-lfb-w-frw-may-12",
-      "display_name": "France LFB W (FRW) May 12",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "france-lnb",
@@ -890,8 +745,8 @@
       ]
     },
     {
-      "key": "france-pro-b-fr2",
-      "display_name": "France Pro B (FR2)",
+      "key": "georgia-superleague-slg",
+      "display_name": "Georgia Superleague (SLG)",
       "api_league_id": null,
       "season": "",
       "country": "",
@@ -899,20 +754,8 @@
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "J9",
-        "M13.2"
+        "May 13"
       ]
-    },
-    {
-      "key": "georgia-superleague-slg-may-13",
-      "display_name": "Georgia Superleague (SLG) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "germany-bbl",
@@ -928,34 +771,26 @@
       ]
     },
     {
-      "key": "germany-de2",
-      "display_name": "Germany (DE2)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J11",
-        "J17",
-        "J23"
-      ]
-    },
-    {
       "key": "germany-pro-a-de2",
       "display_name": "Germany Pro A (DE2)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "de2",
+        "Germany (DE2)",
+        "germany-de2"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F20",
         "F21",
         "F22",
-        "J25"
+        "J25",
+        "J11",
+        "J17",
+        "J23"
       ]
     },
     {
@@ -964,11 +799,15 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Greece (DEA)",
+        "greece-dea"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "F23"
+        "F23",
+        "F11"
       ]
     },
     {
@@ -983,31 +822,8 @@
       "satellite_dates": [
         "J11",
         "J17",
-        "J25"
-      ]
-    },
-    {
-      "key": "greece-basket-league-blg-may-13",
-      "display_name": "Greece Basket League (BLG) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "greece-dea",
-      "display_name": "Greece (DEA)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "F11"
+        "J25",
+        "May 13"
       ]
     },
     {
@@ -1022,19 +838,9 @@
       "satellite_dates": [
         "F25",
         "J10",
-        "J18"
+        "J18",
+        "JW30"
       ]
-    },
-    {
-      "key": "hungary-hw2-jw30",
-      "display_name": "Hungary (HW2) JW30",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "hungary-nbi",
@@ -1046,19 +852,9 @@
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "J10"
+        "J10",
+        "May 13"
       ]
-    },
-    {
-      "key": "hungary-nbi-may-13",
-      "display_name": "Hungary (NBI) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "iceland-premier-league-isw",
@@ -1066,7 +862,9 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "isw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1104,7 +902,9 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "isw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1150,31 +950,8 @@
       "satellite_dates": [
         "J13",
         "J20",
-        "J24"
-      ]
-    },
-    {
-      "key": "israel-liga-leumit-il2-may-12",
-      "display_name": "Israel Liga Leumit (IL2) May 12",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "israel-sis",
-      "display_name": "Israel (SIS)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J12"
+        "J24",
+        "May 12"
       ]
     },
     {
@@ -1183,24 +960,18 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Israel (SIS)",
+        "israel-sis"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "J19",
-        "J25"
+        "J25",
+        "May 13",
+        "J12"
       ]
-    },
-    {
-      "key": "israel-super-league-sis-may-13",
-      "display_name": "Israel Super League (SIS) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "israel-w-ilw",
@@ -1208,39 +979,16 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Israel WBL Women (ILW)",
+        "israel-wbl-women-ilw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "M2.1",
-        "M2.2"
-      ]
-    },
-    {
-      "key": "israel-wbl-women-ilw",
-      "display_name": "Israel WBL Women (ILW)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
+        "M2.2",
         "J19"
-      ]
-    },
-    {
-      "key": "italy-it2",
-      "display_name": "Italy (IT2)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J18",
-        "J21"
       ]
     },
     {
@@ -1263,12 +1011,16 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Italy Serie (ITW)",
+        "italy-serie-itw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F28",
-        "J25"
+        "J25",
+        "J11"
       ]
     },
     {
@@ -1277,7 +1029,13 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "it2",
+        "Italy Serie (IT2)",
+        "italy-serie-it2",
+        "Italy (IT2)",
+        "italy-it2"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1285,35 +1043,12 @@
         "F22",
         "F25",
         "J25",
-        "M1"
-      ]
-    },
-    {
-      "key": "italy-serie-it2",
-      "display_name": "Italy Serie (IT2)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
+        "M1",
         "J11",
         "F11",
-        "J9"
-      ]
-    },
-    {
-      "key": "italy-serie-itw",
-      "display_name": "Italy Serie (ITW)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J11"
+        "J9",
+        "J18",
+        "J21"
       ]
     },
     {
@@ -1387,20 +1122,6 @@
       ]
     },
     {
-      "key": "korea-krw",
-      "display_name": "Korea (KRW)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "F23",
-        "J28"
-      ]
-    },
-    {
       "key": "kosovo-superliga-slk",
       "display_name": "Kosovo Superliga (SLK)",
       "api_league_id": null,
@@ -1420,7 +1141,9 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "lel"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1446,23 +1169,15 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "lkl"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "J11"
+        "J11",
+        "May 13"
       ]
-    },
-    {
-      "key": "lithuania-lkl-may-13",
-      "display_name": "Lithuania (LKL) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "lithuania-lt2",
@@ -1502,15 +1217,19 @@
       ]
     },
     {
-      "key": "new-zealand-nbn-may-13",
-      "display_name": "New Zealand (NBN) May 13",
+      "key": "new-zealand-nbn",
+      "display_name": "New Zealand (NBN)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "nbn"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
-      "satellite_dates": []
+      "satellite_dates": [
+        "May 13"
+      ]
     },
     {
       "key": "norway-bln",
@@ -1526,15 +1245,17 @@
       ]
     },
     {
-      "key": "philippines-commissioners-cup-pco-may-13",
-      "display_name": "Philippines Commissioners Cup (PCO) May 13",
+      "key": "philippines-commissioners-cup-pco",
+      "display_name": "Philippines Commissioners Cup (PCO)",
       "api_league_id": null,
       "season": "",
       "country": "",
       "aliases": [],
       "team_alias_file": "",
       "timezone": "UTC",
-      "satellite_dates": []
+      "satellite_dates": [
+        "May 13"
+      ]
     },
     {
       "key": "poland-1-liga-pl2",
@@ -1542,7 +1263,11 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "pl2",
+        "Poland (PL2)",
+        "poland-pl2"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1555,7 +1280,10 @@
         "J25",
         "J31",
         "J9",
-        "M1"
+        "M1",
+        "J11",
+        "J16",
+        "J24"
       ]
     },
     {
@@ -1564,49 +1292,19 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Poland Energa (EBL)",
+        "poland-energa-ebl",
+        "Poland Energa Basket Liga (EBL)",
+        "poland-energa-basket-liga-ebl"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "J11",
-        "J17"
-      ]
-    },
-    {
-      "key": "poland-energa-basket-liga-ebl",
-      "display_name": "Poland Energa Basket Liga (EBL)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
+        "J17",
+        "J23",
         "J24"
-      ]
-    },
-    {
-      "key": "poland-energa-basket-plw-jw31",
-      "display_name": "Poland Energa Basket (PLW) JW31",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "poland-energa-ebl",
-      "display_name": "Poland Energa (EBL)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J23"
       ]
     },
     {
@@ -1615,28 +1313,18 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "plw",
+        "Poland Energa Basket (PLW)",
+        "poland-energa-basket-plw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F25",
         "J28",
-        "M1"
-      ]
-    },
-    {
-      "key": "poland-pl2",
-      "display_name": "Poland (PL2)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J11",
-        "J16",
-        "J24"
+        "M1",
+        "JW31"
       ]
     },
     {
@@ -1680,26 +1368,15 @@
       ]
     },
     {
-      "key": "romania-dar",
-      "display_name": "Romania (DAR)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J12",
-        "J16"
-      ]
-    },
-    {
       "key": "romania-divizia-dar",
       "display_name": "Romania Divizia (DAR)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Romania (DAR)",
+        "romania-dar"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1707,7 +1384,9 @@
         "F20",
         "J23",
         "J28",
-        "J9"
+        "J9",
+        "J12",
+        "J16"
       ]
     },
     {
@@ -1855,7 +1534,9 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "kbl"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1874,32 +1555,12 @@
         "J28",
         "J30",
         "J9",
+        "JW31",
         "M13.2",
         "M14.2",
-        "M5.2"
+        "M5.2",
+        "May 13"
       ]
-    },
-    {
-      "key": "south-korea-kbl-jw31",
-      "display_name": "South Korea (KBL) JW31",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "south-korea-kbl-may-13",
-      "display_name": "South Korea (KBL) May 13",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "south-korea-krw",
@@ -1907,14 +1568,19 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Korea (KRW)",
+        "korea-krw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F25",
         "J16",
         "J17",
-        "J24"
+        "J24",
+        "F23",
+        "J28"
       ]
     },
     {
@@ -1931,32 +1597,25 @@
       ]
     },
     {
-      "key": "spain-eso",
-      "display_name": "Spain (ESO)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J11"
-      ]
-    },
-    {
       "key": "spain-esp",
       "display_name": "Spain (ESP)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "esp",
+        "Spain Plata (ESP)",
+        "spain-plata-esp"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "F14",
         "F15",
         "J11",
-        "J17"
+        "J17",
+        "F21",
+        "F22"
       ]
     },
     {
@@ -1965,11 +1624,15 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Spain (ESO)",
+        "spain-eso"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "F11"
+        "F11",
+        "J11"
       ]
     },
     {
@@ -1978,7 +1641,9 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "esw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -1990,32 +1655,8 @@
         "J11",
         "J17",
         "J25",
+        "JW31",
         "M1"
-      ]
-    },
-    {
-      "key": "spain-liga-femenina-esw-jw31",
-      "display_name": "Spain Liga Femenina (ESW) JW31",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "spain-plata-esp",
-      "display_name": "Spain Plata (ESP)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "F21",
-        "F22"
       ]
     },
     {
@@ -2050,19 +1691,9 @@
         "F20",
         "J23",
         "J27",
+        "JW30",
         "M10.2"
       ]
-    },
-    {
-      "key": "sweden-basketligan-bls-jw30",
-      "display_name": "Sweden Basketligan (BLS) JW30",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "sweden-basketligan-sw1",
@@ -2102,29 +1733,20 @@
       ]
     },
     {
-      "key": "switzerland-cw1",
-      "display_name": "Switzerland (CW1)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "J18"
-      ]
-    },
-    {
       "key": "switzerland-sb-league-cw1",
       "display_name": "Switzerland SB League (CW1)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Switzerland (CW1)",
+        "switzerland-cw1"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "F28"
+        "F28",
+        "J18"
       ]
     },
     {
@@ -2147,72 +1769,36 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "tw4"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "J11",
-        "J17"
+        "J17",
+        "May 13"
       ]
     },
     {
-      "key": "taiwan-tw4-may-13",
-      "display_name": "Taiwan (TW4) May 13",
+      "key": "turkiye-super-lig-slt",
+      "display_name": "T\u00fcrkiye Super Lig (SLT)",
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "turkiye-slt",
-      "display_name": "T\u00fcrkiye (SLT)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
+      "aliases": [
+        "T\u00fcrkiye (SLT)",
+        "turkiye-slt",
+        "T\u00fcrkiye Super (SLT)",
+        "turkiye-super-slt"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
-        "J17"
-      ]
-    },
-    {
-      "key": "turkiye-super-lig-slt-jw30",
-      "display_name": "T\u00fcrkiye Super Lig (SLT) JW30",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "turkiye-super-slt",
-      "display_name": "T\u00fcrkiye Super (SLT)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
+        "JW30",
+        "J17",
         "J11"
       ]
-    },
-    {
-      "key": "turkiye-tkbl-women-tlw-jw30",
-      "display_name": "T\u00fcrkiye TKBL Women (TLW) JW30",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
     },
     {
       "key": "turkiye-tlw",
@@ -2276,12 +1862,16 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "T\u00fcrkiye TKBL Women (TLW)",
+        "turkiye-tkbl-women-tlw"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "M2.1",
-        "M2.2"
+        "M2.2",
+        "JW30"
       ]
     },
     {
@@ -2322,15 +1912,17 @@
       "display_name": "United States (NBA)",
       "api_league_id": null,
       "season": "",
-      "country": "USA",
+      "country": "",
       "aliases": [
-        "nba"
+        "nba",
+        "united-states-nba"
       ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
         "J11",
         "M5.2",
+        "26",
         "F01",
         "F10",
         "F11",
@@ -2370,46 +1962,8 @@
         "M2.2",
         "M3.2",
         "M4.2",
-        "M7.2"
-      ]
-    },
-    {
-      "key": "united-states-nba-26",
-      "display_name": "United States (NBA) 26",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "united-states-nba-may-1",
-      "display_name": "United States (NBA) May 1",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": []
-    },
-    {
-      "key": "uruguay-liga-blu",
-      "display_name": "Uruguay Liga (BLU)",
-      "api_league_id": null,
-      "season": "",
-      "country": "",
-      "aliases": [],
-      "team_alias_file": "",
-      "timezone": "UTC",
-      "satellite_dates": [
-        "F11",
-        "F17",
-        "F19",
-        "F20",
-        "F21"
+        "M7.2",
+        "May 1"
       ]
     },
     {
@@ -2418,7 +1972,10 @@
       "api_league_id": null,
       "season": "",
       "country": "",
-      "aliases": [],
+      "aliases": [
+        "Uruguay Liga (BLU)",
+        "uruguay-liga-blu"
+      ],
       "team_alias_file": "",
       "timezone": "UTC",
       "satellite_dates": [
@@ -2430,7 +1987,12 @@
         "J28",
         "J30",
         "M13.2",
-        "M14.2"
+        "M14.2",
+        "F11",
+        "F17",
+        "F19",
+        "F20",
+        "F21"
       ]
     },
     {
