@@ -46,6 +46,7 @@ from ingest.leagues import (
 )
 from ingest.pipeline import IngestPipeline, IngestRequest
 from ingest.providers import make_probability_sources, make_provider
+from ingest.providers.base import ProviderError
 from ingest.sinks import LocalBundleSink, MultiSink, SupabaseSink
 from ingest.teams import TeamResolver
 
@@ -77,6 +78,14 @@ def _split(value) -> List[str]:
 
 def _target_leagues(args) -> List[str]:
     requested = _split(args.leagues)
+    # `--leagues all` is the documented spelling for a full-fleet cutover
+    # (see docs/FREE_API_STACK.md); it must not be resolved as a league named
+    # "all". Mixed forms like `--leagues all,nba` are rejected rather than
+    # silently meaning something surprising.
+    if requested and any(r.lower() == "all" for r in requested):
+        if len(requested) > 1:
+            raise SystemExit("--leagues all cannot be combined with other league names")
+        return []
     if requested:
         return requested
     specs = configured_leagues()
@@ -99,27 +108,27 @@ def _build_sinks(args):
 
 
 def _build_provider(args):
+    """
+    Build a provider, or a comma-separated failover chain of them.
+
+    Every provider is offered the same options; `make_provider` hands each class
+    only the ones its constructor declares, so `--provider fixture,api_sports`
+    or `--provider api_sports,highlightly` works from one code path.
+    """
     names = [n.strip() for n in str(args.provider).split(",") if n.strip()]
-    if len(names) > 1:
-        # failover chain, e.g. --provider api_sports,highlightly
-        return make_provider(
-            args.provider,
-            api_key=os.environ.get("API_SPORTS_KEY", ""),
-            cache_dir=args.cache,
-            capture=args.capture,
-        )
-    if args.provider == "fixture":
-        if not args.fixtures:
-            raise SystemExit("--fixtures <dir> is required for the fixture provider")
-        return make_provider("fixture", root=args.fixtures)
-    if args.provider == "api_sports":
-        return make_provider(
-            "api_sports",
-            api_key=os.environ.get("API_SPORTS_KEY", ""),
-            cache_dir=args.cache,
-            capture=args.capture,
-        )
-    raise SystemExit(f"unknown provider '{args.provider}' (fixture, api_sports)")
+    if names == ["fixture"] and not args.fixtures:
+        raise SystemExit("--fixtures <dir> is required for the fixture provider")
+
+    options: Dict[str, Any] = {
+        "root": args.fixtures,
+        "api_key": os.environ.get("API_SPORTS_KEY", ""),
+        "cache_dir": args.cache,
+        "capture": args.capture,
+    }
+    try:
+        return make_provider(args.provider, **options)
+    except ProviderError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -285,10 +294,27 @@ def cmd_doctor(args) -> int:
 
     missing = unconfigured_leagues()
     if missing:
-        print(f"\n{len(missing)} leagues have no api_league_id, e.g. "
+        print(f"\n{len(missing)} league(s) carry no api_league_id, e.g. "
               f"{', '.join(s.key for s in missing[:8])}")
-        print("resolve: python -m ingest.cli bootstrap-leagues --probe")
+        print("  This is expected: bulk mode resolves each competition's vendor id")
+        print("  from the day's games at run time, which is why no ids are pinned.")
+        print("  --probe is only needed for competitions the vendor names unrecognisably.")
     return 0
+
+
+def _agree(tab: str, brain_rows: int, fetcher_rows: int) -> bool:
+    """
+    The contract is *agreement*, not non-emptiness.
+
+    brain/ and fetcher/ are two independent readers of the same 2-D rows; if
+    they return different counts for the same tab, the generated rows changed
+    shape and something downstream will silently mis-read them. An empty tab is
+    evidence of nothing — leagues go quiet between seasons.
+    """
+    if brain_rows != fetcher_rows:
+        print(f"  ✗ {tab}: brain saw {brain_rows} rows, fetcher saw {fetcher_rows}")
+        return False
+    return True
 
 
 def cmd_verify(args) -> int:
@@ -309,16 +335,19 @@ def cmd_verify(args) -> int:
     from fetcher.parsers.game_logs import parse_game_log_table
 
     ok = True
+    upcoming_rows = 0
     for path in sorted(bundle_dir.glob("core__*.json")):
         values = json.loads(path.read_text(encoding="utf-8")).get("values") or []
         tab = path.stem.replace("core__", "")
         if tab == "UpcomingClean":
             a, b = parse_upcoming_clean(values), fe_upcoming(values)
+            upcoming_rows += len(a)
             print(f"UpcomingClean      brain={len(a):3d} games   fetcher={len(b):3d} games")
-            ok &= len(a) > 0
+            ok &= _agree(tab, len(a), len(b))
         elif tab == "ResultsClean":
             a, b = parse_results_clean(values), fe_results(values)
             print(f"ResultsClean       brain={len(a):3d} results fetcher={len(b):3d} results")
+            ok &= _agree(tab, len(a), len(b))
         elif tab == "Standings":
             rows = parse_standings(values)
             print(f"Standings          brain={len(rows):3d} teams")
@@ -328,8 +357,17 @@ def cmd_verify(args) -> int:
         else:
             print(f"{tab:<18} {max(len(values) - 1, 0):3d} rows (not parsed)")
 
+    if upcoming_rows == 0:
+        # A competition with no games in the window still gets a bundle (its
+        # Standings/Results tabs are real). That is a quiet league, not a
+        # broken contract — failing here would make every off-season night red.
+        print("\n⚠ no upcoming games in this bundle — nothing to verify")
+    if args.require_games and upcoming_rows == 0:
+        print("❌ no upcoming games, and --require-games was set")
+        return 1
+
     print("\n" + ("✅ CONTRACT OK — existing consumers parse the API output"
-                  if ok else "❌ CONTRACT BROKEN — UpcomingClean did not parse"))
+                  if ok else "❌ CONTRACT BROKEN — the two parsers disagree"))
     return 0 if ok else 1
 
 
@@ -393,6 +431,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     ver = sub.add_parser("verify", help="parse a generated bundle with the existing consumers")
     ver.add_argument("--bundle", required=True, help="ingest/out/<satellite_id>")
+    ver.add_argument("--require-games", action="store_true",
+                     help="fail if the bundle holds no upcoming games (use for expected-live runs)")
     ver.set_defaults(func=cmd_verify)
 
     return p

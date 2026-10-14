@@ -133,7 +133,79 @@ python3 -m ingest.cli quota     # what's left today
   systematic extraction, and it is the thing you asked to move *away* from. The
   de-vigged market probability is the same signal from a source with an SLA.
 
-## 5. Status of each option in this codebase
+## 5. Wiring the keys into GitHub Actions
+
+The workflow is `.github/workflows/ingest.yml`. Add secrets at
+**Settings → Secrets and variables → Actions → New repository secret**.
+The names must match exactly — the workflow exports them as environment
+variables and `ingest/` reads them by name (a typo means the code sees nothing
+and the run fails its first key check rather than silently going unauthenticated).
+
+| Secret name | Required? | What it unlocks | What happens without it |
+|---|---|---|---|
+| `API_SPORTS_KEY` | **yes** | the whole fixture/result/standings feed | the run stops immediately with one error line (no point spraying requests) |
+| `ODDS_API_KEY` | no | de-vigged market probabilities for the major leagues | the Poisson model prices everything instead (`provider=… probability=odds_api+poisson_model` still runs) |
+| `SUPABASE_URL` | only for `sink=supabase` | where snapshots are written | local bundles only |
+| `SUPABASE_SERVICE_KEY` | only for `sink=supabase` | write auth to `satellite_tab_snapshots` | local bundles only |
+| `HIGHLIGHTLY_KEY` | no | second 100/day fixture provider for the failover chain | if API-Basketball exhausts its budget, the rest of the day is skipped |
+
+### Optional repository variables
+
+Variables (**not** secrets — same settings page, second tab) control what the
+*n scheduled* run does, so nobody has to be awake to dispatch it:
+
+| Variable | Values | Default | Meaning |
+|---|---|---|---|
+| `INGEST_SINK` | `local`, `supabase`, `local,supabase` | `local` | where the 06:30 UTC run writes |
+| `INGEST_LIVE_WRITES` | `true` / `false` | `false` | flip to `true` to let the nightly run apply Supabase writes. Until then every scheduled write is a dry run that only logs |
+
+That pair is the reason nothing can reach production by accident: the sink must
+be named, **and** live writes must be switched on by hand.
+
+### First run
+
+1. Add `API_SPORTS_KEY` (and `ODDS_API_KEY` if you have one).
+2. Actions → **Ingest (APIs to snapshots)** → *Run workflow* → branch
+   `arena/20b31a43-gold-universe-orchestrator`, `leagues=all`, `sink=local`,
+   `upload_artifacts=true`.
+3. Read the run summary: leagues with content, fixtures, priced %, bulk calls.
+   Check `python -m ingest.cli quota` in the *Quota after* step — a full fleet
+   day should cost **2–3 requests**, not 100.
+4. Then dispatch again with `sink=supabase`, leaving `dry_run=true`, and read
+   the log lines `[dry-run] would upsert N snapshot rows for …`.
+5. Only then set the `INGEST_*` variables for the nightly job.
+
+**Note on scheduled runs:** GitHub only fires `schedule` triggers from the
+repository's **default branch** (`main`). Until this branch is merged, the
+nightly job will not run — dispatching by hand works from any branch.
+
+### What the workflow refuses to do
+
+- It will not write to Supabase unless the sink names it *and* a live write was
+  explicitly authorised.
+- It will not report success on an empty night: `tools/night_was_not_empty.py`
+  fails the job when no fixtures were ingested anywhere, because a green check
+  on a silent night is the failure mode most likely to go unnoticed for a week.
+- It will not spend a request it cannot make: the key check runs before the
+  quota spend.
+- It cleans `ingest/out` first, so the summary can only ever count bundles from
+  the current run.
+- It verifies every bundle with the same parsers the Brain/Assayer use and fails
+  if `brain/` and `fetcher/` disagree about the same rows.
+
+### Checking the workflow without waiting for a run
+
+```bash
+python3 tools/simulate_workflow.py --provider fixture --leagues nba --date 2026-10-14
+python3 tools/simulate_workflow.py --sink local,supabase    # exercises the dry-run path
+python3 -m unittest tests.test_ci_workflow                  # flag/secret drift guards
+```
+
+`tools/simulate_workflow.py` executes the workflow's actual `run:` blocks in
+order, so a broken shell step is caught locally instead of on a night when the
+quota is already spent.
+
+## 6. Status of each option in this codebase
 
 | API | Adapter | State |
 |---|---|---|

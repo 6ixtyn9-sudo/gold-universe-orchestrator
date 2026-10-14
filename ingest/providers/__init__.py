@@ -11,6 +11,8 @@ pipeline/, sinks/ or the Brain changes.
 
 from __future__ import annotations
 
+import inspect
+import logging
 from typing import Any, Dict, List, Optional
 
 from ingest.providers.base import (
@@ -23,6 +25,8 @@ from ingest.providers.failover import FailoverProvider
 from ingest.providers.fixture import FixtureProvider
 from ingest.providers.model import ModelProbabilitySource, PoissonRatings
 from ingest.providers.odds import OddsApiProbabilitySource
+
+log = logging.getLogger("ingest.provider")
 
 PROVIDERS: Dict[str, str] = {
     "fixture": "ingest.providers.fixture:FixtureProvider",
@@ -83,7 +87,29 @@ def make_provider(name: str, **kwargs: Any) -> DataProvider:
             f"unknown provider '{name}' — available: {', '.join(sorted(PROVIDERS))}"
         )
     cls = _import(PROVIDERS[name])
-    return cls(**kwargs)
+    return cls(**_accepted_kwargs(cls, kwargs))
+
+
+def _accepted_kwargs(cls: type, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Pass each provider only the options its constructor declares.
+
+    The CLI offers one option set to every provider (api_key, cache_dir,
+    capture, root, …) so a chain like `fixture,api_sports` can be built from a
+    single code path. Without this, the first member that doesn't happen to
+    take `capture` raises TypeError instead of simply ignoring it.
+    """
+    try:
+        params = inspect.signature(cls.__init__).parameters
+    except (TypeError, ValueError):  # pragma: no cover - C extension
+        return dict(kwargs)
+    if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+        return dict(kwargs)
+    accepted = {k: v for k, v in kwargs.items() if k in params}
+    ignored = sorted(set(kwargs) - set(accepted))
+    if ignored:
+        log.debug("%s ignores unused option(s): %s", cls.__name__, ", ".join(ignored))
+    return accepted
 
 
 def make_probability_sources(

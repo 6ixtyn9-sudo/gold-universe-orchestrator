@@ -583,3 +583,65 @@ class TestFailover(unittest.TestCase):
         chain.fixtures("x", "2026-10-14", "2026-10-14")
         chain.results("x", "2026-10-14", "2026-10-14")
         self.assertEqual(chain.usage["good"], 2)
+
+
+class TestVerifyContract(unittest.TestCase):
+    """
+    `verify` is the migration's guard-rail, so its *verdict logic* is worth
+    testing directly: it must catch a real parser disagreement and must not
+    fail merely because a competition had no games that night.
+    """
+
+    def test_agreement_is_the_contract(self):
+        from ingest.cli import _agree
+
+        self.assertTrue(_agree("UpcomingClean", 3, 3))
+        self.assertFalse(_agree("UpcomingClean", 3, 2))
+
+    def test_quiet_bundle_passes_but_require_games_fails(self):
+        import tempfile
+        from ingest.cli import build_parser, cmd_verify
+
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "api_somewhere-cup_2026-10-14"
+            bundle.mkdir()
+            (bundle / "core__UpcomingClean.json").write_text(
+                json.dumps({"values": [["Date", "Time", "Home", "Away"]]}), encoding="utf-8"
+            )
+            (bundle / "core__Standings.json").write_text(
+                json.dumps({"values": [["Team", "P"]]}), encoding="utf-8"
+            )
+
+            parser = build_parser()
+            quiet = parser.parse_args(["verify", "--bundle", str(bundle)])
+            quiet.func = cmd_verify
+            self.assertEqual(cmd_verify(quiet), 0, "an empty night is not a broken contract")
+
+            strict = parser.parse_args(["verify", "--bundle", str(bundle), "--require-games"])
+            self.assertEqual(cmd_verify(strict), 1, "--require-games must demand fixtures")
+
+
+class TestQuotaDiscipline(unittest.TestCase):
+    """A call that never leaves the machine must not cost a request."""
+
+    def setUp(self):
+        import tempfile
+        from ingest import quotas
+
+        self.tmp = tempfile.mkdtemp()
+        self.ledger = quotas.reset_ledger(Path(self.tmp) / "quota.json")
+        self.addCleanup(lambda: quotas.reset_ledger(Path(self.tmp) / "quota.json"))
+
+    def test_missing_key_does_not_spend(self):
+        import ingest.providers.api_sports as api_sports
+        from ingest.providers.base import ProviderError
+
+        provider = api_sports.ApiSportsProvider(
+            api_key="", cache_dir=Path(self.tmp) / "cache", enforce_quota=True
+        )
+        with self.assertRaises(ProviderError):
+            provider._get("games", {"date": "2026-10-14"})  # noqa: SLF001
+        self.assertEqual(
+            self.ledger.report()["api_sports"].used_today, 0,
+            "a keyless call drained the quota ledger",
+        )

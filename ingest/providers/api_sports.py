@@ -86,15 +86,18 @@ class ApiSportsProvider(DataProvider):
         if cache_file.exists() and (time.time() - cache_file.stat().st_mtime) < self.cache_ttl:
             return json.loads(cache_file.read_text(encoding="utf-8"))
 
-        # only unmetered calls reach the network, so only they cost quota
-        if self.enforce_quota:
-            quotas.ledger().spend(self.name, 1, reserve=self.quota_reserve)
-
+        # Check the key BEFORE spending: a call that never leaves the machine
+        # must not cost a request. (Spending first meant a keyless run drained
+        # the ledger one entry per attempted call.)
         if not self.api_key:
             raise ProviderError(
                 "API_SPORTS_KEY is not set. Export it, or run with the fixture "
                 "provider for offline development."
             )
+
+        # only unmetered calls reach the network, so only they cost quota
+        if self.enforce_quota:
+            quotas.ledger().spend(self.name, 1, reserve=self.quota_reserve)
 
         url = f"{BASE_URL}/{path}?{urllib.parse.urlencode(params)}"
         req = urllib.request.Request(url, headers={
