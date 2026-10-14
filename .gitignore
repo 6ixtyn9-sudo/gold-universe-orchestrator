@@ -90,3 +90,8 @@ service_account.json
 **/*.pickle
 **/*_credentials.json
 **/*_service_account.json
+
+# === API ingestion layer ===
+ingest/.cache/
+ingest/out/
+ingest/leagues.json.bak
